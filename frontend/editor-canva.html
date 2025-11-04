@@ -568,6 +568,28 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+
+        /* Inline Text Editor */
+        .inline-text-editor {
+            position: absolute;
+            display: none;
+            background: transparent;
+            border: 2px solid #667eea;
+            outline: none;
+            padding: 4px;
+            font-family: inherit;
+            font-size: inherit;
+            color: inherit;
+            resize: none;
+            overflow: hidden;
+            z-index: 100;
+            min-width: 50px;
+            min-height: 30px;
+        }
+
+        .inline-text-editor:focus {
+            border-color: #5568d3;
+        }
     </style>
 </head>
 <body>
@@ -643,6 +665,7 @@
         <div class="canvas-container">
             <div class="canvas-wrapper">
                 <canvas id="mainCanvas" width="1200" height="800" role="img" aria-label="디자인 캔버스"></canvas>
+                <textarea id="inlineTextEditor" class="inline-text-editor"></textarea>
             </div>
         </div>
 
@@ -1016,6 +1039,8 @@
         let exportFormat = 'png';
         let exportResolution = 1;
         let exportQuality = 0.9;
+        let isEditingText = false;
+        let editingElement = null;
 
         // Element class
         class Element {
@@ -1661,19 +1686,114 @@
                     text.fill = document.getElementById('propFill').value;
                     elements.push(text);
                     selectedElement = text;
+                    selectedElements = [text];
                     saveHistory();
                 }
 
-                const newText = prompt('텍스트를 입력하세요:', selectedElement.text);
-                if (newText !== null) {
-                    selectedElement.text = newText;
-                    updatePropertiesPanel();
-                    render();
-                }
+                // Show inline text editor
+                showInlineTextEditor(selectedElement);
             }
         }
 
+        function showInlineTextEditor(textElement) {
+            if (!textElement || textElement.type !== 'text') return;
+
+            isEditingText = true;
+            editingElement = textElement;
+
+            const editor = document.getElementById('inlineTextEditor');
+            const rect = canvas.getBoundingClientRect();
+            const canvasContainer = document.querySelector('.canvas-wrapper');
+
+            // Position the editor
+            editor.style.left = (textElement.x) + 'px';
+            editor.style.top = (textElement.y) + 'px';
+            editor.style.width = Math.max(textElement.width, 100) + 'px';
+            editor.style.minHeight = textElement.height + 'px';
+
+            // Style the editor to match the text element
+            editor.style.fontFamily = textElement.fontFamily;
+            editor.style.fontSize = textElement.fontSize + 'px';
+            editor.style.color = textElement.fill;
+            editor.style.fontWeight = textElement.bold ? 'bold' : 'normal';
+            editor.style.fontStyle = textElement.italic ? 'italic' : 'normal';
+            editor.style.textDecoration = textElement.underline ? 'underline' : 'none';
+            editor.style.textAlign = textElement.textAlign;
+
+            // Set the content
+            editor.value = textElement.text;
+            editor.style.display = 'block';
+            editor.focus();
+            editor.select();
+
+            // Auto-resize as user types
+            editor.oninput = function() {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+            };
+
+            // Handle when user finishes editing
+            editor.onblur = function() {
+                finishTextEditing();
+            };
+
+            editor.onkeydown = function(e) {
+                if (e.key === 'Escape') {
+                    finishTextEditing();
+                } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    finishTextEditing();
+                }
+                e.stopPropagation();
+            };
+        }
+
+        function finishTextEditing() {
+            if (!isEditingText || !editingElement) return;
+
+            const editor = document.getElementById('inlineTextEditor');
+            const newText = editor.value.trim();
+
+            if (newText) {
+                editingElement.text = newText;
+
+                // Measure text width
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                let fontStyle = '';
+                if (editingElement.italic) fontStyle += 'italic ';
+                if (editingElement.bold) fontStyle += 'bold ';
+                tempCtx.font = `${fontStyle}${editingElement.fontSize}px ${editingElement.fontFamily}`;
+                const metrics = tempCtx.measureText(newText);
+                editingElement.width = Math.max(metrics.width + 10, 100);
+                editingElement.height = Math.max(editingElement.fontSize + 10, 40);
+
+                saveHistory();
+            } else if (elements.includes(editingElement)) {
+                // Remove empty text elements
+                const index = elements.indexOf(editingElement);
+                elements.splice(index, 1);
+                selectedElement = null;
+                selectedElements = [];
+            }
+
+            editor.style.display = 'none';
+            editor.value = '';
+            editor.onblur = null;
+            editor.onkeydown = null;
+            editor.oninput = null;
+
+            isEditingText = false;
+            editingElement = null;
+
+            updatePropertiesPanel();
+            updateLayersList();
+            render();
+        }
+
         function handleKeyDown(e) {
+            // Ignore keyboard shortcuts during text editing
+            if (isEditingText) return;
+
             if (e.key === 'Delete' && selectedElement) {
                 deleteSelected();
             } else if (e.ctrlKey && e.key === 'z') {
