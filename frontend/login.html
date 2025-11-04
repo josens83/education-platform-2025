@@ -15,18 +15,22 @@
             
             <div id="loginForm">
                 <h2>로그인</h2>
-                <input type="email" id="loginEmail" placeholder="이메일" required>
-                <input type="password" id="loginPassword" placeholder="비밀번호" required>
-                <button onclick="handleLogin()">로그인</button>
+                <form onsubmit="handleLogin(event)">
+                    <input type="email" id="loginEmail" placeholder="이메일" required>
+                    <input type="password" id="loginPassword" placeholder="비밀번호" required>
+                    <button type="submit">로그인</button>
+                </form>
                 <p class="switch-form">계정이 없으신가요? <a href="#" onclick="showRegister(); return false;">회원가입</a></p>
             </div>
 
             <div id="registerForm" style="display: none;">
                 <h2>회원가입</h2>
-                <input type="text" id="registerUsername" placeholder="사용자명" required>
-                <input type="email" id="registerEmail" placeholder="이메일" required>
-                <input type="password" id="registerPassword" placeholder="비밀번호" required>
-                <button onclick="handleRegister()">회원가입</button>
+                <form onsubmit="handleRegister(event)">
+                    <input type="text" id="registerUsername" placeholder="사용자명" required>
+                    <input type="email" id="registerEmail" placeholder="이메일" required>
+                    <input type="password" id="registerPassword" placeholder="비밀번호" required>
+                    <button type="submit">회원가입</button>
+                </form>
                 <p class="switch-form">이미 계정이 있으신가요? <a href="#" onclick="showLogin(); return false;">로그인</a></p>
             </div>
         </div>
@@ -62,7 +66,9 @@
             document.getElementById('loginForm').style.display = 'block';
         }
 
-        async function handleLogin() {
+        async function handleLogin(event) {
+            if (event) event.preventDefault();
+
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
 
@@ -98,7 +104,9 @@
             }
         }
 
-        async function handleRegister() {
+        async function handleRegister(event) {
+            if (event) event.preventDefault();
+
             const username = document.getElementById('registerUsername').value;
             const email = document.getElementById('registerEmail').value;
             const password = document.getElementById('registerPassword').value;
