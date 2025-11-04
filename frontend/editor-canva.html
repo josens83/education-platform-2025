@@ -718,6 +718,7 @@
             </div>
             <div class="header-right">
                 <button class="header-btn" onclick="location.href='index.html'" aria-label="프로젝트 목록으로 돌아가기">← 목록</button>
+                <button class="header-btn" onclick="showCollaborateModal()" aria-label="협업">👥 협업</button>
                 <button class="header-btn" onclick="showTemplateModal()" aria-label="캔버스 크기 변경">📐 캔버스 크기</button>
                 <button class="header-btn" onclick="showExportModal()" aria-label="다운로드">📥 다운로드</button>
                 <button class="header-btn primary" onclick="saveProject()" aria-label="프로젝트 저장">💾 저장</button>
@@ -1223,6 +1224,42 @@
                 <button class="export-btn-primary" onclick="applyTemplate()">
                     적용
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Collaborate Modal (P11) -->
+    <div class="modal-overlay" id="collaborateModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">프로젝트 협업</h2>
+                <button class="modal-close" onclick="closeCollaborateModal()">×</button>
+            </div>
+
+            <div class="export-options">
+                <div class="panel-group">
+                    <label class="panel-label">공유 링크</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" class="panel-input" id="shareLink" readonly value="링크 생성 중...">
+                        <button class="btn-icon" onclick="copyShareLink()" style="width: auto; padding: 8px 16px;">복사</button>
+                    </div>
+                </div>
+
+                <div class="panel-group">
+                    <label class="panel-label">협업자 권한</label>
+                    <select class="panel-input" id="sharePermission">
+                        <option value="view">보기만 가능</option>
+                        <option value="edit">편집 가능</option>
+                    </select>
+                </div>
+
+                <button class="export-btn-primary" onclick="generateShareLink()">
+                    공유 링크 생성
+                </button>
+
+                <div style="margin-top: 20px; padding: 12px; background: #f8f9ff; border-radius: 8px; font-size: 13px; color: #666;">
+                    💡 생성된 링크를 협업자에게 전달하여 함께 편집할 수 있습니다.
+                </div>
             </div>
         </div>
     </div>
@@ -3475,6 +3512,58 @@
             const newOverlay = overlay.cloneNode(true);
             overlay.parentNode.replaceChild(newOverlay, overlay);
         }
+
+        // P11: Collaboration Functions
+        function showCollaborateModal() {
+            document.getElementById('collaborateModal').classList.add('active');
+            // Auto-generate link on open
+            if (currentProjectId) {
+                const baseUrl = window.location.origin;
+                document.getElementById('shareLink').value = `${baseUrl}/editor-canva.html?id=${currentProjectId}&share=true`;
+            }
+        }
+
+        function closeCollaborateModal() {
+            document.getElementById('collaborateModal').classList.remove('active');
+        }
+
+        function generateShareLink() {
+            if (!currentProjectId) {
+                alert('프로젝트를 먼저 저장해주세요.');
+                return;
+            }
+
+            const permission = document.getElementById('sharePermission').value;
+            const baseUrl = window.location.origin;
+            const shareUrl = `${baseUrl}/editor-canva.html?id=${currentProjectId}&share=true&permission=${permission}`;
+
+            document.getElementById('shareLink').value = shareUrl;
+            alert('공유 링크가 생성되었습니다!');
+        }
+
+        function copyShareLink() {
+            const shareLink = document.getElementById('shareLink');
+            shareLink.select();
+            document.execCommand('copy');
+            alert('링크가 복사되었습니다!');
+        }
+
+        // Close modals when clicking outside
+        document.addEventListener('click', function(e) {
+            const exportModal = document.getElementById('exportModal');
+            const templateModal = document.getElementById('templateModal');
+            const collaborateModal = document.getElementById('collaborateModal');
+
+            if (e.target === exportModal) {
+                closeExportModal();
+            }
+            if (e.target === templateModal) {
+                closeTemplateModal();
+            }
+            if (e.target === collaborateModal) {
+                closeCollaborateModal();
+            }
+        });
     </script>
 </body>
 </html>
