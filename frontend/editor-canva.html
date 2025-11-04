@@ -425,6 +425,149 @@
         .upload-area input {
             display: none;
         }
+
+        /* Export Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            width: 450px;
+            max-width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+
+        .modal-close:hover {
+            color: #000;
+        }
+
+        .export-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .export-format-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .export-format-btn {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .export-format-btn:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .export-format-btn.active {
+            border-color: #667eea;
+            background: #e8eaff;
+            color: #667eea;
+        }
+
+        .export-resolution-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .export-resolution-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .export-resolution-btn:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .export-resolution-btn.active {
+            border-color: #667eea;
+            background: #e8eaff;
+            color: #667eea;
+        }
+
+        .export-quality-slider {
+            width: 100%;
+        }
+
+        .export-btn-primary {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .export-btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .export-btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -445,6 +588,7 @@
             </div>
             <div class="header-right">
                 <button class="header-btn" onclick="location.href='index.html'" aria-label="프로젝트 목록으로 돌아가기">← 목록</button>
+                <button class="header-btn" onclick="showExportModal()" aria-label="다운로드">📥 다운로드</button>
                 <button class="header-btn primary" onclick="saveProject()" aria-label="프로젝트 저장">💾 저장</button>
                 <button class="header-btn" onclick="handleLogout()" aria-label="로그아웃">로그아웃</button>
             </div>
@@ -788,6 +932,62 @@
         </div>
     </div>
 
+    <!-- Export Modal -->
+    <div class="modal-overlay" id="exportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">프로젝트 내보내기</h2>
+                <button class="modal-close" onclick="closeExportModal()">×</button>
+            </div>
+
+            <div class="export-options">
+                <div class="panel-group">
+                    <label class="panel-label">파일 이름</label>
+                    <input type="text" class="panel-input" id="exportFileName" value="artify-design">
+                </div>
+
+                <div class="panel-group">
+                    <label class="panel-label">포맷 선택</label>
+                    <div class="export-format-group">
+                        <button class="export-format-btn active" onclick="selectExportFormat('png')" id="formatPng">
+                            PNG
+                        </button>
+                        <button class="export-format-btn" onclick="selectExportFormat('jpg')" id="formatJpg">
+                            JPG
+                        </button>
+                        <button class="export-format-btn" onclick="selectExportFormat('svg')" id="formatSvg">
+                            SVG
+                        </button>
+                    </div>
+                </div>
+
+                <div class="panel-group" id="resolutionGroup">
+                    <label class="panel-label">해상도</label>
+                    <div class="export-resolution-group">
+                        <button class="export-resolution-btn active" onclick="selectExportResolution(1)" id="res1x">
+                            1x<br><small>표준</small>
+                        </button>
+                        <button class="export-resolution-btn" onclick="selectExportResolution(2)" id="res2x">
+                            2x<br><small>레티나</small>
+                        </button>
+                        <button class="export-resolution-btn" onclick="selectExportResolution(3)" id="res3x">
+                            3x<br><small>고해상도</small>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="panel-group" id="qualityGroup" style="display:none;">
+                    <label class="panel-label">품질 <span id="qualityValue">90%</span></label>
+                    <input type="range" min="10" max="100" value="90" class="export-quality-slider" id="exportQuality" oninput="updateQualityLabel(this.value)">
+                </div>
+
+                <button class="export-btn-primary" onclick="executeExport()">
+                    다운로드
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="config.js"></script>
     <script>
         // Global State
@@ -813,6 +1013,9 @@
         let lastSaveTime = null;
         let isDirty = true;
         let renderScheduled = false;
+        let exportFormat = 'png';
+        let exportResolution = 1;
+        let exportQuality = 0.9;
 
         // Element class
         class Element {
@@ -2298,6 +2501,244 @@
                 render();
             }
         }
+
+        // Export Functions
+        function showExportModal() {
+            document.getElementById('exportModal').classList.add('active');
+
+            // Set default filename from project name
+            const projectName = document.getElementById('projectName').textContent || 'artify-design';
+            document.getElementById('exportFileName').value = projectName.replace(/\s+/g, '-');
+        }
+
+        function closeExportModal() {
+            document.getElementById('exportModal').classList.remove('active');
+        }
+
+        function selectExportFormat(format) {
+            exportFormat = format;
+
+            // Update button states
+            document.querySelectorAll('.export-format-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('format' + format.charAt(0).toUpperCase() + format.slice(1)).classList.add('active');
+
+            // Show/hide resolution options for SVG
+            const resolutionGroup = document.getElementById('resolutionGroup');
+            const qualityGroup = document.getElementById('qualityGroup');
+
+            if (format === 'svg') {
+                resolutionGroup.style.display = 'none';
+                qualityGroup.style.display = 'none';
+            } else {
+                resolutionGroup.style.display = 'block';
+                qualityGroup.style.display = format === 'jpg' ? 'block' : 'none';
+            }
+        }
+
+        function selectExportResolution(resolution) {
+            exportResolution = resolution;
+
+            // Update button states
+            document.querySelectorAll('.export-resolution-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('res' + resolution + 'x').classList.add('active');
+        }
+
+        function updateQualityLabel(value) {
+            document.getElementById('qualityValue').textContent = value + '%';
+            exportQuality = value / 100;
+        }
+
+        async function executeExport() {
+            const fileName = document.getElementById('exportFileName').value || 'artify-design';
+
+            try {
+                if (exportFormat === 'svg') {
+                    exportAsSVG(fileName);
+                } else if (exportFormat === 'png') {
+                    exportAsPNG(fileName, exportResolution);
+                } else if (exportFormat === 'jpg') {
+                    exportAsJPG(fileName, exportResolution, exportQuality);
+                }
+
+                closeExportModal();
+            } catch (error) {
+                console.error('Export error:', error);
+                alert('내보내기 중 오류가 발생했습니다.');
+            }
+        }
+
+        function exportAsPNG(fileName, scale) {
+            // Create a temporary canvas with scaled dimensions
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width * scale;
+            tempCanvas.height = canvas.height * scale;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // Scale the context
+            tempCtx.scale(scale, scale);
+
+            // Fill white background
+            tempCtx.fillStyle = '#ffffff';
+            tempCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw all elements
+            for (let element of elements) {
+                element.draw(tempCtx);
+            }
+
+            // Convert to blob and download
+            tempCanvas.toBlob((blob) => {
+                downloadBlob(blob, fileName + '.png');
+            }, 'image/png');
+        }
+
+        function exportAsJPG(fileName, scale, quality) {
+            // Create a temporary canvas with scaled dimensions
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width * scale;
+            tempCanvas.height = canvas.height * scale;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // Scale the context
+            tempCtx.scale(scale, scale);
+
+            // Fill white background (JPEG doesn't support transparency)
+            tempCtx.fillStyle = '#ffffff';
+            tempCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw all elements
+            for (let element of elements) {
+                element.draw(tempCtx);
+            }
+
+            // Convert to blob and download
+            tempCanvas.toBlob((blob) => {
+                downloadBlob(blob, fileName + '.jpg');
+            }, 'image/jpeg', quality);
+        }
+
+        function exportAsSVG(fileName) {
+            // Create SVG with all elements
+            let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}" viewBox="0 0 ${canvas.width} ${canvas.height}">`;
+
+            // White background
+            svgContent += `<rect x="0" y="0" width="${canvas.width}" height="${canvas.height}" fill="#ffffff"/>`;
+
+            // Convert each element to SVG
+            for (let element of elements) {
+                if (!element.visible) continue;
+
+                const transform = `translate(${element.x + element.width / 2}, ${element.y + element.height / 2}) rotate(${element.rotation}) translate(-${element.x + element.width / 2}, -${element.y + element.height / 2})`;
+
+                switch (element.type) {
+                    case 'rect':
+                        if (element.gradient && element.gradient.enabled) {
+                            const gradId = 'grad-' + element.id;
+                            const angle = element.gradient.angle * Math.PI / 180;
+                            const x1 = 50 - Math.cos(angle) * 50;
+                            const y1 = 50 - Math.sin(angle) * 50;
+                            const x2 = 50 + Math.cos(angle) * 50;
+                            const y2 = 50 + Math.sin(angle) * 50;
+
+                            svgContent += `<defs><linearGradient id="${gradId}" x1="${x1}%" y1="${y1}%" x2="${x2}%" y2="${y2}%">`;
+                            svgContent += `<stop offset="0%" stop-color="${element.gradient.color1}"/>`;
+                            svgContent += `<stop offset="100%" stop-color="${element.gradient.color2}"/>`;
+                            svgContent += `</linearGradient></defs>`;
+                            svgContent += `<rect x="${element.x}" y="${element.y}" width="${element.width}" height="${element.height}" fill="url(#${gradId})" stroke="${element.stroke}" stroke-width="${element.strokeWidth}" opacity="${element.opacity}" transform="${transform}"/>`;
+                        } else {
+                            svgContent += `<rect x="${element.x}" y="${element.y}" width="${element.width}" height="${element.height}" fill="${element.fill}" stroke="${element.stroke}" stroke-width="${element.strokeWidth}" opacity="${element.opacity}" transform="${transform}"/>`;
+                        }
+                        break;
+
+                    case 'circle':
+                        const cx = element.x + element.width / 2;
+                        const cy = element.y + element.height / 2;
+                        const rx = element.width / 2;
+                        const ry = element.height / 2;
+                        svgContent += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${element.fill}" stroke="${element.stroke}" stroke-width="${element.strokeWidth}" opacity="${element.opacity}" transform="${transform}"/>`;
+                        break;
+
+                    case 'triangle':
+                        const x1 = element.x + element.width / 2;
+                        const y1 = element.y;
+                        const x2 = element.x + element.width;
+                        const y2 = element.y + element.height;
+                        const x3 = element.x;
+                        const y3 = element.y + element.height;
+                        svgContent += `<polygon points="${x1},${y1} ${x2},${y2} ${x3},${y3}" fill="${element.fill}" stroke="${element.stroke}" stroke-width="${element.strokeWidth}" opacity="${element.opacity}" transform="${transform}"/>`;
+                        break;
+
+                    case 'line':
+                        svgContent += `<line x1="${element.x}" y1="${element.y}" x2="${element.x + element.width}" y2="${element.y + element.height}" stroke="${element.stroke}" stroke-width="${element.strokeWidth}" opacity="${element.opacity}" transform="${transform}"/>`;
+                        break;
+
+                    case 'text':
+                        let fontWeight = element.bold ? 'bold' : 'normal';
+                        let fontStyle = element.italic ? 'italic' : 'normal';
+                        let textDecoration = element.underline ? 'underline' : 'none';
+                        let textAnchor = element.textAlign === 'center' ? 'middle' : element.textAlign === 'right' ? 'end' : 'start';
+                        let textX = element.x;
+                        if (element.textAlign === 'center') textX += element.width / 2;
+                        else if (element.textAlign === 'right') textX += element.width;
+
+                        // Add text shadow if enabled
+                        let textFilter = '';
+                        if (element.textShadow && element.textShadow.enabled) {
+                            const filterId = 'shadow-' + element.id;
+                            svgContent += `<defs><filter id="${filterId}">`;
+                            svgContent += `<feDropShadow dx="${element.textShadow.offsetX}" dy="${element.textShadow.offsetY}" stdDeviation="${element.textShadow.blur / 2}" flood-color="${element.textShadow.color}"/>`;
+                            svgContent += `</filter></defs>`;
+                            textFilter = ` filter="url(#${filterId})"`;
+                        }
+
+                        svgContent += `<text x="${textX}" y="${element.y}" font-family="${element.fontFamily}" font-size="${element.fontSize}" font-weight="${fontWeight}" font-style="${fontStyle}" text-decoration="${textDecoration}" text-anchor="${textAnchor}" fill="${element.fill}" opacity="${element.opacity}" transform="${transform}"${textFilter}>${escapeXml(element.text)}</text>`;
+                        break;
+
+                    case 'pencil':
+                        if (element.points.length > 0) {
+                            let pathData = `M ${element.points[0].x} ${element.points[0].y}`;
+                            for (let i = 1; i < element.points.length; i++) {
+                                pathData += ` L ${element.points[i].x} ${element.points[i].y}`;
+                            }
+                            svgContent += `<path d="${pathData}" stroke="${element.stroke}" stroke-width="${element.strokeWidth}" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="${element.opacity}"/>`;
+                        }
+                        break;
+                }
+            }
+
+            svgContent += '</svg>';
+
+            // Download SVG
+            const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+            downloadBlob(blob, fileName + '.svg');
+        }
+
+        function escapeXml(text) {
+            return text.replace(/&/g, '&amp;')
+                       .replace(/</g, '&lt;')
+                       .replace(/>/g, '&gt;')
+                       .replace(/"/g, '&quot;')
+                       .replace(/'/g, '&apos;');
+        }
+
+        function downloadBlob(blob, fileName) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('exportModal');
+            if (e.target === modal) {
+                closeExportModal();
+            }
+        });
     </script>
 </body>
 </html>
