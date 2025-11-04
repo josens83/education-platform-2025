@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artify - Canva Style Editor</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+        }
+
+        /* Main Layout */
+        .canva-layout {
+            display: grid;
+            grid-template-areas:
+                "header header header"
+                "sidebar canvas properties";
+            grid-template-columns: 80px 1fr 320px;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+            background: #f0f0f0;
+        }
+
+        /* Header */
+        .canva-header {
+            grid-area: header;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .project-name {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .header-center {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-btn {
+            padding: 8px 16px;
+            border: 1px solid #e0e0e0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .header-btn:hover {
+            background: #f5f5f5;
+        }
+
+        .header-btn.primary {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .header-btn.primary:hover {
+            background: #5568d3;
+        }
+
+        /* Left Sidebar - Tool Palette */
+        .left-sidebar {
+            grid-area: sidebar;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            gap: 10px;
+        }
+
+        .tool-item {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-size: 24px;
+            position: relative;
+        }
+
+        .tool-item:hover {
+            background: #f5f5f5;
+        }
+
+        .tool-item.active {
+            background: #e8eaff;
+            color: #667eea;
+        }
+
+        .tool-label {
+            font-size: 10px;
+            margin-top: 4px;
+        }
+
+        /* Canvas Area */
+        .canvas-container {
+            grid-area: canvas;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            overflow: auto;
+            background: #e5e5e5;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        #mainCanvas {
+            background: white;
+            cursor: crosshair;
+        }
+
+        /* Right Properties Panel */
+        .properties-panel {
+            grid-area: properties;
+            background: white;
+            border-left: 1px solid #e0e0e0;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .panel-section {
+            margin-bottom: 30px;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .panel-group {
+            margin-bottom: 15px;
+        }
+
+        .panel-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .panel-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .panel-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .color-swatch {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.1);
+        }
+
+        .color-swatch.active {
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px white, 0 0 0 4px #667eea;
+        }
+
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider-group input[type="range"] {
+            flex: 1;
+        }
+
+        .slider-value {
+            min-width: 40px;
+            text-align: right;
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* Layers Panel */
+        .layers-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+
+        .layer-item {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s;
+        }
+
+        .layer-item:hover {
+            background: #f5f5f5;
+        }
+
+        .layer-item.active {
+            background: #e8eaff;
+            border-left: 3px solid #667eea;
+        }
+
+        .layer-icon {
+            margin-right: 8px;
+        }
+
+        .layer-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .layer-btn {
+            padding: 4px 8px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+
+        .layer-btn:hover {
+            background: #e0e0e0;
+        }
+
+        /* AI Panel */
+        .ai-panel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .ai-panel textarea {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            resize: vertical;
+            min-height: 80px;
+            margin-bottom: 10px;
+        }
+
+        .ai-panel select {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+
+        .ai-btn {
+            width: 100%;
+            padding: 12px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .ai-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .ai-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Button Groups */
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            padding: 8px 12px;
+            border: 1px solid #e0e0e0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-icon:hover {
+            background: #f5f5f5;
+        }
+
+        .btn-icon:active {
+            background: #e8eaff;
+        }
+
+        /* Font Selector */
+        .font-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .font-option {
+            padding: 8px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .font-option:hover {
+            background: #f5f5f5;
+        }
+
+        .font-option.active {
+            background: #e8eaff;
+            border-color: #667eea;
+        }
+
+        /* Messages */
+        .message {
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .message.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        /* Image Upload */
+        .upload-area {
+            border: 2px dashed #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .upload-area input {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="canva-layout">
+        <!-- Header -->
+        <div class="canva-header">
+            <div class="header-left">
+                <div class="logo">Artify</div>
+                <div class="project-name" id="projectName">새 프로젝트</div>
+            </div>
+            <div class="header-center">
+                <button class="header-btn" onclick="undo()" id="undoBtn" disabled>
+                    ↶ 실행 취소
+                </button>
+                <button class="header-btn" onclick="redo()" id="redoBtn" disabled>
+                    ↷ 다시 실행
+                </button>
+            </div>
+            <div class="header-right">
+                <button class="header-btn" onclick="location.href='index.html'">← 목록</button>
+                <button class="header-btn primary" onclick="saveProject()">💾 저장</button>
+                <button class="header-btn" onclick="handleLogout()">로그아웃</button>
+            </div>
+        </div>
+
+        <!-- Left Sidebar - Tools -->
+        <div class="left-sidebar">
+            <div class="tool-item active" onclick="setTool('select')" data-tool="select">
+                <div>⬜</div>
+                <div class="tool-label">선택</div>
+            </div>
+            <div class="tool-item" onclick="setTool('text')" data-tool="text">
+                <div>T</div>
+                <div class="tool-label">텍스트</div>
+            </div>
+            <div class="tool-item" onclick="setTool('rect')" data-tool="rect">
+                <div>▢</div>
+                <div class="tool-label">사각형</div>
+            </div>
+            <div class="tool-item" onclick="setTool('circle')" data-tool="circle">
+                <div>○</div>
+                <div class="tool-label">원</div>
+            </div>
+            <div class="tool-item" onclick="setTool('triangle')" data-tool="triangle">
+                <div>△</div>
+                <div class="tool-label">삼각형</div>
+            </div>
+            <div class="tool-item" onclick="setTool('star')" data-tool="star">
+                <div>★</div>
+                <div class="tool-label">별</div>
+            </div>
+            <div class="tool-item" onclick="setTool('line')" data-tool="line">
+                <div>─</div>
+                <div class="tool-label">선</div>
+            </div>
+            <div class="tool-item" onclick="setTool('arrow')" data-tool="arrow">
+                <div>→</div>
+                <div class="tool-label">화살표</div>
+            </div>
+            <div class="tool-item" onclick="setTool('pencil')" data-tool="pencil">
+                <div>✏️</div>
+                <div class="tool-label">펜</div>
+            </div>
+            <div class="tool-item" onclick="document.getElementById('imageUpload').click()">
+                <div>🖼️</div>
+                <div class="tool-label">이미지</div>
+            </div>
+            <input type="file" id="imageUpload" accept="image/*" style="display:none" onchange="handleImageUpload(event)">
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="canvas-container">
+            <div class="canvas-wrapper">
+                <canvas id="mainCanvas" width="1200" height="800"></canvas>
+            </div>
+        </div>
+
+        <!-- Right Properties Panel -->
+        <div class="properties-panel">
+            <!-- AI Generation -->
+            <div class="ai-panel">
+                <div class="panel-title" style="color: white; margin-bottom: 10px;">🤖 AI 이미지 생성</div>
+                <textarea id="aiPrompt" placeholder="원하는 이미지를 설명하세요..."></textarea>
+                <select id="aiSize">
+                    <option value="1024x1024">정사각형 (1024x1024)</option>
+                    <option value="1792x1024">가로형 (1792x1024)</option>
+                    <option value="1024x1792">세로형 (1024x1792)</option>
+                </select>
+                <button class="ai-btn" onclick="generateAIImage()" id="aiBtn">이미지 생성</button>
+                <div id="aiMessage"></div>
+            </div>
+
+            <!-- Element Properties -->
+            <div class="panel-section" id="elementProps" style="display:none;">
+                <div class="panel-title">요소 속성</div>
+
+                <div class="panel-group">
+                    <label class="panel-label">위치 X</label>
+                    <input type="number" class="panel-input" id="propX" oninput="updateElementProp('x', this.value)">
+                </div>
+
+                <div class="panel-group">
+                    <label class="panel-label">위치 Y</label>
+                    <input type="number" class="panel-input" id="propY" oninput="updateElementProp('y', this.value)">
+                </div>
+
+                <div class="panel-group">
+                    <label class="panel-label">너비</label>
+                    <input type="number" class="panel-input" id="propWidth" oninput="updateElementProp('width', this.value)">
+                </div>
+
+                <div class="panel-group">
+                    <label class="panel-label">높이</label>
+                    <input type="number" class="panel-input" id="propHeight" oninput="updateElementProp('height', this.value)">
+                </div>
+
+                <div class="panel-group">
+                    <label class="panel-label">회전 (도)</label>
+                    <div class="slider-group">
+                        <input type="range" min="0" max="360" value="0" id="propRotation" oninput="updateElementProp('rotation', this.value)">
+                        <span class="slider-value" id="rotationValue">0°</span>
+                    </div>
+                </div>
+
+                <div class="panel-group">
+                    <label class="panel-label">불투명도</label>
+                    <div class="slider-group">
+                        <input type="range" min="0" max="100" value="100" id="propOpacity" oninput="updateElementProp('opacity', this.value)">
+                        <span class="slider-value" id="opacityValue">100%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Text Properties -->
+            <div class="panel-section" id="textProps" style="display:none;">
+                <div class="panel-title">텍스트 속성</div>
+
+                <div class="panel-group">
+                    <label class="panel-label">내용</label>
+                    <input type="text" class="panel-input" id="propText" oninput="updateElementProp('text', this.value)">
+                </div>
+
+                <div class="panel-group">
+                    <label class="panel-label">폰트</label>
+                    <select class="panel-input" id="propFont" onchange="updateElementProp('fontFamily', this.value)">
+                        <option value="Arial">Arial</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Comic Sans MS">Comic Sans MS</option>
+                    </select>
+                </div>
+
+                <div class="panel-group">
+                    <label class="panel-label">크기</label>
+                    <div class="slider-group">
+                        <input type="range" min="8" max="120" value="24" id="propFontSize" oninput="updateElementProp('fontSize', this.value)">
+                        <span class="slider-value" id="fontSizeValue">24px</span>
+                    </div>
+                </div>
+
+                <div class="panel-group">
+                    <label class="panel-label">스타일</label>
+                    <div class="btn-group">
+                        <button class="btn-icon" onclick="toggleTextStyle('bold')" id="btnBold">
+                            <strong>B</strong>
+                        </button>
+                        <button class="btn-icon" onclick="toggleTextStyle('italic')" id="btnItalic">
+                            <em>I</em>
+                        </button>
+                        <button class="btn-icon" onclick="toggleTextStyle('underline')" id="btnUnderline">
+                            <u>U</u>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="panel-group">
+                    <label class="panel-label">정렬</label>
+                    <div class="btn-group">
+                        <button class="btn-icon" onclick="updateElementProp('textAlign', 'left')">⬅️</button>
+                        <button class="btn-icon" onclick="updateElementProp('textAlign', 'center')">↔️</button>
+                        <button class="btn-icon" onclick="updateElementProp('textAlign', 'right')">➡️</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Color Properties -->
+            <div class="panel-section">
+                <div class="panel-title">색상</div>
+
+                <div class="panel-group">
+                    <label class="panel-label">채우기</label>
+                    <input type="color" class="panel-input" id="propFill" value="#667eea" onchange="updateElementProp('fill', this.value)">
+                </div>
+
+                <div class="color-grid">
+                    <div class="color-swatch" style="background: #667eea" onclick="setColor('#667eea')"></div>
+                    <div class="color-swatch" style="background: #764ba2" onclick="setColor('#764ba2')"></div>
+                    <div class="color-swatch" style="background: #f093fb" onclick="setColor('#f093fb')"></div>
+                    <div class="color-swatch" style="background: #4facfe" onclick="setColor('#4facfe')"></div>
+                    <div class="color-swatch" style="background: #43e97b" onclick="setColor('#43e97b')"></div>
+                    <div class="color-swatch" style="background: #fa709a" onclick="setColor('#fa709a')"></div>
+                    <div class="color-swatch" style="background: #fee140" onclick="setColor('#fee140')"></div>
+                    <div class="color-swatch" style="background: #30cfd0" onclick="setColor('#30cfd0')"></div>
+                    <div class="color-swatch" style="background: #ff6b6b" onclick="setColor('#ff6b6b')"></div>
+                    <div class="color-swatch" style="background: #4ecdc4" onclick="setColor('#4ecdc4')"></div>
+                    <div class="color-swatch" style="background: #45b7d1" onclick="setColor('#45b7d1')"></div>
+                    <div class="color-swatch" style="background: #96ceb4" onclick="setColor('#96ceb4')"></div>
+                </div>
+
+                <div class="panel-group" style="margin-top: 15px;">
+                    <label class="panel-label">테두리 색상</label>
+                    <input type="color" class="panel-input" id="propStroke" value="#000000" onchange="updateElementProp('stroke', this.value)">
+                </div>
+
+                <div class="panel-group">
+                    <label class="panel-label">테두리 두께</label>
+                    <div class="slider-group">
+                        <input type="range" min="0" max="20" value="2" id="propStrokeWidth" oninput="updateElementProp('strokeWidth', this.value)">
+                        <span class="slider-value" id="strokeValue">2px</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Layers -->
+            <div class="panel-section">
+                <div class="panel-title">레이어</div>
+                <div class="layers-list" id="layersList">
+                    <div style="padding: 20px; text-align: center; color: #999;">
+                        요소를 추가하세요
+                    </div>
+                </div>
+                <div class="btn-group" style="margin-top: 10px;">
+                    <button class="btn-icon" onclick="moveLayer('up')" style="flex:1">↑ 위로</button>
+                    <button class="btn-icon" onclick="moveLayer('down')" style="flex:1">↓ 아래로</button>
+                    <button class="btn-icon" onclick="deleteSelected()" style="flex:1">🗑️ 삭제</button>
+                </div>
+            </div>
+
+            <!-- Alignment Tools -->
+            <div class="panel-section">
+                <div class="panel-title">정렬</div>
+                <div class="btn-group">
+                    <button class="btn-icon" onclick="alignElements('left')" title="왼쪽 정렬">⬅️</button>
+                    <button class="btn-icon" onclick="alignElements('center')" title="중앙 정렬">↔️</button>
+                    <button class="btn-icon" onclick="alignElements('right')" title="오른쪽 정렬">➡️</button>
+                </div>
+                <div class="btn-group" style="margin-top: 8px;">
+                    <button class="btn-icon" onclick="alignElements('top')" title="위쪽 정렬">⬆️</button>
+                    <button class="btn-icon" onclick="alignElements('middle')" title="중간 정렬">↕️</button>
+                    <button class="btn-icon" onclick="alignElements('bottom')" title="아래쪽 정렬">⬇️</button>
+                </div>
+            </div>
+
+            <div id="saveMessage"></div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        // Global State
+        let canvas, ctx;
+        let elements = [];
+        let selectedElement = null;
+        let currentTool = 'select';
+        let isDrawing = false;
+        let isDragging = false;
+        let isResizing = false;
+        let dragStart = {x: 0, y: 0};
+        let resizeHandle = null;
+        let history = [];
+        let historyIndex = -1;
+        let currentProjectId = null;
+        let gridEnabled = true;
+        let snapEnabled = true;
+
+        // Element class
+        class Element {
+            constructor(type, x, y, width, height) {
+                this.id = Date.now() + Math.random();
+                this.type = type;
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.rotation = 0;
+                this.fill = '#667eea';
+                this.stroke = '#000000';
+                this.strokeWidth = 2;
+                this.opacity = 1;
+                this.visible = true;
+                this.locked = false;
+
+                // Text specific
+                if (type === 'text') {
+                    this.text = '텍스트 입력';
+                    this.fontSize = 24;
+                    this.fontFamily = 'Arial';
+                    this.textAlign = 'left';
+                    this.bold = false;
+                    this.italic = false;
+                    this.underline = false;
+                }
+
+                // Image specific
+                if (type === 'image') {
+                    this.imageData = null;
+                }
+
+                // Drawing path specific
+                if (type === 'pencil') {
+                    this.points = [];
+                }
+            }
+
+            draw(context) {
+                if (!this.visible) return;
+
+                context.save();
+                context.globalAlpha = this.opacity;
+                context.translate(this.x + this.width / 2, this.y + this.height / 2);
+                context.rotate(this.rotation * Math.PI / 180);
+                context.translate(-(this.x + this.width / 2), -(this.y + this.height / 2));
+
+                switch (this.type) {
+                    case 'rect':
+                        context.fillStyle = this.fill;
+                        context.strokeStyle = this.stroke;
+                        context.lineWidth = this.strokeWidth;
+                        context.fillRect(this.x, this.y, this.width, this.height);
+                        if (this.strokeWidth > 0) {
+                            context.strokeRect(this.x, this.y, this.width, this.height);
+                        }
+                        break;
+
+                    case 'circle':
+                        context.fillStyle = this.fill;
+                        context.strokeStyle = this.stroke;
+                        context.lineWidth = this.strokeWidth;
+                        context.beginPath();
+                        const radiusX = this.width / 2;
+                        const radiusY = this.height / 2;
+                        context.ellipse(this.x + radiusX, this.y + radiusY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+                        context.fill();
+                        if (this.strokeWidth > 0) {
+                            context.stroke();
+                        }
+                        break;
+
+                    case 'triangle':
+                        context.fillStyle = this.fill;
+                        context.strokeStyle = this.stroke;
+                        context.lineWidth = this.strokeWidth;
+                        context.beginPath();
+                        context.moveTo(this.x + this.width / 2, this.y);
+                        context.lineTo(this.x + this.width, this.y + this.height);
+                        context.lineTo(this.x, this.y + this.height);
+                        context.closePath();
+                        context.fill();
+                        if (this.strokeWidth > 0) {
+                            context.stroke();
+                        }
+                        break;
+
+                    case 'star':
+                        this.drawStar(context);
+                        break;
+
+                    case 'line':
+                        context.strokeStyle = this.stroke;
+                        context.lineWidth = this.strokeWidth;
+                        context.beginPath();
+                        context.moveTo(this.x, this.y);
+                        context.lineTo(this.x + this.width, this.y + this.height);
+                        context.stroke();
+                        break;
+
+                    case 'arrow':
+                        this.drawArrow(context);
+                        break;
+
+                    case 'text':
+                        context.fillStyle = this.fill;
+                        let fontStyle = '';
+                        if (this.italic) fontStyle += 'italic ';
+                        if (this.bold) fontStyle += 'bold ';
+                        context.font = `${fontStyle}${this.fontSize}px ${this.fontFamily}`;
+                        context.textAlign = this.textAlign;
+                        context.textBaseline = 'top';
+
+                        let textX = this.x;
+                        if (this.textAlign === 'center') textX += this.width / 2;
+                        else if (this.textAlign === 'right') textX += this.width;
+
+                        context.fillText(this.text, textX, this.y);
+
+                        if (this.underline) {
+                            const metrics = context.measureText(this.text);
+                            context.beginPath();
+                            context.moveTo(textX, this.y + this.fontSize + 2);
+                            context.lineTo(textX + metrics.width, this.y + this.fontSize + 2);
+                            context.strokeStyle = this.fill;
+                            context.lineWidth = 1;
+                            context.stroke();
+                        }
+                        break;
+
+                    case 'image':
+                        if (this.imageData) {
+                            context.drawImage(this.imageData, this.x, this.y, this.width, this.height);
+                        }
+                        break;
+
+                    case 'pencil':
+                        if (this.points.length > 0) {
+                            context.strokeStyle = this.stroke;
+                            context.lineWidth = this.strokeWidth;
+                            context.lineCap = 'round';
+                            context.lineJoin = 'round';
+                            context.beginPath();
+                            context.moveTo(this.points[0].x, this.points[0].y);
+                            for (let i = 1; i < this.points.length; i++) {
+                                context.lineTo(this.points[i].x, this.points[i].y);
+                            }
+                            context.stroke();
+                        }
+                        break;
+                }
+
+                context.restore();
+            }
+
+            drawStar(context) {
+                const cx = this.x + this.width / 2;
+                const cy = this.y + this.height / 2;
+                const outerRadius = Math.min(this.width, this.height) / 2;
+                const innerRadius = outerRadius / 2;
+                const points = 5;
+
+                context.fillStyle = this.fill;
+                context.strokeStyle = this.stroke;
+                context.lineWidth = this.strokeWidth;
+                context.beginPath();
+
+                for (let i = 0; i < points * 2; i++) {
+                    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    const angle = (i * Math.PI) / points - Math.PI / 2;
+                    const x = cx + radius * Math.cos(angle);
+                    const y = cy + radius * Math.sin(angle);
+                    if (i === 0) context.moveTo(x, y);
+                    else context.lineTo(x, y);
+                }
+
+                context.closePath();
+                context.fill();
+                if (this.strokeWidth > 0) {
+                    context.stroke();
+                }
+            }
+
+            drawArrow(context) {
+                const headLength = 20;
+                const dx = this.width;
+                const dy = this.height;
+                const angle = Math.atan2(dy, dx);
+
+                context.strokeStyle = this.stroke;
+                context.fillStyle = this.stroke;
+                context.lineWidth = this.strokeWidth;
+
+                // Line
+                context.beginPath();
+                context.moveTo(this.x, this.y);
+                context.lineTo(this.x + dx, this.y + dy);
+                context.stroke();
+
+                // Arrowhead
+                context.beginPath();
+                context.moveTo(this.x + dx, this.y + dy);
+                context.lineTo(
+                    this.x + dx - headLength * Math.cos(angle - Math.PI / 6),
+                    this.y + dy - headLength * Math.sin(angle - Math.PI / 6)
+                );
+                context.lineTo(
+                    this.x + dx - headLength * Math.cos(angle + Math.PI / 6),
+                    this.y + dy - headLength * Math.sin(angle + Math.PI / 6)
+                );
+                context.closePath();
+                context.fill();
+            }
+
+            contains(x, y) {
+                if (this.type === 'pencil') {
+                    // Check if point is near any line segment
+                    for (let i = 0; i < this.points.length - 1; i++) {
+                        const dist = this.distanceToSegment(x, y, this.points[i], this.points[i + 1]);
+                        if (dist < this.strokeWidth + 5) return true;
+                    }
+                    return false;
+                }
+
+                return x >= this.x && x <= this.x + this.width &&
+                       y >= this.y && y <= this.y + this.height;
+            }
+
+            distanceToSegment(px, py, p1, p2) {
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                const len = Math.sqrt(dx * dx + dy * dy);
+                if (len === 0) return Math.sqrt((px - p1.x) ** 2 + (py - p1.y) ** 2);
+
+                const t = Math.max(0, Math.min(1, ((px - p1.x) * dx + (py - p1.y) * dy) / (len * len)));
+                const projX = p1.x + t * dx;
+                const projY = p1.y + t * dy;
+                return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
+            }
+
+            getResizeHandle(x, y) {
+                if (this.type === 'pencil') return null;
+
+                const handles = [
+                    {name: 'nw', x: this.x, y: this.y},
+                    {name: 'ne', x: this.x + this.width, y: this.y},
+                    {name: 'sw', x: this.x, y: this.y + this.height},
+                    {name: 'se', x: this.x + this.width, y: this.y + this.height},
+                ];
+
+                for (let handle of handles) {
+                    if (Math.abs(x - handle.x) < 8 && Math.abs(y - handle.y) < 8) {
+                        return handle.name;
+                    }
+                }
+                return null;
+            }
+        }
+
+        // Initialize
+        window.onload = function() {
+            if (!checkAuth()) return;
+
+            canvas = document.getElementById('mainCanvas');
+            ctx = canvas.getContext('2d');
+
+            const urlParams = new URLSearchParams(window.location.search);
+            currentProjectId = urlParams.get('id');
+
+            if (currentProjectId) {
+                loadProject(currentProjectId);
+            } else {
+                render();
+            }
+
+            setupEventListeners();
+        };
+
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('로그인이 필요합니다.');
+                window.location.href = 'login.html';
+                return false;
+            }
+            return true;
+        }
+
+        function handleLogout() {
+            if (confirm('로그아웃 하시겠습니까?')) {
+                localStorage.clear();
+                window.location.href = 'login.html';
+            }
+        }
+
+        function setupEventListeners() {
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('dblclick', handleDoubleClick);
+
+            document.addEventListener('keydown', handleKeyDown);
+        }
+
+        function handleMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (currentTool === 'select') {
+                // Check for resize handle
+                if (selectedElement) {
+                    resizeHandle = selectedElement.getResizeHandle(x, y);
+                    if (resizeHandle) {
+                        isResizing = true;
+                        dragStart = {x, y};
+                        return;
+                    }
+                }
+
+                // Check for element selection
+                for (let i = elements.length - 1; i >= 0; i--) {
+                    if (elements[i].contains(x, y) && !elements[i].locked) {
+                        selectedElement = elements[i];
+                        isDragging = true;
+                        dragStart = {x: x - selectedElement.x, y: y - selectedElement.y};
+                        updatePropertiesPanel();
+                        updateLayersList();
+                        render();
+                        return;
+                    }
+                }
+
+                // Deselect
+                selectedElement = null;
+                updatePropertiesPanel();
+                updateLayersList();
+                render();
+            } else if (currentTool === 'pencil') {
+                isDrawing = true;
+                const pencil = new Element('pencil', x, y, 0, 0);
+                pencil.points.push({x, y});
+                pencil.stroke = document.getElementById('propStroke').value;
+                pencil.strokeWidth = parseInt(document.getElementById('propStrokeWidth').value);
+                elements.push(pencil);
+                selectedElement = pencil;
+            } else {
+                // Start drawing shape
+                isDrawing = true;
+                dragStart = {x, y};
+            }
+        }
+
+        function handleMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (isDragging && selectedElement && !selectedElement.locked) {
+                selectedElement.x = snapEnabled ? Math.round((x - dragStart.x) / 10) * 10 : x - dragStart.x;
+                selectedElement.y = snapEnabled ? Math.round((y - dragStart.y) / 10) * 10 : y - dragStart.y;
+                updatePropertiesPanel();
+                render();
+            } else if (isResizing && selectedElement) {
+                const dx = x - dragStart.x;
+                const dy = y - dragStart.y;
+
+                switch (resizeHandle) {
+                    case 'se':
+                        selectedElement.width = Math.max(10, selectedElement.width + dx);
+                        selectedElement.height = Math.max(10, selectedElement.height + dy);
+                        break;
+                    case 'sw':
+                        selectedElement.width = Math.max(10, selectedElement.width - dx);
+                        selectedElement.height = Math.max(10, selectedElement.height + dy);
+                        selectedElement.x += dx;
+                        break;
+                    case 'ne':
+                        selectedElement.width = Math.max(10, selectedElement.width + dx);
+                        selectedElement.height = Math.max(10, selectedElement.height - dy);
+                        selectedElement.y += dy;
+                        break;
+                    case 'nw':
+                        selectedElement.width = Math.max(10, selectedElement.width - dx);
+                        selectedElement.height = Math.max(10, selectedElement.height - dy);
+                        selectedElement.x += dx;
+                        selectedElement.y += dy;
+                        break;
+                }
+
+                dragStart = {x, y};
+                updatePropertiesPanel();
+                render();
+            } else if (isDrawing && currentTool === 'pencil' && selectedElement) {
+                selectedElement.points.push({x, y});
+                render();
+            }
+        }
+
+        function handleMouseUp(e) {
+            if (isDrawing && currentTool !== 'select' && currentTool !== 'pencil') {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const width = x - dragStart.x;
+                const height = y - dragStart.y;
+
+                if (Math.abs(width) > 10 && Math.abs(height) > 10) {
+                    const element = new Element(
+                        currentTool,
+                        Math.min(dragStart.x, x),
+                        Math.min(dragStart.y, y),
+                        Math.abs(width),
+                        Math.abs(height)
+                    );
+                    element.fill = document.getElementById('propFill').value;
+                    element.stroke = document.getElementById('propStroke').value;
+                    element.strokeWidth = parseInt(document.getElementById('propStrokeWidth').value);
+
+                    elements.push(element);
+                    selectedElement = element;
+                    saveHistory();
+                    updatePropertiesPanel();
+                    updateLayersList();
+                    render();
+                }
+            } else if (currentTool === 'pencil' && selectedElement) {
+                // Calculate bounding box for pencil
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                for (let point of selectedElement.points) {
+                    minX = Math.min(minX, point.x);
+                    minY = Math.min(minY, point.y);
+                    maxX = Math.max(maxX, point.x);
+                    maxY = Math.max(maxY, point.y);
+                }
+                selectedElement.x = minX;
+                selectedElement.y = minY;
+                selectedElement.width = maxX - minX;
+                selectedElement.height = maxY - minY;
+
+                saveHistory();
+                updateLayersList();
+            }
+
+            isDragging = false;
+            isDrawing = false;
+            isResizing = false;
+            resizeHandle = null;
+        }
+
+        function handleDoubleClick(e) {
+            if (currentTool === 'text' || (selectedElement && selectedElement.type === 'text')) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                if (!selectedElement || selectedElement.type !== 'text') {
+                    const text = new Element('text', x, y, 200, 40);
+                    text.fill = document.getElementById('propFill').value;
+                    elements.push(text);
+                    selectedElement = text;
+                    saveHistory();
+                }
+
+                const newText = prompt('텍스트를 입력하세요:', selectedElement.text);
+                if (newText !== null) {
+                    selectedElement.text = newText;
+                    updatePropertiesPanel();
+                    render();
+                }
+            }
+        }
+
+        function handleKeyDown(e) {
+            if (e.key === 'Delete' && selectedElement) {
+                deleteSelected();
+            } else if (e.ctrlKey && e.key === 'z') {
+                e.preventDefault();
+                undo();
+            } else if (e.ctrlKey && e.key === 'y') {
+                e.preventDefault();
+                redo();
+            }
+        }
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`[data-tool="${tool}"]`).classList.add('active');
+
+            if (tool !== 'select') {
+                selectedElement = null;
+                updatePropertiesPanel();
+                render();
+            }
+        }
+
+        function render() {
+            // Clear canvas
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid
+            if (gridEnabled) {
+                ctx.strokeStyle = '#f0f0f0';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < canvas.width; i += 50) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, 0);
+                    ctx.lineTo(i, canvas.height);
+                    ctx.stroke();
+                }
+                for (let i = 0; i < canvas.height; i += 50) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, i);
+                    ctx.lineTo(canvas.width, i);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw elements
+            for (let element of elements) {
+                element.draw(ctx);
+            }
+
+            // Draw selection
+            if (selectedElement && currentTool === 'select') {
+                ctx.strokeStyle = '#667eea';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(selectedElement.x - 2, selectedElement.y - 2,
+                              selectedElement.width + 4, selectedElement.height + 4);
+                ctx.setLineDash([]);
+
+                // Draw resize handles
+                if (selectedElement.type !== 'pencil') {
+                    ctx.fillStyle = '#667eea';
+                    const handles = [
+                        {x: selectedElement.x, y: selectedElement.y},
+                        {x: selectedElement.x + selectedElement.width, y: selectedElement.y},
+                        {x: selectedElement.x, y: selectedElement.y + selectedElement.height},
+                        {x: selectedElement.x + selectedElement.width, y: selectedElement.y + selectedElement.height},
+                    ];
+                    for (let handle of handles) {
+                        ctx.fillRect(handle.x - 4, handle.y - 4, 8, 8);
+                    }
+                }
+            }
+        }
+
+        function updatePropertiesPanel() {
+            const elementProps = document.getElementById('elementProps');
+            const textProps = document.getElementById('textProps');
+
+            if (selectedElement) {
+                elementProps.style.display = 'block';
+                document.getElementById('propX').value = Math.round(selectedElement.x);
+                document.getElementById('propY').value = Math.round(selectedElement.y);
+                document.getElementById('propWidth').value = Math.round(selectedElement.width);
+                document.getElementById('propHeight').value = Math.round(selectedElement.height);
+                document.getElementById('propRotation').value = selectedElement.rotation;
+                document.getElementById('rotationValue').textContent = selectedElement.rotation + '°';
+                document.getElementById('propOpacity').value = selectedElement.opacity * 100;
+                document.getElementById('opacityValue').textContent = Math.round(selectedElement.opacity * 100) + '%';
+                document.getElementById('propFill').value = selectedElement.fill;
+                document.getElementById('propStroke').value = selectedElement.stroke;
+                document.getElementById('propStrokeWidth').value = selectedElement.strokeWidth;
+                document.getElementById('strokeValue').textContent = selectedElement.strokeWidth + 'px';
+
+                if (selectedElement.type === 'text') {
+                    textProps.style.display = 'block';
+                    document.getElementById('propText').value = selectedElement.text;
+                    document.getElementById('propFont').value = selectedElement.fontFamily;
+                    document.getElementById('propFontSize').value = selectedElement.fontSize;
+                    document.getElementById('fontSizeValue').textContent = selectedElement.fontSize + 'px';
+                } else {
+                    textProps.style.display = 'none';
+                }
+            } else {
+                elementProps.style.display = 'none';
+                textProps.style.display = 'none';
+            }
+        }
+
+        function updateElementProp(prop, value) {
+            if (!selectedElement) return;
+
+            switch (prop) {
+                case 'x':
+                case 'y':
+                case 'width':
+                case 'height':
+                case 'fontSize':
+                    selectedElement[prop] = parseFloat(value);
+                    break;
+                case 'rotation':
+                    selectedElement[prop] = parseFloat(value);
+                    document.getElementById('rotationValue').textContent = value + '°';
+                    break;
+                case 'opacity':
+                    selectedElement[prop] = parseFloat(value) / 100;
+                    document.getElementById('opacityValue').textContent = value + '%';
+                    break;
+                case 'strokeWidth':
+                    selectedElement[prop] = parseFloat(value);
+                    document.getElementById('strokeValue').textContent = value + 'px';
+                    break;
+                default:
+                    selectedElement[prop] = value;
+            }
+
+            render();
+        }
+
+        function toggleTextStyle(style) {
+            if (!selectedElement || selectedElement.type !== 'text') return;
+
+            selectedElement[style] = !selectedElement[style];
+            render();
+        }
+
+        function setColor(color) {
+            document.getElementById('propFill').value = color;
+            if (selectedElement) {
+                selectedElement.fill = color;
+                render();
+            }
+        }
+
+        function updateLayersList() {
+            const layersList = document.getElementById('layersList');
+
+            if (elements.length === 0) {
+                layersList.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">요소를 추가하세요</div>';
+                return;
+            }
+
+            layersList.innerHTML = '';
+            for (let i = elements.length - 1; i >= 0; i--) {
+                const element = elements[i];
+                const layer = document.createElement('div');
+                layer.className = 'layer-item' + (element === selectedElement ? ' active' : '');
+                layer.onclick = () => {
+                    selectedElement = element;
+                    updatePropertiesPanel();
+                    updateLayersList();
+                    render();
+                };
+
+                let icon = '';
+                switch (element.type) {
+                    case 'rect': icon = '▢'; break;
+                    case 'circle': icon = '○'; break;
+                    case 'triangle': icon = '△'; break;
+                    case 'star': icon = '★'; break;
+                    case 'line': icon = '─'; break;
+                    case 'arrow': icon = '→'; break;
+                    case 'text': icon = 'T'; break;
+                    case 'image': icon = '🖼️'; break;
+                    case 'pencil': icon = '✏️'; break;
+                }
+
+                layer.innerHTML = `
+                    <div><span class="layer-icon">${icon}</span>${element.type === 'text' ? element.text.substring(0, 15) : element.type}</div>
+                    <div class="layer-actions">
+                        <button class="layer-btn" onclick="event.stopPropagation(); toggleLayerVisibility(${i})">${element.visible ? '👁️' : '🚫'}</button>
+                        <button class="layer-btn" onclick="event.stopPropagation(); toggleLayerLock(${i})">${element.locked ? '🔒' : '🔓'}</button>
+                    </div>
+                `;
+                layersList.appendChild(layer);
+            }
+        }
+
+        function toggleLayerVisibility(index) {
+            const actualIndex = elements.length - 1 - index;
+            elements[actualIndex].visible = !elements[actualIndex].visible;
+            updateLayersList();
+            render();
+        }
+
+        function toggleLayerLock(index) {
+            const actualIndex = elements.length - 1 - index;
+            elements[actualIndex].locked = !elements[actualIndex].locked;
+            updateLayersList();
+        }
+
+        function moveLayer(direction) {
+            if (!selectedElement) return;
+
+            const index = elements.indexOf(selectedElement);
+            if (direction === 'up' && index < elements.length - 1) {
+                [elements[index], elements[index + 1]] = [elements[index + 1], elements[index]];
+            } else if (direction === 'down' && index > 0) {
+                [elements[index], elements[index - 1]] = [elements[index - 1], elements[index]];
+            }
+
+            updateLayersList();
+            render();
+        }
+
+        function deleteSelected() {
+            if (!selectedElement) return;
+
+            const index = elements.indexOf(selectedElement);
+            if (index > -1) {
+                elements.splice(index, 1);
+                selectedElement = null;
+                saveHistory();
+                updatePropertiesPanel();
+                updateLayersList();
+                render();
+            }
+        }
+
+        function alignElements(alignment) {
+            if (!selectedElement) return;
+
+            switch (alignment) {
+                case 'left':
+                    selectedElement.x = 0;
+                    break;
+                case 'center':
+                    selectedElement.x = (canvas.width - selectedElement.width) / 2;
+                    break;
+                case 'right':
+                    selectedElement.x = canvas.width - selectedElement.width;
+                    break;
+                case 'top':
+                    selectedElement.y = 0;
+                    break;
+                case 'middle':
+                    selectedElement.y = (canvas.height - selectedElement.height) / 2;
+                    break;
+                case 'bottom':
+                    selectedElement.y = canvas.height - selectedElement.height;
+                    break;
+            }
+
+            updatePropertiesPanel();
+            render();
+        }
+
+        function saveHistory() {
+            history = history.slice(0, historyIndex + 1);
+            history.push(JSON.stringify(elements));
+            historyIndex++;
+
+            document.getElementById('undoBtn').disabled = historyIndex <= 0;
+            document.getElementById('redoBtn').disabled = true;
+        }
+
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                elements = JSON.parse(history[historyIndex]);
+                selectedElement = null;
+                updatePropertiesPanel();
+                updateLayersList();
+                render();
+
+                document.getElementById('undoBtn').disabled = historyIndex <= 0;
+                document.getElementById('redoBtn').disabled = false;
+            }
+        }
+
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                elements = JSON.parse(history[historyIndex]);
+                selectedElement = null;
+                updatePropertiesPanel();
+                updateLayersList();
+                render();
+
+                document.getElementById('undoBtn').disabled = false;
+                document.getElementById('redoBtn').disabled = historyIndex >= history.length - 1;
+            }
+        }
+
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const element = new Element('image', 100, 100, img.width, img.height);
+                    element.imageData = img;
+                    elements.push(element);
+                    selectedElement = element;
+                    saveHistory();
+                    updatePropertiesPanel();
+                    updateLayersList();
+                    render();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function generateAIImage() {
+            const prompt = document.getElementById('aiPrompt').value.trim();
+            if (!prompt) {
+                alert('프롬프트를 입력해주세요.');
+                return;
+            }
+
+            const aiBtn = document.getElementById('aiBtn');
+            const aiMessage = document.getElementById('aiMessage');
+
+            aiBtn.disabled = true;
+            aiBtn.textContent = '생성 중...';
+            aiMessage.innerHTML = '<div class="message loading">AI가 이미지를 생성하고 있습니다...</div>';
+
+            try {
+                const size = document.getElementById('aiSize').value;
+                const response = await fetch(`${PYTHON_API_URL}/generate-image`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, size, quality: 'standard' })
+                });
+
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const element = new Element('image', 50, 50, 400, 400);
+                        element.imageData = img;
+                        elements.push(element);
+                        selectedElement = element;
+                        saveHistory();
+                        updatePropertiesPanel();
+                        updateLayersList();
+                        render();
+
+                        aiMessage.innerHTML = '<div class="message success">이미지가 생성되었습니다!</div>';
+                        setTimeout(() => aiMessage.innerHTML = '', 3000);
+                    };
+                    img.src = data.imageData;
+                } else {
+                    throw new Error('이미지 생성 실패');
+                }
+            } catch (error) {
+                aiMessage.innerHTML = '<div class="message error">이미지 생성 중 오류가 발생했습니다.</div>';
+            } finally {
+                aiBtn.disabled = false;
+                aiBtn.textContent = '이미지 생성';
+            }
+        }
+
+        async function saveProject() {
+            if (!currentProjectId) {
+                alert('프로젝트 ID가 없습니다.');
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token');
+
+                // Save canvas as image
+                const canvasData = canvas.toDataURL('image/jpeg', 0.8);
+
+                const projectData = {
+                    image: canvasData,
+                    elements: elements.map(el => ({
+                        ...el,
+                        imageData: el.imageData ? el.imageData.src : null
+                    })),
+                    prompt: document.getElementById('aiPrompt').value,
+                    lastModified: new Date().toISOString()
+                };
+
+                const response = await fetch(`${API_URL}/projects/${currentProjectId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        data: JSON.stringify(projectData)
+                    })
+                });
+
+                if (response.ok) {
+                    const saveMessage = document.getElementById('saveMessage');
+                    saveMessage.innerHTML = '<div class="message success">프로젝트가 저장되었습니다!</div>';
+                    setTimeout(() => saveMessage.innerHTML = '', 3000);
+                } else {
+                    throw new Error('저장 실패');
+                }
+            } catch (error) {
+                const saveMessage = document.getElementById('saveMessage');
+                saveMessage.innerHTML = '<div class="message error">저장 중 오류가 발생했습니다.</div>';
+            }
+        }
+
+        async function loadProject(projectId) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_URL}/projects/${projectId}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (response.ok) {
+                    const project = await response.json();
+                    document.getElementById('projectName').textContent = project.name;
+
+                    if (project.data) {
+                        try {
+                            const data = JSON.parse(project.data);
+                            if (data.prompt) {
+                                document.getElementById('aiPrompt').value = data.prompt;
+                            }
+                            if (data.elements) {
+                                // Restore elements
+                                elements = [];
+                                for (let elData of data.elements) {
+                                    const el = new Element(elData.type, elData.x, elData.y, elData.width, elData.height);
+                                    Object.assign(el, elData);
+
+                                    if (elData.imageData) {
+                                        const img = new Image();
+                                        img.onload = () => render();
+                                        img.src = elData.imageData;
+                                        el.imageData = img;
+                                    }
+
+                                    elements.push(el);
+                                }
+                                saveHistory();
+                                updateLayersList();
+                                render();
+                            } else if (data.image) {
+                                // Load legacy image
+                                const img = new Image();
+                                img.onload = function() {
+                                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                };
+                                img.src = data.image;
+                            }
+                        } catch (e) {
+                            console.log('No saved data');
+                            render();
+                        }
+                    } else {
+                        render();
+                    }
+                }
+            } catch (error) {
+                console.error('Load error:', error);
+                render();
+            }
+        }
+    </script>
+</body>
+</html>
