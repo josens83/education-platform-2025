@@ -642,6 +642,62 @@
             gap: 10px;
             margin-top: 10px;
         }
+
+        /* Crop Mode */
+        .crop-overlay {
+            position: absolute;
+            border: 2px dashed #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            cursor: move;
+            display: none;
+            z-index: 50;
+        }
+
+        .crop-handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #667eea;
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .crop-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }
+        .crop-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }
+        .crop-handle.sw { bottom: -6px; left: -6px; cursor: sw-resize; }
+        .crop-handle.se { bottom: -6px; right: -6px; cursor: se-resize; }
+
+        .crop-actions {
+            position: absolute;
+            bottom: -45px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            background: white;
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .crop-actions button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .crop-actions .apply {
+            background: #667eea;
+            color: white;
+        }
+
+        .crop-actions .cancel {
+            background: #e0e0e0;
+            color: #333;
+        }
     </style>
 </head>
 <body>
@@ -719,6 +775,16 @@
             <div class="canvas-wrapper">
                 <canvas id="mainCanvas" width="1200" height="800" role="img" aria-label="디자인 캔버스"></canvas>
                 <textarea id="inlineTextEditor" class="inline-text-editor"></textarea>
+                <div id="cropOverlay" class="crop-overlay">
+                    <div class="crop-handle nw"></div>
+                    <div class="crop-handle ne"></div>
+                    <div class="crop-handle sw"></div>
+                    <div class="crop-handle se"></div>
+                    <div class="crop-actions">
+                        <button class="apply" onclick="applyCrop()">✓ 적용</button>
+                        <button class="cancel" onclick="cancelCrop()">✕ 취소</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -906,7 +972,10 @@
                     </div>
                 </div>
 
-                <button class="btn-icon" onclick="resetImageFilters()" style="width: 100%;">필터 초기화</button>
+                <div class="btn-group" style="margin-top: 10px;">
+                    <button class="btn-icon" onclick="resetImageFilters()" style="flex: 1;">필터 초기화</button>
+                    <button class="btn-icon" onclick="startCropMode()" style="flex: 1;" id="cropBtn">✂️ 크롭</button>
+                </div>
             </div>
 
             <!-- Color Properties -->
@@ -1173,6 +1242,11 @@
         let isEditingText = false;
         let editingElement = null;
         let selectedTemplate = null;
+        let isCropMode = false;
+        let cropElement = null;
+        let cropRect = { x: 0, y: 0, width: 0, height: 0 };
+        let cropDragStart = null;
+        let cropResizeHandle = null;
 
         // Template presets
         const templates = {
@@ -3077,6 +3151,174 @@
 
             // Show success message
             alert(`캔버스 크기가 ${newWidth}x${newHeight}으로 변경되었습니다.`);
+        }
+
+        // Crop Functions
+        function startCropMode() {
+            if (!selectedElement || selectedElement.type !== 'image') {
+                alert('이미지를 선택해주세요.');
+                return;
+            }
+
+            isCropMode = true;
+            cropElement = selectedElement;
+
+            // Initialize crop rect to full image size
+            cropRect = {
+                x: selectedElement.x,
+                y: selectedElement.y,
+                width: selectedElement.width,
+                height: selectedElement.height
+            };
+
+            showCropOverlay();
+            setupCropHandlers();
+        }
+
+        function showCropOverlay() {
+            const overlay = document.getElementById('cropOverlay');
+            overlay.style.display = 'block';
+            overlay.style.left = cropRect.x + 'px';
+            overlay.style.top = cropRect.y + 'px';
+            overlay.style.width = cropRect.width + 'px';
+            overlay.style.height = cropRect.height + 'px';
+        }
+
+        function setupCropHandlers() {
+            const overlay = document.getElementById('cropOverlay');
+            const handles = overlay.querySelectorAll('.crop-handle');
+
+            // Drag overlay to move crop area
+            overlay.addEventListener('mousedown', function(e) {
+                if (e.target.classList.contains('crop-handle')) {
+                    cropResizeHandle = e.target.classList[1]; // nw, ne, sw, se
+                } else if (e.target === overlay) {
+                    cropDragStart = { x: e.clientX, y: e.clientY };
+                }
+                e.stopPropagation();
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (cropDragStart) {
+                    // Move crop area
+                    const dx = e.clientX - cropDragStart.x;
+                    const dy = e.clientY - cropDragStart.y;
+
+                    cropRect.x = Math.max(cropElement.x, Math.min(cropElement.x + cropElement.width - cropRect.width, cropRect.x + dx));
+                    cropRect.y = Math.max(cropElement.y, Math.min(cropElement.y + cropElement.height - cropRect.height, cropRect.y + dy));
+
+                    cropDragStart = { x: e.clientX, y: e.clientY };
+                    showCropOverlay();
+                } else if (cropResizeHandle) {
+                    // Resize crop area
+                    const dx = e.clientX - (cropRect.x + cropRect.width);
+                    const dy = e.clientY - (cropRect.y + cropRect.height);
+
+                    switch (cropResizeHandle) {
+                        case 'se':
+                            cropRect.width = Math.min(cropElement.x + cropElement.width - cropRect.x, Math.max(50, cropRect.width + dx));
+                            cropRect.height = Math.min(cropElement.y + cropElement.height - cropRect.y, Math.max(50, cropRect.height + dy));
+                            break;
+                        case 'sw':
+                            const newX = Math.max(cropElement.x, cropRect.x + dx);
+                            const newWidth = cropRect.width - (newX - cropRect.x);
+                            if (newWidth >= 50) {
+                                cropRect.x = newX;
+                                cropRect.width = newWidth;
+                            }
+                            cropRect.height = Math.min(cropElement.y + cropElement.height - cropRect.y, Math.max(50, cropRect.height + dy));
+                            break;
+                        case 'ne':
+                            cropRect.width = Math.min(cropElement.x + cropElement.width - cropRect.x, Math.max(50, cropRect.width + dx));
+                            const newY = Math.max(cropElement.y, cropRect.y + dy);
+                            const newHeight = cropRect.height - (newY - cropRect.y);
+                            if (newHeight >= 50) {
+                                cropRect.y = newY;
+                                cropRect.height = newHeight;
+                            }
+                            break;
+                        case 'nw':
+                            const newX2 = Math.max(cropElement.x, cropRect.x + dx);
+                            const newWidth2 = cropRect.width - (newX2 - cropRect.x);
+                            if (newWidth2 >= 50) {
+                                cropRect.x = newX2;
+                                cropRect.width = newWidth2;
+                            }
+                            const newY2 = Math.max(cropElement.y, cropRect.y + dy);
+                            const newHeight2 = cropRect.height - (newY2 - cropRect.y);
+                            if (newHeight2 >= 50) {
+                                cropRect.y = newY2;
+                                cropRect.height = newHeight2;
+                            }
+                            break;
+                    }
+                    showCropOverlay();
+                }
+            });
+
+            document.addEventListener('mouseup', function() {
+                cropDragStart = null;
+                cropResizeHandle = null;
+            });
+        }
+
+        function applyCrop() {
+            if (!cropElement || !isCropMode) return;
+
+            // Calculate crop area relative to image
+            const cropX = (cropRect.x - cropElement.x) / cropElement.width;
+            const cropY = (cropRect.y - cropElement.y) / cropElement.height;
+            const cropW = cropRect.width / cropElement.width;
+            const cropH = cropRect.height / cropElement.height;
+
+            // Create new canvas to crop the image
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+
+            const sourceWidth = cropElement.imageData.width * cropW;
+            const sourceHeight = cropElement.imageData.height * cropH;
+
+            tempCanvas.width = sourceWidth;
+            tempCanvas.height = sourceHeight;
+
+            // Draw cropped image
+            tempCtx.drawImage(
+                cropElement.imageData,
+                cropElement.imageData.width * cropX,
+                cropElement.imageData.height * cropY,
+                sourceWidth,
+                sourceHeight,
+                0, 0,
+                sourceWidth,
+                sourceHeight
+            );
+
+            // Create new image from cropped canvas
+            const croppedImg = new Image();
+            croppedImg.onload = function() {
+                cropElement.imageData = croppedImg;
+                cropElement.x = cropRect.x;
+                cropElement.y = cropRect.y;
+                cropElement.width = cropRect.width;
+                cropElement.height = cropRect.height;
+
+                saveHistory();
+                cancelCrop();
+                render();
+            };
+            croppedImg.src = tempCanvas.toDataURL();
+        }
+
+        function cancelCrop() {
+            isCropMode = false;
+            cropElement = null;
+
+            const overlay = document.getElementById('cropOverlay');
+            overlay.style.display = 'none';
+
+            // Remove event listeners
+            const newOverlay = overlay.cloneNode(true);
+            overlay.parentNode.replaceChild(newOverlay, overlay);
         }
     </script>
 </body>
