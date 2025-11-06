@@ -1,209 +1,159 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, List
 import openai
+import google.generativeai as genai
 from app.database import get_db
-from app.models import User, GenJob
+from app.models import Creative, Campaign, Segment, GenJob
 from app.config import get_settings
 from utils.jwt_handler import get_current_user
-from utils.rate_limiter import rate_limit
-import logging
+import json
 
-logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/generate", tags=["Content Generation"])
+settings = get_settings()
 
-router = APIRouter()
+# API 설정
+openai.api_key = settings.openai_api_key
+genai.configure(api_key=settings.gemini_api_key)
 
-# Set OpenAI API key
-openai.api_key = get_settings().openai_api_key
-
-# Pydantic schemas
 class TextGenerateRequest(BaseModel):
-    prompt: str
-    max_tokens: Optional[int] = 500
-    temperature: Optional[float] = 0.7
-    model: Optional[str] = None
+    campaign_id: int
+    segment_id: int
+    tone: str = "professional"
+    length: str = "medium"
+    keywords: List[str] = []
 
 class ImageGenerateRequest(BaseModel):
+    creative_id: int
     prompt: str
-    size: Optional[str] = "1024x1024"
-    n: Optional[int] = 1
+    size: str = "1024x1024"
 
-class GenerateResponse(BaseModel):
-    id: int
-    type: str
-    prompt: str
-    response: str
-    tokens: Optional[int]
-    cost: Optional[float]
-
-    class Config:
-        from_attributes = True
-
-@router.post("/text", response_model=GenerateResponse)
-@rate_limit(max_requests=20, window=60)  # 20 requests per minute
+@router.post("/text")
 async def generate_text(
     request: TextGenerateRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)  # JWT 인증
 ):
-    """Generate text using OpenAI GPT"""
+    # 캠페인과 세그먼트 확인
+    campaign = db.query(Campaign).filter(Campaign.id == request.campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
 
-    model = request.model or "gpt-4"
+    segment = db.query(Segment).filter(Segment.id == request.segment_id).first()
+    if not segment:
+        raise HTTPException(status_code=404, detail="Segment not found")
+
+    # 프롬프트 생성
+    prompt = f"""
+    Generate marketing copy for:
+    Campaign: {campaign.name}
+    Objective: {campaign.objective}
+    Segment: {json.dumps(segment.filters)}
+    Tone: {request.tone}
+    Length: {request.length}
+    Keywords: {', '.join(request.keywords)}
+
+    Format as JSON:
+    {{
+        "headline": "...",
+        "body": "...",
+        "cta": "...",
+        "hashtags": ["..."]
+    }}
+    """
 
     try:
-        # Call OpenAI API
-        response = openai.ChatCompletion.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are a helpful AI assistant for content generation."},
-                {"role": "user", "content": request.prompt}
-            ],
-            max_tokens=request.max_tokens,
-            temperature=request.temperature
+        # Gemini API 호출 (더 저렴)
+        model = genai.GenerativeModel('gemini-pro')
+        response = model.generate_content(prompt)
+
+        # 응답 파싱
+        result = json.loads(response.text)
+
+        # Creative 저장
+        creative = Creative(
+            campaign_id=request.campaign_id,
+            segment_id=request.segment_id,
+            copy_text=json.dumps(result),
+            meta={
+                "tone": request.tone,
+                "length": request.length,
+                "keywords": request.keywords
+            }
         )
+        db.add(creative)
 
-        generated_text = response.choices[0].message.content
-        tokens_used = response.usage.total_tokens
-
-        # Rough cost estimation (GPT-4: $0.03/1K tokens, GPT-3.5: $0.002/1K tokens)
-        cost_per_1k = 0.03 if "gpt-4" in model else 0.002
-        cost = (tokens_used / 1000) * cost_per_1k
-
-        # Save to database
-        gen_job = GenJob(
-            user_id=current_user.id,
-            model=model,
+        # GenJob 기록 (비용 추적)
+        job = GenJob(
+            user_id=current_user["user_id"],
+            campaign_id=request.campaign_id,
+            model="gemini-pro",
             type="text",
-            prompt=request.prompt,
-            response=generated_text,
-            tokens=tokens_used,
-            cost=cost
+            prompt={"content": prompt},
+            response=result,
+            input_tokens=len(prompt.split()),  # 대략적 계산
+            output_tokens=len(response.text.split()),
+            cost_usd=0.0001  # Gemini 비용 (대략)
         )
+        db.add(job)
 
-        db.add(gen_job)
         db.commit()
-        db.refresh(gen_job)
 
-        logger.info(f"Text generation completed for user {current_user.id}, tokens: {tokens_used}")
+        return {
+            "creative_id": creative.id,
+            "copy": result,
+            "job_id": job.id
+        }
 
-        return gen_job
-
-    except openai.error.OpenAIError as e:
-        logger.error(f"OpenAI API error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"OpenAI API error: {str(e)}"
-        )
     except Exception as e:
-        logger.error(f"Error generating text: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/image")
-@rate_limit(max_requests=10, window=60)  # 10 requests per minute
 async def generate_image(
     request: ImageGenerateRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
-    """Generate image using OpenAI DALL-E"""
+    # Creative 확인
+    creative = db.query(Creative).filter(Creative.id == request.creative_id).first()
+    if not creative:
+        raise HTTPException(status_code=404, detail="Creative not found")
 
     try:
-        # Call OpenAI DALL-E API
+        # DALL-E 3 호출 (또는 더 저렴한 대안)
         response = openai.Image.create(
+            model="dall-e-3",
             prompt=request.prompt,
-            n=request.n,
-            size=request.size
+            size=request.size,
+            quality="standard",
+            n=1,
         )
 
-        image_url = response.data[0].url
+        image_url = response['data'][0]['url']
 
-        # Rough cost estimation for DALL-E (varies by size)
-        cost = 0.02 if request.size == "1024x1024" else 0.018 if request.size == "512x512" else 0.016
+        # Creative 업데이트
+        creative.image_url = image_url
 
-        # Save to database
-        gen_job = GenJob(
-            user_id=current_user.id,
-            model="dall-e",
+        # GenJob 기록
+        job = GenJob(
+            user_id=current_user["user_id"],
+            campaign_id=creative.campaign_id,
+            model="dall-e-3",
             type="image",
-            prompt=request.prompt,
-            response=image_url,
-            tokens=None,  # DALL-E doesn't use tokens
-            cost=cost * request.n
+            prompt={"content": request.prompt, "size": request.size},
+            response={"url": image_url},
+            cost_usd=0.04  # DALL-E 3 비용
         )
+        db.add(job)
 
-        db.add(gen_job)
         db.commit()
-        db.refresh(gen_job)
-
-        logger.info(f"Image generation completed for user {current_user.id}")
 
         return {
-            "id": gen_job.id,
-            "type": "image",
-            "prompt": request.prompt,
+            "creative_id": creative.id,
             "image_url": image_url,
-            "cost": cost * request.n
+            "job_id": job.id
         }
 
-    except openai.error.OpenAIError as e:
-        logger.error(f"OpenAI API error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"OpenAI API error: {str(e)}"
-        )
     except Exception as e:
-        logger.error(f"Error generating image: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
-
-@router.get("/history")
-async def get_generation_history(
-    skip: int = 0,
-    limit: int = 50,
-    type: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Get generation history for the current user"""
-
-    query = db.query(GenJob).filter(GenJob.user_id == current_user.id)
-
-    if type:
-        query = query.filter(GenJob.type == type)
-
-    jobs = query.order_by(GenJob.created_at.desc())\
-        .offset(skip)\
-        .limit(limit)\
-        .all()
-
-    return {
-        "total": len(jobs),
-        "jobs": jobs
-    }
-
-@router.get("/stats")
-async def get_generation_stats(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Get generation statistics for the current user"""
-
-    from sqlalchemy import func
-
-    stats = db.query(
-        func.count(GenJob.id).label("total_jobs"),
-        func.sum(GenJob.tokens).label("total_tokens"),
-        func.sum(GenJob.cost).label("total_cost")
-    ).filter(GenJob.user_id == current_user.id).first()
-
-    return {
-        "total_generations": stats.total_jobs or 0,
-        "total_tokens": stats.total_tokens or 0,
-        "total_cost": float(stats.total_cost or 0)
-    }
+        raise HTTPException(status_code=500, detail=str(e))

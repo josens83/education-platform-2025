@@ -27,6 +27,7 @@ class Campaign(Base):
 
     user = relationship("User", back_populates="campaigns")
     creatives = relationship("Creative", back_populates="campaign")
+    gen_jobs = relationship("GenJob", back_populates="campaign")
 
 class Segment(Base):
     __tablename__ = "segments"
@@ -61,15 +62,18 @@ class GenJob(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
+    campaign_id = Column(Integer, ForeignKey("campaigns.id"), nullable=True)
     model = Column(String)
     type = Column(String)
-    prompt = Column(Text)
-    response = Column(Text)
-    tokens = Column(Integer)
-    cost = Column(DECIMAL(10, 4))
+    prompt = Column(JSON)
+    response = Column(JSON)
+    input_tokens = Column(Integer)
+    output_tokens = Column(Integer)
+    cost_usd = Column(DECIMAL(10, 6))
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="gen_jobs")
+    campaign = relationship("Campaign", back_populates="gen_jobs")
 
 class Metric(Base):
     __tablename__ = "metrics"
