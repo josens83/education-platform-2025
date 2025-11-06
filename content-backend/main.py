@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 import logging
 
 from app.config import get_settings
-from app.database import init_db
+from app.database import engine, Base
 from routers import auth, segments, generate, metrics
 from utils.rate_limiter import clean_expired_entries
 
@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
 
     # Initialize database tables
     try:
-        init_db()
+        Base.metadata.create_all(bind=engine)
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
