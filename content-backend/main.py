@@ -5,7 +5,7 @@ import logging
 
 from app.config import get_settings
 from app.database import engine, Base
-from routers import auth, segments, generate, metrics
+from routers import auth, segments, generate, metrics, recommend
 from utils.rate_limiter import clean_expired_entries
 
 # Logging configuration
@@ -62,6 +62,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(segments.router, prefix="/api/segments", tags=["Segments"])
 app.include_router(generate.router, prefix="/api/generate", tags=["Generation"])
 app.include_router(metrics.router, prefix="/api/metrics", tags=["Metrics"])
+app.include_router(recommend.router, prefix="/api/recommend", tags=["Recommendations"])
 
 @app.get("/")
 async def root():
@@ -99,7 +100,8 @@ async def info():
             "auth": "/api/auth",
             "segments": "/api/segments",
             "generate": "/api/generate",
-            "metrics": "/api/metrics"
+            "metrics": "/api/metrics",
+            "recommend": "/api/recommend"
         }
     }
 
