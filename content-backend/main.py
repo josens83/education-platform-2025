@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
@@ -6,7 +6,8 @@ import logging
 from app.config import get_settings
 from app.database import engine, Base
 from routers import auth, segments, generate, metrics, recommend
-from utils.rate_limiter import clean_expired_entries
+from utils.rate_limiter import clean_expired_entries, rate_limiter
+from utils.jwt_handler import verify_token
 
 # Logging configuration
 logging.basicConfig(
@@ -56,6 +57,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Rate Limiting middleware
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    # /generate 엔드포인트만 제한
+    if request.url.path.startswith("/api/generate"):
+        # JWT에서 user_id 추출
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            payload = verify_token(token)
+            if payload and "user_id" in payload:
+                await rate_limiter.check_rate_limit(payload["user_id"])
+
+    response = await call_next(request)
+    return response
 
 # Include routers
 app.include_router(auth.router, prefix="/api")
