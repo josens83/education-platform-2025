@@ -1,127 +1,82 @@
 import streamlit as st
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
+import random
 from datetime import datetime, timedelta
-from config import settings
 
-st.set_page_config(page_title="Dashboard", page_icon="📊", layout="wide")
+st.set_page_config(page_title="대시보드", page_icon="📊", layout="wide")
+st.title("📊 성과 대시보드")
 
-st.title("📊 Content Performance Dashboard")
-st.markdown("콘텐츠 성과 및 분석 대시보드")
-st.markdown("---")
-
-# 기간 선택
-col1, col2, col3 = st.columns([2, 2, 6])
+# 날짜 필터
+col1, col2, col3 = st.columns(3)
 with col1:
-    date_from = st.date_input("시작일", datetime.now() - timedelta(days=30))
+    st.date_input("시작일", datetime.now() - timedelta(days=7))
 with col2:
-    date_to = st.date_input("종료일", datetime.now())
+    st.date_input("종료일", datetime.now())
+with col3:
+    st.selectbox("캠페인", ["전체", "여름 세일", "신제품"])
+
+st.divider()
 
 # KPI 메트릭
-st.subheader("📈 주요 지표")
-col1, col2, col3, col4, col5 = st.columns(5)
-
+col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.metric("총 콘텐츠", "1,234", "+56")
+    st.metric("총 노출수", "125.3K", "+12.5%")
 with col2:
-    st.metric("총 조회수", "125.5K", "+12.3K")
+    st.metric("클릭수", "4,235", "+8.3%")
 with col3:
-    st.metric("평균 참여율", "4.8%", "+0.3%")
+    st.metric("CTR", "3.38%", "+0.23%")
 with col4:
-    st.metric("전환율", "2.1%", "+0.2%")
-with col5:
-    st.metric("ROI", "245%", "+15%")
+    st.metric("전환율", "2.1%", "+0.1%")
 
-st.markdown("---")
+st.divider()
 
-# 차트 섹션
+# 차트
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("📅 일별 성과 추이")
+    st.subheader("📈 일별 성과")
 
     # 샘플 데이터
-    dates = pd.date_range(start=date_from, end=date_to, freq='D')
-    df_performance = pd.DataFrame({
-        'Date': dates,
-        'Views': [1000 + i * 50 for i in range(len(dates))],
-        'Engagement': [500 + i * 25 for i in range(len(dates))],
-        'Conversions': [50 + i * 3 for i in range(len(dates))]
-    })
+    dates = [(datetime.now() - timedelta(days=i)).strftime("%m/%d") for i in range(7, 0, -1)]
+    ctr_data = [3.2 + random.random() for _ in range(7)]
 
-    fig = px.line(df_performance, x='Date', y=['Views', 'Engagement', 'Conversions'],
-                  title='성과 지표 추이')
-    st.plotly_chart(fig, use_container_width=True)
+    chart_data = {
+        "날짜": dates,
+        "CTR(%)": ctr_data
+    }
+    st.line_chart(data=chart_data, x="날짜", y="CTR(%)")
 
 with col2:
-    st.subheader("📊 콘텐츠 타입별 분포")
+    st.subheader("🎯 세그먼트별 성과")
 
-    # 샘플 데이터
-    df_content_type = pd.DataFrame({
-        'Type': ['Social Post', 'Blog Article', 'Email', 'Ad Copy'],
-        'Count': [450, 320, 280, 184]
-    })
-
-    fig = px.pie(df_content_type, values='Count', names='Type',
-                 title='콘텐츠 타입 분포')
-    st.plotly_chart(fig, use_container_width=True)
-
-# 세그먼트별 성과
-st.markdown("---")
-st.subheader("🎯 세그먼트별 성과")
-
-df_segments = pd.DataFrame({
-    'Segment': ['Tech Enthusiasts', 'Fashion Lovers', 'Food Bloggers'],
-    'Contents': [456, 389, 389],
-    'Views': [45600, 38900, 41000],
-    'Engagement Rate': [5.2, 4.5, 4.8],
-    'Conversion Rate': [2.3, 1.9, 2.1]
-})
-
-st.dataframe(df_segments, use_container_width=True)
+    segment_data = {
+        "세그먼트": ["20대", "30대", "40대"],
+        "CTR": [3.8, 3.2, 2.9],
+        "전환율": [2.5, 2.2, 1.9]
+    }
+    st.bar_chart(data=segment_data, x="세그먼트", y=["CTR", "전환율"])
 
 # 상위 콘텐츠
-st.markdown("---")
-st.subheader("🏆 Top 10 콘텐츠")
+st.divider()
+st.subheader("🏆 상위 성과 콘텐츠")
 
-col1, col2, col3 = st.columns(3)
+top_content = [
+    {"순위": 1, "캠페인": "여름 세일", "CTR": "4.2%", "전환": 125},
+    {"순위": 2, "캠페인": "신제품", "CTR": "3.9%", "전환": 98},
+    {"순위": 3, "캠페인": "브랜드", "CTR": "3.5%", "전환": 76}
+]
 
-with col1:
-    st.markdown("##### 👀 최다 조회")
-    for i in range(1, 6):
-        st.write(f"{i}. Tech Innovation Post - 12.5K views")
+st.table(top_content)
 
-with col2:
-    st.markdown("##### 💬 최다 참여")
-    for i in range(1, 6):
-        st.write(f"{i}. Fashion Trend Article - 890 engagements")
+# AI 인사이트
+st.divider()
+st.subheader("🤖 AI 인사이트")
+st.info("""
+**주요 발견사항:**
+1. 20대 세그먼트의 CTR이 가장 높음 (3.8%)
+2. 오전 10-11시 게시 콘텐츠의 성과가 가장 좋음
+3. 이모지 포함 헤드라인이 15% 높은 참여율 기록
 
-with col3:
-    st.markdown("##### 💰 최다 전환")
-    for i in range(1, 6):
-        st.write(f"{i}. Food Recipe Email - 145 conversions")
-
-# 사이드바
-with st.sidebar:
-    st.subheader("필터")
-
-    segment_filter = st.multiselect(
-        "세그먼트",
-        ["Tech Enthusiasts", "Fashion Lovers", "Food Bloggers"],
-        default=["Tech Enthusiasts", "Fashion Lovers", "Food Bloggers"]
-    )
-
-    content_type_filter = st.multiselect(
-        "콘텐츠 타입",
-        ["Social Post", "Blog Article", "Email", "Ad Copy"],
-        default=["Social Post", "Blog Article", "Email", "Ad Copy"]
-    )
-
-    if st.button("필터 적용", use_container_width=True):
-        st.rerun()
-
-    st.markdown("---")
-
-    if st.button("📥 리포트 다운로드", use_container_width=True):
-        st.success("리포트가 다운로드되었습니다!")
+**추천 액션:**
+- 20대 타겟 콘텐츠에 예산 증대
+- 오전 10시 전후로 주요 콘텐츠 게시
+""")
