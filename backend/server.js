@@ -3,6 +3,8 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
 require('dotenv').config();
 
 const { initDatabase, db } = require('./database');
@@ -10,6 +12,48 @@ const { initDatabase, db } = require('./database');
 const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+// Swagger configuration
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Artify Backend API',
+      version: '2.0.0',
+      description: 'Node.js Express + PostgreSQL 기반 인증 및 프로젝트 관리 API',
+      contact: {
+        name: 'Artify Team',
+      },
+    },
+    servers: [
+      {
+        url: `http://localhost:${PORT}`,
+        description: 'Development server',
+      },
+      {
+        url: 'https://artify-backend.onrender.com',
+        description: 'Production server',
+      },
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
+  },
+  apis: ['./server.js'], // Path to the API docs
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // Rate limiting configuration
 const generalLimiter = rateLimit({
@@ -75,6 +119,13 @@ app.options('*', cors(corsOptions));
 
 app.use(express.json());
 
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Artify Backend API Docs',
+}));
+
 // Apply general rate limiting to all routes
 app.use('/api/', generalLimiter);
 
@@ -90,6 +141,41 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+/**
+ * @swagger
+ * /api/health:
+ *   get:
+ *     summary: 서버 상태 확인
+ *     description: 서버와 데이터베이스 연결 상태를 확인합니다
+ *     tags: [System]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: 서버 정상 작동
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: healthy
+ *                 service:
+ *                   type: string
+ *                   example: artify-backend
+ *                 version:
+ *                   type: string
+ *                   example: 2.0.0
+ *                 database:
+ *                   type: object
+ *                   properties:
+ *                     type:
+ *                       type: string
+ *                       example: PostgreSQL
+ *                     connected:
+ *                       type: boolean
+ *                       example: true
+ */
 // Health check
 app.get('/api/health', async (req, res) => {
   try {
@@ -127,6 +213,65 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/register:
+ *   post:
+ *     summary: 회원가입
+ *     description: 새 사용자를 등록합니다
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - email
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 example: johndoe
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: john@example.com
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: securePassword123
+ *     responses:
+ *       201:
+ *         description: 회원가입 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: User registered successfully
+ *                 token:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     username:
+ *                       type: string
+ *                       example: johndoe
+ *                     email:
+ *                       type: string
+ *                       example: john@example.com
+ *       400:
+ *         description: 잘못된 요청 (필수 필드 누락 또는 중복)
+ */
 // Auth routes
 app.post('/api/register', authLimiter, async (req, res) => {
   try {
@@ -161,6 +306,49 @@ app.post('/api/register', authLimiter, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/login:
+ *   post:
+ *     summary: 로그인
+ *     description: 기존 사용자로 로그인합니다
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: john@example.com
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: securePassword123
+ *     responses:
+ *       200:
+ *         description: 로그인 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 token:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *       401:
+ *         description: 인증 실패
+ */
 app.post('/api/login', authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -191,6 +379,41 @@ app.post('/api/login', authLimiter, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/projects:
+ *   get:
+ *     summary: 프로젝트 목록 조회
+ *     description: 현재 사용자의 모든 프로젝트를 조회합니다
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 프로젝트 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 projects:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       name:
+ *                         type: string
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                       updated_at:
+ *                         type: string
+ *                         format: date-time
+ *       401:
+ *         description: 인증 필요
+ */
 // Project routes
 app.get('/api/projects', projectLimiter, authenticateToken, async (req, res) => {
   try {
@@ -202,6 +425,51 @@ app.get('/api/projects', projectLimiter, authenticateToken, async (req, res) => 
   }
 });
 
+/**
+ * @swagger
+ * /api/projects:
+ *   post:
+ *     summary: 프로젝트 생성
+ *     description: 새 프로젝트를 생성합니다
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: 여름 세일 캠페인
+ *               data:
+ *                 type: object
+ *                 properties:
+ *                   canvas:
+ *                     type: object
+ *                   settings:
+ *                     type: object
+ *     responses:
+ *       201:
+ *         description: 프로젝트 생성 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 project:
+ *                   type: object
+ *       400:
+ *         description: 프로젝트명 누락
+ *       401:
+ *         description: 인증 필요
+ */
 app.post('/api/projects', projectLimiter, authenticateToken, async (req, res) => {
   try {
     const { name, data } = req.body;

@@ -13,6 +13,8 @@
     "bcrypt": "^5.1.1",
     "dotenv": "^16.0.3",
     "pg": "^8.11.3",
-    "express-rate-limit": "^7.1.5"
+    "express-rate-limit": "^7.1.5",
+    "swagger-ui-express": "^5.0.0",
+    "swagger-jsdoc": "^6.2.8"
   }
 }
