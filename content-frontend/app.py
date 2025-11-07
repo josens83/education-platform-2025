@@ -53,21 +53,21 @@ with st.expander("ℹ️ System Information"):
 # API 연결 상태 체크
 with st.expander("🔧 API 연결 상태"):
     api_url = "https://artify-content-api.onrender.com"
+    col1, col2 = st.columns(2)
 
-    if st.button("API Health Check"):
-        try:
-            with st.spinner("API 연결 중..."):
+    with col1:
+        if st.button("Backend API 체크"):
+            try:
                 response = requests.get(f"{api_url}/health", timeout=5)
                 if response.status_code == 200:
-                    st.success(f"✅ API 연결 성공: {response.json()}")
+                    st.success(f"✅ 연결 성공: {response.json()}")
                 else:
                     st.error(f"❌ API 오류: {response.status_code}")
-        except requests.exceptions.Timeout:
-            st.error("❌ 연결 실패: 타임아웃 (5초 초과)")
-        except requests.exceptions.ConnectionError:
-            st.error("❌ 연결 실패: 서버에 연결할 수 없습니다")
-        except Exception as e:
-            st.error(f"❌ 연결 실패: {e}")
+            except Exception as e:
+                st.error(f"❌ 연결 실패: {e}")
+
+    with col2:
+        st.code(api_url)
 
 # 샘플 데이터 표시
 st.subheader("📊 샘플 데이터")
