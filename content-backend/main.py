@@ -21,11 +21,13 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-from database import get_db, init_db, Segment, GeneratedContent, Metric, GenerationJob, UserQuota
+from database import get_db, init_db, Segment, GeneratedContent, Metric, GenerationJob, UserQuota, Campaign, Creative, Event
 from vector_client import get_vector_client
 from cache import get_cache, TTL_SEGMENTS, TTL_BRAND_GUIDELINES, TTL_VECTOR_STATS, make_cache_key
 from logger import get_logger, RequestLogger
 from exceptions import register_exception_handlers, ArtifyException, QuotaExceededError
+from campaigns_api import router as campaigns_router
+from analytics_api import router as analytics_router
 
 load_dotenv()
 
@@ -116,6 +118,10 @@ For issues and feature requests, please contact the development team.
 
 # Register exception handlers
 register_exception_handlers(app)
+
+# Include routers for campaigns and analytics
+app.include_router(campaigns_router)
+app.include_router(analytics_router)
 
 # Rate Limiter Configuration
 limiter = Limiter(key_func=get_remote_address)
