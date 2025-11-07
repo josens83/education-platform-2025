@@ -14,7 +14,7 @@ import random
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from database import get_db, init_db, Segment, GeneratedContent, Metric
+from database import get_db, init_db, Segment, GeneratedContent, Metric, GenerationJob
 
 load_dotenv()
 
@@ -41,7 +41,52 @@ app.add_middleware(
 )
 
 # OpenAI client
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY or OPENAI_API_KEY == "":
+    print("⚠️  WARNING: OPENAI_API_KEY not set. AI generation will fail.")
+    openai_client = None
+else:
+    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+    print("✅ OpenAI API client initialized")
+
+
+# Cost estimation (USD per token)
+# Reference: https://openai.com/pricing
+PRICING = {
+    "gpt-3.5-turbo": {
+        "input": 0.0005 / 1000,  # $0.0005 per 1K input tokens
+        "output": 0.0015 / 1000  # $0.0015 per 1K output tokens
+    },
+    "gpt-4": {
+        "input": 0.03 / 1000,
+        "output": 0.06 / 1000
+    },
+    "dall-e-3": {
+        "1024x1024": 0.040,  # per image
+        "1024x1792": 0.080,
+        "1792x1024": 0.080
+    }
+}
+
+
+def calculate_text_cost(model: str, prompt_tokens: int, completion_tokens: int) -> float:
+    """Calculate estimated cost for text generation"""
+    if model not in PRICING:
+        return 0.0
+
+    pricing = PRICING[model]
+    input_cost = prompt_tokens * pricing["input"]
+    output_cost = completion_tokens * pricing["output"]
+    return round(input_cost + output_cost, 6)
+
+
+def calculate_image_cost(model: str, size: str) -> float:
+    """Calculate estimated cost for image generation"""
+    if model not in PRICING:
+        return 0.0
+
+    pricing = PRICING.get(model, {})
+    return pricing.get(size, 0.04)  # Default to standard size cost
 
 
 # ==========================================
@@ -126,6 +171,23 @@ async def generate_text(
     db: Session = Depends(get_db)
 ):
     """Generate AI text using OpenAI GPT"""
+
+    # Check if OpenAI client is initialized
+    if not openai_client:
+        raise HTTPException(
+            status_code=503,
+            detail="OpenAI API key not configured. Please set OPENAI_API_KEY environment variable."
+        )
+
+    job = GenerationJob(
+        job_type="text",
+        model="gpt-3.5-turbo",
+        prompt=request.prompt,
+        status="pending"
+    )
+    db.add(job)
+    db.commit()
+
     try:
         # Build enhanced prompt with segment, tone, and keywords
         enhanced_prompt = request.prompt
@@ -155,6 +217,24 @@ async def generate_text(
 
         generated_text = response.choices[0].message.content
 
+        # Extract token usage
+        usage = response.usage
+        prompt_tokens = usage.prompt_tokens
+        completion_tokens = usage.completion_tokens
+        total_tokens = usage.total_tokens
+
+        # Calculate cost
+        estimated_cost = calculate_text_cost("gpt-3.5-turbo", prompt_tokens, completion_tokens)
+
+        # Update job with success
+        job.status = "completed"
+        job.prompt_tokens = prompt_tokens
+        job.completion_tokens = completion_tokens
+        job.total_tokens = total_tokens
+        job.estimated_cost = estimated_cost
+        job.completed_at = datetime.utcnow()
+        db.commit()
+
         # Save to database
         content_record = GeneratedContent(
             content_type="text",
@@ -169,10 +249,22 @@ async def generate_text(
             "success": True,
             "text": generated_text,
             "prompt": request.prompt,
-            "model": "gpt-3.5-turbo"
+            "model": "gpt-3.5-turbo",
+            "usage": {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": total_tokens,
+                "estimated_cost_usd": estimated_cost
+            }
         }
 
     except Exception as e:
+        # Update job with error
+        job.status = "failed"
+        job.error_message = str(e)
+        job.completed_at = datetime.utcnow()
+        db.commit()
+
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -182,6 +274,27 @@ async def generate_image(
     db: Session = Depends(get_db)
 ):
     """Generate AI image using OpenAI DALL-E"""
+
+    # Check if OpenAI client is initialized
+    if not openai_client:
+        raise HTTPException(
+            status_code=503,
+            detail="OpenAI API key not configured. Please set OPENAI_API_KEY environment variable."
+        )
+
+    # Calculate cost upfront for images
+    estimated_cost = calculate_image_cost("dall-e-3", request.size)
+
+    job = GenerationJob(
+        job_type="image",
+        model="dall-e-3",
+        prompt=request.prompt,
+        status="pending",
+        estimated_cost=estimated_cost
+    )
+    db.add(job)
+    db.commit()
+
     try:
         # Call OpenAI DALL-E API
         response = openai_client.images.generate(
@@ -193,6 +306,11 @@ async def generate_image(
         )
 
         image_url = response.data[0].url
+
+        # Update job with success
+        job.status = "completed"
+        job.completed_at = datetime.utcnow()
+        db.commit()
 
         # Save to database
         content_record = GeneratedContent(
@@ -208,10 +326,19 @@ async def generate_image(
             "success": True,
             "imageUrl": image_url,
             "prompt": request.prompt,
-            "model": "dall-e-3"
+            "model": "dall-e-3",
+            "usage": {
+                "estimated_cost_usd": estimated_cost
+            }
         }
 
     except Exception as e:
+        # Update job with error
+        job.status = "failed"
+        job.error_message = str(e)
+        job.completed_at = datetime.utcnow()
+        db.commit()
+
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -357,6 +484,88 @@ async def startup_event():
     print("=" * 50)
     print("Ready to serve requests!")
     print("=" * 50)
+
+
+# ==========================================
+# Cost Tracking & Statistics Endpoints
+# ==========================================
+
+@app.get("/costs/summary")
+async def get_cost_summary(
+    user_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """Get cost summary for all generation jobs"""
+    query = db.query(GenerationJob)
+
+    if user_id:
+        query = query.filter(GenerationJob.user_id == user_id)
+
+    jobs = query.all()
+
+    total_cost = sum(job.estimated_cost or 0 for job in jobs)
+    total_jobs = len(jobs)
+    completed_jobs = len([j for j in jobs if j.status == "completed"])
+    failed_jobs = len([j for j in jobs if j.status == "failed"])
+
+    text_jobs = [j for j in jobs if j.job_type == "text"]
+    image_jobs = [j for j in jobs if j.job_type == "image"]
+
+    text_cost = sum(j.estimated_cost or 0 for j in text_jobs)
+    image_cost = sum(j.estimated_cost or 0 for j in image_jobs)
+
+    total_tokens = sum(j.total_tokens or 0 for j in text_jobs)
+
+    return {
+        "total_cost_usd": round(total_cost, 4),
+        "total_jobs": total_jobs,
+        "completed_jobs": completed_jobs,
+        "failed_jobs": failed_jobs,
+        "breakdown": {
+            "text": {
+                "jobs": len(text_jobs),
+                "cost_usd": round(text_cost, 4),
+                "total_tokens": total_tokens
+            },
+            "image": {
+                "jobs": len(image_jobs),
+                "cost_usd": round(image_cost, 4)
+            }
+        }
+    }
+
+
+@app.get("/costs/history")
+async def get_cost_history(
+    limit: int = 50,
+    user_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """Get recent generation job history with costs"""
+    query = db.query(GenerationJob)
+
+    if user_id:
+        query = query.filter(GenerationJob.user_id == user_id)
+
+    jobs = query.order_by(GenerationJob.created_at.desc()).limit(limit).all()
+
+    return {
+        "jobs": [
+            {
+                "id": job.id,
+                "job_type": job.job_type,
+                "model": job.model,
+                "status": job.status,
+                "prompt": job.prompt[:100] + "..." if len(job.prompt) > 100 else job.prompt,
+                "tokens": job.total_tokens,
+                "cost_usd": round(job.estimated_cost or 0, 6),
+                "created_at": job.created_at.isoformat(),
+                "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                "error": job.error_message
+            }
+            for job in jobs
+        ]
+    }
 
 
 if __name__ == "__main__":

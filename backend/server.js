@@ -2,6 +2,7 @@
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const { initDatabase, db } = require('./database');
@@ -9,6 +10,31 @@ const { initDatabase, db } = require('./database');
 const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+// Rate limiting configuration
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 login/register attempts per windowMs
+  message: 'Too many authentication attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const projectLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30, // Limit each IP to 30 project operations per minute
+  message: 'Too many project operations, please slow down.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // CORS Middleware - 모든 Vercel 도메인 허용
 const corsOptions = {
@@ -48,6 +74,9 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
 app.use(express.json());
+
+// Apply general rate limiting to all routes
+app.use('/api/', generalLimiter);
 
 // Auth middleware
 const authenticateToken = (req, res, next) => {
@@ -99,7 +128,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 // Auth routes
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', authLimiter, async (req, res) => {
   try {
     const { username, email, password } = req.body;
     if (!username || !email || !password) {
@@ -132,7 +161,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -163,7 +192,7 @@ app.post('/api/login', async (req, res) => {
 });
 
 // Project routes
-app.get('/api/projects', authenticateToken, async (req, res) => {
+app.get('/api/projects', projectLimiter, authenticateToken, async (req, res) => {
   try {
     const projects = await db.getProjectsByUserId(req.user.id);
     res.json({ projects });
@@ -173,7 +202,7 @@ app.get('/api/projects', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/projects', authenticateToken, async (req, res) => {
+app.post('/api/projects', projectLimiter, authenticateToken, async (req, res) => {
   try {
     const { name, data } = req.body;
     if (!name) {
@@ -197,7 +226,7 @@ app.post('/api/projects', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/api/projects/:id', authenticateToken, async (req, res) => {
+app.get('/api/projects/:id', projectLimiter, authenticateToken, async (req, res) => {
   try {
     const projectId = parseInt(req.params.id);
     const project = await db.getProjectById(projectId);
@@ -223,7 +252,7 @@ app.get('/api/projects/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.put('/api/projects/:id', authenticateToken, async (req, res) => {
+app.put('/api/projects/:id', projectLimiter, authenticateToken, async (req, res) => {
   try {
     const projectId = parseInt(req.params.id);
     const { name, data } = req.body;
@@ -261,7 +290,7 @@ app.put('/api/projects/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/projects/:id', authenticateToken, async (req, res) => {
+app.delete('/api/projects/:id', projectLimiter, authenticateToken, async (req, res) => {
   try {
     const projectId = parseInt(req.params.id);
 
