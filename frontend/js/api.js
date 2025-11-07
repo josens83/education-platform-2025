@@ -3,7 +3,7 @@ class API {
     constructor() {
         // Load config
         this.config = window.APP_CONFIG || {
-            BACKEND_URL: 'http://localhost:3000',
+            BACKEND_URL: 'http://localhost:3001',
             CONTENT_BACKEND_URL: 'https://artify-content-api.onrender.com'
         };
 
