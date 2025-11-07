@@ -6,11 +6,13 @@ from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, text
 from typing import Optional, List
 import os
 from datetime import datetime, timedelta
 import random
+import psutil
+import shutil
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -291,14 +293,139 @@ async def root():
 
 
 @app.get("/health")
-async def health_check():
-    return {
+async def health_check(db: Session = Depends(get_db)):
+    """Enhanced health check endpoint with detailed system status"""
+
+    health_status = {
         "status": "healthy",
         "service": "artify-content-api",
         "version": "2.0.0",
-        "database": "connected",
-        "ai": "OpenAI API"
+        "timestamp": datetime.utcnow().isoformat(),
+        "checks": {}
     }
+
+    all_healthy = True
+
+    # 1. Database Check
+    try:
+        db.execute(text("SELECT 1"))
+        health_status["checks"]["database"] = {
+            "status": "healthy",
+            "message": "PostgreSQL connected"
+        }
+    except Exception as e:
+        all_healthy = False
+        health_status["checks"]["database"] = {
+            "status": "unhealthy",
+            "error": str(e)
+        }
+
+    # 2. Redis Cache Check
+    try:
+        cache = get_cache()
+        if cache.enabled:
+            cache.client.ping()
+            stats = cache.get_stats()
+            health_status["checks"]["redis"] = {
+                "status": "healthy",
+                "message": "Redis connected",
+                "keys": stats.get("keys", 0),
+                "memory": stats.get("used_memory_human", "unknown")
+            }
+        else:
+            health_status["checks"]["redis"] = {
+                "status": "degraded",
+                "message": "Redis not available, cache disabled"
+            }
+    except Exception as e:
+        health_status["checks"]["redis"] = {
+            "status": "unhealthy",
+            "error": str(e)
+        }
+
+    # 3. Vector Database Check (ChromaDB)
+    try:
+        vector_client = get_vector_client()
+        collections = vector_client.get_collection_stats()
+        health_status["checks"]["vector_db"] = {
+            "status": "healthy",
+            "message": "ChromaDB connected",
+            "collections": len(collections)
+        }
+    except Exception as e:
+        all_healthy = False
+        health_status["checks"]["vector_db"] = {
+            "status": "unhealthy",
+            "error": str(e)
+        }
+
+    # 4. OpenAI API Check
+    if openai_client:
+        health_status["checks"]["openai"] = {
+            "status": "healthy",
+            "message": "OpenAI client initialized"
+        }
+    else:
+        all_healthy = False
+        health_status["checks"]["openai"] = {
+            "status": "unhealthy",
+            "message": "OpenAI API key not configured"
+        }
+
+    # 5. Disk Space Check
+    try:
+        disk = shutil.disk_usage("/")
+        disk_percent = (disk.used / disk.total) * 100
+        disk_free_gb = disk.free / (1024**3)  # Convert to GB
+
+        disk_status = "healthy"
+        if disk_percent > 90:
+            disk_status = "critical"
+            all_healthy = False
+        elif disk_percent > 80:
+            disk_status = "warning"
+
+        health_status["checks"]["disk_space"] = {
+            "status": disk_status,
+            "used_percent": round(disk_percent, 2),
+            "free_gb": round(disk_free_gb, 2),
+            "total_gb": round(disk.total / (1024**3), 2)
+        }
+    except Exception as e:
+        health_status["checks"]["disk_space"] = {
+            "status": "unknown",
+            "error": str(e)
+        }
+
+    # 6. Memory Check
+    try:
+        memory = psutil.virtual_memory()
+        memory_percent = memory.percent
+
+        memory_status = "healthy"
+        if memory_percent > 90:
+            memory_status = "critical"
+            all_healthy = False
+        elif memory_percent > 80:
+            memory_status = "warning"
+
+        health_status["checks"]["memory"] = {
+            "status": memory_status,
+            "used_percent": memory_percent,
+            "available_gb": round(memory.available / (1024**3), 2),
+            "total_gb": round(memory.total / (1024**3), 2)
+        }
+    except Exception as e:
+        health_status["checks"]["memory"] = {
+            "status": "unknown",
+            "error": str(e)
+        }
+
+    # Overall status
+    if not all_healthy:
+        health_status["status"] = "degraded"
+
+    return health_status
 
 
 # ==========================================
@@ -1592,6 +1719,227 @@ async def flush_cache():
         "success": result,
         "message": "All cache flushed" if result else "Cache flush failed"
     }
+
+
+@app.get("/monitoring/dashboard")
+async def monitoring_dashboard(db: Session = Depends(get_db)):
+    """
+    Comprehensive monitoring dashboard with system metrics and operational statistics
+
+    Returns:
+    - System health summary
+    - Database statistics
+    - Cache performance metrics
+    - API usage statistics
+    - Cost tracking
+    - Recent activity
+    """
+
+    dashboard = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "status": "healthy",
+        "system": {},
+        "database": {},
+        "cache": {},
+        "usage": {},
+        "costs": {},
+        "activity": {}
+    }
+
+    # 1. System Health Metrics
+    try:
+        memory = psutil.virtual_memory()
+        disk = shutil.disk_usage("/")
+
+        dashboard["system"] = {
+            "memory": {
+                "total_gb": round(memory.total / (1024**3), 2),
+                "used_gb": round(memory.used / (1024**3), 2),
+                "available_gb": round(memory.available / (1024**3), 2),
+                "percent": memory.percent
+            },
+            "disk": {
+                "total_gb": round(disk.total / (1024**3), 2),
+                "used_gb": round(disk.used / (1024**3), 2),
+                "free_gb": round(disk.free / (1024**3), 2),
+                "percent": round((disk.used / disk.total) * 100, 2)
+            },
+            "uptime": "N/A"  # Could be enhanced with process start time tracking
+        }
+    except Exception as e:
+        dashboard["system"]["error"] = str(e)
+
+    # 2. Database Statistics
+    try:
+        # Count records in each table
+        segments_count = db.query(func.count(Segment.id)).scalar()
+        content_count = db.query(func.count(GeneratedContent.id)).scalar()
+        metrics_count = db.query(func.count(Metric.id)).scalar()
+        jobs_count = db.query(func.count(GenerationJob.id)).scalar()
+        quotas_count = db.query(func.count(UserQuota.user_id)).scalar()
+
+        # Recent activity (last 24 hours)
+        yesterday = datetime.utcnow() - timedelta(days=1)
+        recent_content = db.query(func.count(GeneratedContent.id)).filter(
+            GeneratedContent.created_at >= yesterday
+        ).scalar()
+        recent_jobs = db.query(func.count(GenerationJob.id)).filter(
+            GenerationJob.created_at >= yesterday
+        ).scalar()
+
+        dashboard["database"] = {
+            "tables": {
+                "segments": segments_count,
+                "generated_content": content_count,
+                "metrics": metrics_count,
+                "generation_jobs": jobs_count,
+                "user_quotas": quotas_count
+            },
+            "recent_24h": {
+                "content_generated": recent_content,
+                "jobs_completed": recent_jobs
+            },
+            "status": "connected"
+        }
+    except Exception as e:
+        dashboard["database"]["error"] = str(e)
+        dashboard["status"] = "degraded"
+
+    # 3. Cache Performance Metrics
+    try:
+        cache = get_cache()
+        if cache.enabled:
+            cache_stats = cache.get_stats()
+            dashboard["cache"] = {
+                "status": "connected",
+                "redis_version": cache_stats.get("redis_version", "unknown"),
+                "keys": cache_stats.get("keys", 0),
+                "memory": cache_stats.get("used_memory_human", "unknown"),
+                "hits": cache_stats.get("keyspace_hits", 0),
+                "misses": cache_stats.get("keyspace_misses", 0),
+                "hit_rate": cache_stats.get("hit_rate", 0.0)
+            }
+        else:
+            dashboard["cache"] = {
+                "status": "disabled",
+                "message": "Redis not available, running without cache"
+            }
+    except Exception as e:
+        dashboard["cache"] = {
+            "status": "error",
+            "error": str(e)
+        }
+
+    # 4. API Usage Statistics (last 24 hours)
+    try:
+        yesterday = datetime.utcnow() - timedelta(days=1)
+
+        # Text generation usage
+        text_jobs = db.query(GenerationJob).filter(
+            GenerationJob.job_type == "text",
+            GenerationJob.created_at >= yesterday
+        ).all()
+
+        # Image generation usage
+        image_jobs = db.query(GenerationJob).filter(
+            GenerationJob.job_type == "image",
+            GenerationJob.created_at >= yesterday
+        ).all()
+
+        # Success/failure rates
+        text_successful = sum(1 for job in text_jobs if job.status == "completed")
+        image_successful = sum(1 for job in image_jobs if job.status == "completed")
+
+        dashboard["usage"] = {
+            "last_24h": {
+                "text_generations": {
+                    "total": len(text_jobs),
+                    "successful": text_successful,
+                    "failed": len(text_jobs) - text_successful,
+                    "success_rate": round((text_successful / len(text_jobs) * 100) if text_jobs else 0, 2)
+                },
+                "image_generations": {
+                    "total": len(image_jobs),
+                    "successful": image_successful,
+                    "failed": len(image_jobs) - image_successful,
+                    "success_rate": round((image_successful / len(image_jobs) * 100) if image_jobs else 0, 2)
+                }
+            }
+        }
+    except Exception as e:
+        dashboard["usage"]["error"] = str(e)
+
+    # 5. Cost Tracking (last 24 hours)
+    try:
+        yesterday = datetime.utcnow() - timedelta(days=1)
+
+        recent_jobs = db.query(GenerationJob).filter(
+            GenerationJob.created_at >= yesterday
+        ).all()
+
+        total_cost_24h = sum(job.estimated_cost or 0.0 for job in recent_jobs)
+        total_tokens_24h = sum(job.total_tokens or 0 for job in recent_jobs)
+
+        # This month
+        month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        month_jobs = db.query(GenerationJob).filter(
+            GenerationJob.created_at >= month_start
+        ).all()
+
+        total_cost_month = sum(job.estimated_cost or 0.0 for job in month_jobs)
+
+        dashboard["costs"] = {
+            "last_24h": {
+                "total_cost_usd": round(total_cost_24h, 4),
+                "total_tokens": total_tokens_24h,
+                "avg_cost_per_request": round(total_cost_24h / len(recent_jobs), 6) if recent_jobs else 0.0
+            },
+            "this_month": {
+                "total_cost_usd": round(total_cost_month, 4),
+                "requests": len(month_jobs)
+            }
+        }
+    except Exception as e:
+        dashboard["costs"]["error"] = str(e)
+
+    # 6. Recent Activity (last 10 jobs)
+    try:
+        recent_activity = db.query(GenerationJob).order_by(
+            GenerationJob.created_at.desc()
+        ).limit(10).all()
+
+        dashboard["activity"] = {
+            "recent_jobs": [
+                {
+                    "id": job.id,
+                    "type": job.job_type,
+                    "status": job.status,
+                    "cost_usd": round(job.estimated_cost or 0.0, 6),
+                    "tokens": job.total_tokens,
+                    "created_at": job.created_at.isoformat() if job.created_at else None
+                }
+                for job in recent_activity
+            ]
+        }
+    except Exception as e:
+        dashboard["activity"]["error"] = str(e)
+
+    # 7. Vector Database Statistics
+    try:
+        vector_client = get_vector_client()
+        collections = vector_client.get_collection_stats()
+
+        dashboard["vector_db"] = {
+            "status": "connected",
+            "collections": collections
+        }
+    except Exception as e:
+        dashboard["vector_db"] = {
+            "status": "error",
+            "error": str(e)
+        }
+
+    return dashboard
 
 
 @app.get("/analytics/cache-savings")
