@@ -74,14 +74,19 @@ const PanelSegments = {
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">행동 패턴</label>
-                        <select id="segment-behavior" class="form-select">
-                            <option value="high">높은 참여도</option>
-                            <option value="medium">중간 참여도</option>
-                            <option value="low">낮은 참여도</option>
-                            <option value="new">신규 방문자</option>
-                            <option value="returning">재방문자</option>
-                        </select>
+                        <label class="form-label">지역</label>
+                        <input
+                            type="text"
+                            id="segment-location"
+                            class="form-input"
+                            placeholder="서울"
+                        />
+                    </div>
+
+                    <!-- JSON 필터 프리뷰 -->
+                    <div class="form-group">
+                        <label class="form-label">JSON 필터 미리보기</label>
+                        <pre id="json-preview" class="json-preview">{}</pre>
                     </div>
 
                     <div class="form-actions">
@@ -148,6 +153,7 @@ const PanelSegments = {
                     e.target.value = maxValue - 1;
                 }
                 ageMinValue.textContent = e.target.value;
+                this.updateJsonPreview();
             });
         }
 
@@ -159,8 +165,22 @@ const PanelSegments = {
                     e.target.value = minValue + 1;
                 }
                 ageMaxValue.textContent = e.target.value;
+                this.updateJsonPreview();
             });
         }
+
+        // Update JSON preview on input changes
+        ['segment-name', 'segment-gender', 'segment-location'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('input', () => this.updateJsonPreview());
+            }
+        });
+
+        // Update JSON preview on interest checkbox changes
+        document.querySelectorAll('input[name="interests"]').forEach(checkbox => {
+            checkbox.addEventListener('change', () => this.updateJsonPreview());
+        });
 
         // Form submission
         const form = document.getElementById('segment-form');
@@ -170,6 +190,32 @@ const PanelSegments = {
                 this.saveSegment();
             });
         }
+
+        // Initial JSON preview
+        this.updateJsonPreview();
+    },
+
+    updateJsonPreview() {
+        const jsonPreview = document.getElementById('json-preview');
+        if (!jsonPreview) return;
+
+        const ageMin = parseInt(document.getElementById('age-min')?.value || 20);
+        const ageMax = parseInt(document.getElementById('age-max')?.value || 35);
+        const gender = document.getElementById('segment-gender')?.value || 'all';
+        const location = document.getElementById('segment-location')?.value || '';
+
+        const interests = Array.from(
+            document.querySelectorAll('input[name="interests"]:checked')
+        ).map(input => input.value);
+
+        const filters = {
+            age_range: [ageMin, ageMax],
+            gender: gender,
+            interests: interests,
+            location: location
+        };
+
+        jsonPreview.textContent = JSON.stringify(filters, null, 2);
     },
 
     saveSegment() {
@@ -182,7 +228,7 @@ const PanelSegments = {
         const ageMin = parseInt(document.getElementById('age-min').value);
         const ageMax = parseInt(document.getElementById('age-max').value);
         const gender = document.getElementById('segment-gender').value;
-        const behavior = document.getElementById('segment-behavior').value;
+        const location = document.getElementById('segment-location').value.trim();
 
         // Get selected interests
         const interests = Array.from(
@@ -192,11 +238,12 @@ const PanelSegments = {
         const segment = {
             id: this.editingSegment?.id || Date.now(),
             name,
-            ageMin,
-            ageMax,
-            gender,
-            interests,
-            behavior,
+            filters: {
+                age_range: [ageMin, ageMax],
+                gender,
+                interests,
+                location
+            },
             createdAt: this.editingSegment?.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
@@ -370,19 +417,14 @@ const PanelSegments = {
     },
 
     getInterestOptions() {
+        // Streamlit과 동일한 관심사 목록
         return [
             { value: 'fitness', label: '피트니스', emoji: '💪' },
-            { value: 'tech', label: '테크', emoji: '💻' },
-            { value: 'travel', label: '여행', emoji: '✈️' },
-            { value: 'food', label: '음식', emoji: '🍔' },
             { value: 'fashion', label: '패션', emoji: '👗' },
             { value: 'beauty', label: '뷰티', emoji: '💄' },
-            { value: 'sports', label: '스포츠', emoji: '⚽' },
-            { value: 'music', label: '음악', emoji: '🎵' },
-            { value: 'gaming', label: '게임', emoji: '🎮' },
-            { value: 'books', label: '독서', emoji: '📚' },
-            { value: 'art', label: '예술', emoji: '🎨' },
-            { value: 'finance', label: '금융', emoji: '💰' }
+            { value: 'tech', label: '테크', emoji: '💻' },
+            { value: 'travel', label: '여행', emoji: '✈️' },
+            { value: 'food', label: '음식', emoji: '🍔' }
         ];
     },
 

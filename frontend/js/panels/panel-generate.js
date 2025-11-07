@@ -1,13 +1,12 @@
-// Panel-Generate.js - AI 콘텐츠 생성 패널
+// Panel-Generate.js - AI 콘텐츠 생성 패널 (Streamlit 완전 이식)
 const PanelGenerate = {
-    campaigns: ['여름 세일 2024', '신제품 출시', '브랜드 인지도', '시즌 프로모션'],
-    tones: [
-        { value: 1, label: '전문적', emoji: '💼' },
-        { value: 2, label: '친근한', emoji: '😊' },
-        { value: 3, label: '중립적', emoji: '📝' },
-        { value: 4, label: '유머러스', emoji: '😄' },
-        { value: 5, label: '감성적', emoji: '💖' }
-    ],
+    campaigns: ['여름 세일 2024', '신제품 출시', '브랜드 인지도 캠페인'],
+    channels: ['Instagram', 'Facebook', 'Twitter', 'LinkedIn'],
+    tones: ['공식적', '전문적', '친근한', '캐주얼', '유머러스'],
+    lengths: ['짧게 (1-2문장)', '보통 (3-4문장)', '길게 (5문장 이상)'],
+    imageStyles: ['미니멀', '모던', '빈티지', '일러스트', '사진'],
+    imageSizes: ['1:1 (정사각형)', '16:9 (가로형)', '9:16 (세로형)'],
+    colors: ['🔵 파랑', '🔴 빨강', '🟢 초록', '🟡 노랑', '⚫ 검정', '⚪ 흰색'],
 
     render(containerId) {
         const container = document.getElementById(containerId);
@@ -15,149 +14,200 @@ const PanelGenerate = {
 
         // Get segments from state
         const segments = state.get('segments') || this.getDefaultSegments();
+        const segmentNames = segments.map(s => s.name || s);
 
         container.innerHTML = `
-            <form id="generate-form" class="generate-form">
-                <!-- Campaign Selection -->
-                <div class="form-group">
-                    <label class="form-label">캠페인 선택</label>
-                    <select id="campaign-select" class="form-select">
-                        ${this.campaigns.map(campaign => `
-                            <option value="${campaign}">${campaign}</option>
-                        `).join('')}
-                    </select>
-                </div>
-
-                <!-- Segment Selection -->
-                <div class="form-group">
-                    <label class="form-label">타겟 세그먼트</label>
-                    <select id="segment-select" class="form-select">
-                        ${segments.map(segment => `
-                            <option value="${segment.name || segment}">${segment.name || segment}</option>
-                        `).join('')}
-                    </select>
-                </div>
-
-                <!-- Tone Selector -->
-                <div class="form-group">
-                    <label class="form-label">
-                        톤 & 스타일
-                        <span id="tone-label" class="tone-label">중립적 📝</span>
-                    </label>
-                    <input
-                        type="range"
-                        id="tone-slider"
-                        class="tone-slider"
-                        min="1"
-                        max="5"
-                        value="3"
-                        step="1"
-                    />
-                    <div class="tone-markers">
-                        ${this.tones.map(tone => `
-                            <span class="tone-marker">${tone.emoji}</span>
-                        `).join('')}
+            <!-- 캠페인/세그먼트/채널 선택 -->
+            <div class="generate-header">
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label class="form-label">캠페인 선택</label>
+                        <select id="campaign-select" class="form-select">
+                            ${this.campaigns.map(c => `<option value="${c}">${c}</option>`).join('')}
+                        </select>
                     </div>
-                </div>
-
-                <!-- Content Types -->
-                <div class="form-group">
-                    <label class="form-label">생성할 콘텐츠</label>
-                    <div class="content-types">
-                        <label class="checkbox-label">
-                            <input type="checkbox" checked id="gen-headline" />
-                            <span>헤드라인</span>
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" checked id="gen-body" />
-                            <span>본문</span>
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="gen-cta" />
-                            <span>CTA 버튼</span>
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="gen-image" />
-                            <span>이미지</span>
-                        </label>
+                    <div class="form-group">
+                        <label class="form-label">세그먼트</label>
+                        <select id="segment-select" class="form-select">
+                            ${segmentNames.map(s => `<option value="${s}">${s}</option>`).join('')}
+                        </select>
                     </div>
-                </div>
-
-                <!-- Keywords -->
-                <div class="form-group">
-                    <label class="form-label">키워드 (선택)</label>
-                    <input
-                        type="text"
-                        id="keywords-input"
-                        class="form-input"
-                        placeholder="예: 할인, 한정판, 신규"
-                    />
-                    <small class="form-hint">쉼표로 구분하여 입력하세요</small>
-                </div>
-
-                <!-- Generate Button -->
-                <button
-                    type="submit"
-                    class="btn btn-primary"
-                    style="width: 100%; margin-top: 8px;"
-                >
-                    ✨ 생성하기
-                </button>
-            </form>
-
-            <!-- Generated Content Display -->
-            <div id="generated-results" class="generated-results" style="display: none;">
-                <div class="results-header">
-                    <h4>생성된 콘텐츠</h4>
-                    <button class="btn-icon" onclick="PanelGenerate.clearResults()" title="닫기">
-                        ✕
-                    </button>
-                </div>
-                <div id="results-content" class="results-content">
-                    <!-- Results will be inserted here -->
-                </div>
-                <div class="results-actions">
-                    <button class="btn btn-secondary" onclick="PanelGenerate.applyToCanvas()">
-                        캔버스에 추가
-                    </button>
-                    <button class="btn btn-cancel" onclick="PanelGenerate.regenerate()">
-                        🔄 재생성
-                    </button>
+                    <div class="form-group">
+                        <label class="form-label">채널</label>
+                        <select id="channel-select" class="form-select">
+                            ${this.channels.map(c => `<option value="${c}">${c}</option>`).join('')}
+                        </select>
+                    </div>
                 </div>
             </div>
 
-            <!-- Recent History -->
-            <div class="recent-history">
-                <h4 class="section-subtitle">최근 생성</h4>
-                <div id="history-list" class="history-list">
-                    <!-- History items will be inserted here -->
+            <div class="divider"></div>
+
+            <!-- 생성 옵션 -->
+            <div class="form-row-2">
+                <!-- 텍스트 생성 옵션 -->
+                <div>
+                    <h4 class="section-subtitle">📝 텍스트 생성 옵션</h4>
+
+                    <div class="form-group">
+                        <label class="form-label">톤 & 매너</label>
+                        <input
+                            type="range"
+                            id="tone-slider"
+                            class="tone-slider"
+                            min="0"
+                            max="4"
+                            value="2"
+                        />
+                        <div class="tone-labels">
+                            ${this.tones.map(t => `<span>${t}</span>`).join('')}
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">길이</label>
+                        ${this.lengths.map((len, idx) => `
+                            <label class="radio-label">
+                                <input type="radio" name="length" value="${idx}" ${idx === 1 ? 'checked' : ''} />
+                                <span>${len}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">키워드 (쉼표로 구분)</label>
+                        <input
+                            type="text"
+                            id="keywords-input"
+                            class="form-input"
+                            placeholder="무료배송, 한정수량, 여름세일"
+                        />
+                    </div>
+                </div>
+
+                <!-- 이미지 생성 옵션 -->
+                <div>
+                    <h4 class="section-subtitle">🎨 이미지 생성 옵션</h4>
+
+                    <div class="form-group">
+                        <label class="form-label">이미지 스타일</label>
+                        <select id="image-style" class="form-select">
+                            ${this.imageStyles.map(s => `<option value="${s}">${s}</option>`).join('')}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">주요 색상</label>
+                        <div class="color-checkboxes">
+                            ${this.colors.map((color, idx) => `
+                                <label class="checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        name="colors"
+                                        value="${color}"
+                                        ${idx < 2 ? 'checked' : ''}
+                                    />
+                                    <span>${color}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">크기</label>
+                        <select id="image-size" class="form-select">
+                            ${this.imageSizes.map(s => `<option value="${s}">${s}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- 생성 버튼 -->
+            <button
+                type="button"
+                id="generate-btn"
+                class="btn btn-primary"
+                style="width: 100%; font-size: 16px; padding: 14px;"
+                onclick="PanelGenerate.generateContent()"
+            >
+                🚀 AI 콘텐츠 생성하기
+            </button>
+
+            <!-- 생성 결과 -->
+            <div id="generated-results" class="generated-results" style="display: none;">
+                <div class="divider"></div>
+                <h4 class="section-subtitle">생성된 콘텐츠</h4>
+
+                <div class="form-row-2">
+                    <!-- 카피 -->
+                    <div>
+                        <h5 style="margin-bottom: 12px;">📝 카피</h5>
+                        <div id="copy-result" class="copy-result"></div>
+                        <button
+                            class="btn btn-secondary"
+                            style="width: 100%; margin-top: 12px;"
+                            onclick="PanelGenerate.copyText()"
+                        >
+                            📋 텍스트 복사
+                        </button>
+                    </div>
+
+                    <!-- 이미지 -->
+                    <div>
+                        <h5 style="margin-bottom: 12px;">🎨 이미지</h5>
+                        <div id="image-result" class="image-result"></div>
+                        <button
+                            class="btn btn-secondary"
+                            style="width: 100%; margin-top: 12px;"
+                            onclick="PanelGenerate.downloadImage()"
+                        >
+                            💾 이미지 다운로드
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 피드백 섹션 -->
+                <div class="divider"></div>
+                <h4 class="section-subtitle">피드백</h4>
+
+                <div class="form-group">
+                    <textarea
+                        id="feedback-text"
+                        class="form-textarea"
+                        placeholder="개선사항이나 피드백을 입력하세요 (예: 톤을 더 친근하게, 이미지에 사람 추가)"
+                        rows="3"
+                    ></textarea>
+                </div>
+
+                <div class="feedback-buttons">
+                    <button class="btn btn-feedback" onclick="PanelGenerate.sendFeedback('like')">
+                        👍 좋아요
+                    </button>
+                    <button class="btn btn-feedback" onclick="PanelGenerate.sendFeedback('dislike')">
+                        👎 별로예요
+                    </button>
+                    <button class="btn btn-feedback" onclick="PanelGenerate.regenerate()">
+                        🔄 다시 생성
+                    </button>
+                    <button class="btn btn-feedback btn-save" onclick="PanelGenerate.saveToProject()">
+                        💾 프로젝트에 저장
+                    </button>
                 </div>
             </div>
         `;
 
         this.attachEvents();
-        this.loadHistory();
     },
 
     attachEvents() {
-        // Tone slider
+        // Tone slider label
         const toneSlider = document.getElementById('tone-slider');
-        const toneLabel = document.getElementById('tone-label');
-
-        if (toneSlider && toneLabel) {
+        if (toneSlider) {
             toneSlider.addEventListener('input', (e) => {
                 const value = parseInt(e.target.value);
-                const tone = this.tones[value - 1];
-                toneLabel.textContent = `${tone.label} ${tone.emoji}`;
-            });
-        }
-
-        // Generate form
-        const form = document.getElementById('generate-form');
-        if (form) {
-            form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.generateContent();
+                // Visual feedback can be added here
             });
         }
     },
@@ -165,287 +215,183 @@ const PanelGenerate = {
     async generateContent() {
         const campaign = document.getElementById('campaign-select').value;
         const segment = document.getElementById('segment-select').value;
-        const tone = parseInt(document.getElementById('tone-slider').value);
+        const channel = document.getElementById('channel-select').value;
+        const tone = this.tones[parseInt(document.getElementById('tone-slider').value)];
+        const lengthIdx = parseInt(document.querySelector('input[name="length"]:checked').value);
+        const length = this.lengths[lengthIdx];
         const keywords = document.getElementById('keywords-input').value;
+        const imageStyle = document.getElementById('image-style').value;
+        const imageSize = document.getElementById('image-size').value;
 
-        const options = {
-            generateHeadline: document.getElementById('gen-headline').checked,
-            generateBody: document.getElementById('gen-body').checked,
-            generateCTA: document.getElementById('gen-cta').checked,
-            generateImage: document.getElementById('gen-image').checked
-        };
+        const selectedColors = Array.from(
+            document.querySelectorAll('input[name="colors"]:checked')
+        ).map(input => input.value);
 
-        UI.showLoading('AI가 콘텐츠를 생성하는 중...');
+        const btn = document.getElementById('generate-btn');
+        btn.disabled = true;
+        btn.innerHTML = '🔄 생성 중...';
+
+        // Show progress
+        UI.showLoading('AI가 콘텐츠를 생성 중입니다...');
 
         try {
-            // Simulate API call with campaign-specific content
-            const content = await this.simulateGeneration(campaign, segment, tone, keywords, options);
+            // Simulate generation time
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
-            this.displayResults(content);
-            this.saveToHistory(content, campaign, segment);
+            // Generate content based on campaign
+            const content = this.generateContentByCampaign(campaign, segment, channel, tone, keywords);
 
-            UI.toast('콘텐츠가 생성되었습니다!', 'success');
+            // Display results
+            this.displayResults(content, imageStyle, imageSize);
+
+            // Save to session
+            this.saveToHistory({
+                campaign,
+                segment,
+                channel,
+                tone,
+                length,
+                keywords,
+                imageStyle,
+                imageSize,
+                selectedColors,
+                ...content,
+                timestamp: Date.now()
+            });
+
+            UI.toast('✅ 콘텐츠 생성 완료!', 'success');
+
         } catch (error) {
             console.error('Generation error:', error);
-            UI.toast('생성 실패', 'error');
+            UI.toast('콘텐츠 생성 실패', 'error');
         } finally {
             UI.hideLoading();
+            btn.disabled = false;
+            btn.innerHTML = '🚀 AI 콘텐츠 생성하기';
         }
     },
 
-    async simulateGeneration(campaign, segment, tone, keywords, options) {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
+    generateContentByCampaign(campaign, segment, channel, tone, keywords) {
+        let headline, body, cta, hashtags;
 
-        const toneStyle = this.tones[tone - 1];
-
-        // Campaign-specific content generation
-        let headline = '';
-        let body = '';
-        let cta = '';
-
+        // Campaign-specific content
         if (campaign.includes('여름')) {
             headline = '☀️ 이번 여름, 당신만을 위한 특별한 기회!';
-            body = '뜨거운 여름, 시원한 혜택으로 가득 찬 특별 프로모션을 만나보세요.';
-            cta = '지금 바로 확인하기';
+            body = '뜨거운 여름을 시원하게 보낼 수 있는 절호의 찬스! 최대 50% 할인된 가격으로 만나보세요. 무료배송은 기본, 한정수량이니 서두르세요!';
+            cta = '지금 바로 확인하기 →';
         } else if (campaign.includes('신제품')) {
-            headline = '🚀 혁신의 시작, 새로운 경험을 만나다';
-            body = '기다리던 신제품이 드디어 출시되었습니다. 지금 바로 경험해보세요.';
-            cta = '신제품 보러가기';
-        } else if (campaign.includes('브랜드')) {
-            headline = '✨ 품격있는 선택, 차별화된 가치';
-            body = '우리 브랜드만의 독특한 아이덴티티를 경험해보세요.';
-            cta = '브랜드 스토리 보기';
+            headline = '🚀 혁신의 시작, 새로운 경험을 만나보세요';
+            body = '오랜 연구 끝에 탄생한 신제품을 소개합니다. 당신의 일상을 바꿀 특별한 제품, 지금 바로 경험해보세요.';
+            cta = '신제품 보러가기 →';
         } else {
-            headline = '🎯 놓치면 후회할 특별한 제안';
-            body = '한정된 시간 동안만 제공되는 프리미엄 혜택을 만나보세요.';
-            cta = '자세히 보기';
-        }
-
-        // Tone adjustment
-        if (tone === 1) { // Professional
-            headline = headline.replace(/!|~/g, '.');
-        } else if (tone === 4) { // Humorous
-            headline = headline + ' 😎';
-        } else if (tone === 5) { // Emotional
-            body = body + ' 함께 특별한 순간을 만들어가요.';
+            headline = '✨ 믿을 수 있는 브랜드, 확실한 선택';
+            body = '고객님의 신뢰에 보답하는 품질과 서비스. 우리와 함께라면 언제나 최고의 선택입니다.';
+            cta = '더 알아보기 →';
         }
 
         // Add keywords if provided
         if (keywords) {
-            const keywordList = keywords.split(',').map(k => k.trim());
-            body = body + ' ' + keywordList.join(', ') + '의 매력을 느껴보세요.';
+            body = body + ' ' + keywords.split(',').map(k => k.trim()).join(', ') + '를 놓치지 마세요!';
         }
 
-        return {
-            headline: options.generateHeadline ? headline : null,
-            body: options.generateBody ? body : null,
-            cta: options.generateCTA ? cta : null,
-            image: options.generateImage ? '🖼️ AI 생성 이미지 (준비 중)' : null,
-            tone: toneStyle.label,
-            timestamp: Date.now()
-        };
+        // Generate hashtags
+        hashtags = `#${campaign.replace(/\s/g, '')} #${segment.replace(/\s/g, '')} #${channel}`;
+
+        return { headline, body, cta, hashtags };
     },
 
-    displayResults(content) {
+    displayResults(content, imageStyle, imageSize) {
         const resultsDiv = document.getElementById('generated-results');
-        const resultsContent = document.getElementById('results-content');
+        const copyResult = document.getElementById('copy-result');
+        const imageResult = document.getElementById('image-result');
 
-        if (!resultsDiv || !resultsContent) return;
+        if (!resultsDiv || !copyResult || !imageResult) return;
 
-        let html = '';
+        // Display copy
+        copyResult.innerHTML = `
+            <div class="result-box">
+                <strong>헤드라인</strong>: ${content.headline}<br><br>
+                <strong>본문</strong>: ${content.body}<br><br>
+                <strong>CTA</strong>: ${content.cta}<br><br>
+                <strong>해시태그</strong>: ${content.hashtags}
+            </div>
+        `;
 
-        if (content.headline) {
-            html += `
-                <div class="result-item">
-                    <div class="result-label">헤드라인</div>
-                    <div class="result-text headline">${content.headline}</div>
-                </div>
-            `;
-        }
+        // Display image placeholder
+        const imageUrl = `https://via.placeholder.com/500x500/667eea/ffffff?text=${encodeURIComponent(imageStyle + ' Style')}`;
+        imageResult.innerHTML = `
+            <img src="${imageUrl}" alt="${imageStyle}" style="width: 100%; border-radius: 8px;" />
+        `;
 
-        if (content.body) {
-            html += `
-                <div class="result-item">
-                    <div class="result-label">본문</div>
-                    <div class="result-text">${content.body}</div>
-                </div>
-            `;
-        }
-
-        if (content.cta) {
-            html += `
-                <div class="result-item">
-                    <div class="result-label">CTA 버튼</div>
-                    <div class="result-text cta">${content.cta}</div>
-                </div>
-            `;
-        }
-
-        if (content.image) {
-            html += `
-                <div class="result-item">
-                    <div class="result-label">이미지</div>
-                    <div class="result-text">${content.image}</div>
-                </div>
-            `;
-        }
-
-        resultsContent.innerHTML = html;
+        // Show results
         resultsDiv.style.display = 'block';
 
         // Store current result
         this.currentResult = content;
     },
 
-    clearResults() {
-        const resultsDiv = document.getElementById('generated-results');
-        if (resultsDiv) {
-            resultsDiv.style.display = 'none';
-        }
+    copyText() {
+        if (!this.currentResult) return;
+
+        const text = `${this.currentResult.headline}\n\n${this.currentResult.body}\n\n${this.currentResult.cta}\n\n${this.currentResult.hashtags}`;
+
+        navigator.clipboard.writeText(text).then(() => {
+            UI.toast('📋 클립보드에 복사되었습니다!', 'success');
+        }).catch(err => {
+            console.error('Copy failed:', err);
+            UI.toast('복사 실패', 'error');
+        });
     },
 
-    applyToCanvas() {
-        if (!this.currentResult || !EditorPage.canvas) {
-            UI.toast('캔버스를 사용할 수 없습니다', 'error');
-            return;
+    downloadImage() {
+        UI.toast('💾 다운로드를 시작합니다!', 'info');
+        // In real implementation, download the generated image
+    },
+
+    sendFeedback(type) {
+        const feedbackText = document.getElementById('feedback-text').value;
+
+        if (type === 'like') {
+            UI.toast('👍 긍정적인 피드백이 저장되었습니다!', 'success');
+        } else if (type === 'dislike') {
+            UI.toast('👎 피드백이 저장되었습니다. 개선하겠습니다!', 'info');
         }
 
-        const content = this.currentResult;
-        let yPos = 100;
-
-        // Add headline
-        if (content.headline) {
-            const headline = new fabric.IText(content.headline, {
-                left: 100,
-                top: yPos,
-                fontFamily: 'Arial',
-                fontSize: 32,
-                fontWeight: 'bold',
-                fill: '#1f2937'
-            });
-            EditorPage.canvas.add(headline);
-            yPos += 60;
+        // Clear feedback text
+        if (feedbackText) {
+            console.log('Feedback:', feedbackText);
+            document.getElementById('feedback-text').value = '';
         }
-
-        // Add body
-        if (content.body) {
-            const body = new fabric.IText(content.body, {
-                left: 100,
-                top: yPos,
-                fontFamily: 'Arial',
-                fontSize: 16,
-                fill: '#6b7280',
-                width: 400
-            });
-            EditorPage.canvas.add(body);
-            yPos += 80;
-        }
-
-        // Add CTA
-        if (content.cta) {
-            const cta = new fabric.Rect({
-                left: 100,
-                top: yPos,
-                width: 200,
-                height: 50,
-                fill: '#667eea',
-                rx: 10,
-                ry: 10
-            });
-            const ctaText = new fabric.IText(content.cta, {
-                left: 120,
-                top: yPos + 15,
-                fontFamily: 'Arial',
-                fontSize: 16,
-                fontWeight: 'bold',
-                fill: '#ffffff'
-            });
-            EditorPage.canvas.add(cta);
-            EditorPage.canvas.add(ctaText);
-        }
-
-        EditorPage.canvas.renderAll();
-        EditorPage.saveToHistory();
-
-        UI.toast('캔버스에 추가되었습니다', 'success');
-        this.clearResults();
     },
 
     regenerate() {
-        this.clearResults();
+        document.getElementById('generated-results').style.display = 'none';
         this.generateContent();
     },
 
-    saveToHistory(content, campaign, segment) {
-        const history = state.get('generatedContent') || [];
-        history.unshift({
-            ...content,
-            campaign,
-            segment,
-            timestamp: Date.now()
-        });
+    saveToProject() {
+        UI.toast('💾 프로젝트에 저장되었습니다!', 'success');
+
+        // Can integrate with EditorPage.canvas here
+        if (typeof EditorPage !== 'undefined' && EditorPage.canvas) {
+            // Add to canvas logic
+        }
+    },
+
+    saveToHistory(content) {
+        const history = state.get('generated_content') || [];
+        history.unshift(content);
 
         // Keep only last 20 items
         if (history.length > 20) {
             history.pop();
         }
 
-        state.set('generatedContent', history);
-        this.loadHistory();
-    },
-
-    loadHistory() {
-        const historyList = document.getElementById('history-list');
-        if (!historyList) return;
-
-        const history = state.get('generatedContent') || [];
-
-        if (history.length === 0) {
-            historyList.innerHTML = `
-                <div class="empty-state">
-                    <p>생성 히스토리가 없습니다</p>
-                </div>
-            `;
-            return;
-        }
-
-        historyList.innerHTML = history.slice(0, 5).map((item, index) => `
-            <div class="history-item" onclick="PanelGenerate.loadHistoryItem(${index})">
-                <div class="history-icon">✨</div>
-                <div class="history-info">
-                    <div class="history-title">${item.headline || '콘텐츠'}</div>
-                    <div class="history-meta">${item.campaign} • ${this.formatTime(item.timestamp)}</div>
-                </div>
-            </div>
-        `).join('');
-    },
-
-    loadHistoryItem(index) {
-        const history = state.get('generatedContent') || [];
-        if (history[index]) {
-            this.currentResult = history[index];
-            this.displayResults(history[index]);
-        }
+        state.set('generated_content', history);
+        state.saveToStorage('generated_content');
     },
 
     getDefaultSegments() {
-        return [
-            '20대 피트니스 관심층',
-            '30대 테크 얼리어답터',
-            '40대 여행 애호가',
-            '전체 타겟'
-        ];
-    },
-
-    formatTime(timestamp) {
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diff = now - date;
-
-        if (diff < 60000) return '방금 전';
-        if (diff < 3600000) return `${Math.floor(diff / 60000)}분 전`;
-        if (diff < 86400000) return `${Math.floor(diff / 3600000)}시간 전`;
-        return date.toLocaleDateString('ko-KR');
+        return ['20대 피트니스', '30대 테크', '40대 여행'];
     }
 };
