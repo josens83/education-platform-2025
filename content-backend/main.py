@@ -19,6 +19,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from database import get_db, init_db, Segment, GeneratedContent, Metric, GenerationJob, UserQuota
+from vector_client import get_vector_client
 
 load_dotenv()
 
@@ -221,7 +222,8 @@ async def root():
             "AI Image Generation (DALL-E 3)",
             "Rate Limiting (10/min text, 5/min images)",
             "User Quotas (Daily & Monthly)",
-            "Cost Tracking & Dashboard"
+            "Cost Tracking & Dashboard",
+            "Vector DB Semantic Search (ChromaDB)"
         ],
         "endpoints": {
             "generation": [
@@ -231,6 +233,11 @@ async def root():
             "segments": [
                 "/segments",
                 "/segments/{id}"
+            ],
+            "vector_search": [
+                "/vector/stats",
+                "/creatives/similar/text?query={query}&n_results=5",
+                "/creatives/similar/image?query={query}&n_results=5"
             ],
             "analytics": [
                 "/metrics/simulate",
@@ -353,6 +360,26 @@ async def generate_text(
         )
         db.add(content_record)
         db.commit()
+        db.refresh(content_record)
+
+        # Save to Vector DB for semantic search
+        try:
+            vector_client = get_vector_client()
+            vector_client.add_text_content(
+                content_id=content_record.id,
+                text=generated_text,
+                prompt=request.prompt,
+                model="gpt-3.5-turbo",
+                metadata={
+                    "user_id": request.user_id,
+                    "segment_id": request.segment_id,
+                    "tone": request.tone,
+                    "keywords": ",".join(request.keywords) if request.keywords else None
+                }
+            )
+        except Exception as e:
+            # Vector DB 저장 실패해도 메인 플로우는 계속 진행
+            print(f"⚠️  Warning: Failed to save to Vector DB: {e}")
 
         return {
             "success": True,
@@ -439,6 +466,25 @@ async def generate_image(
         )
         db.add(content_record)
         db.commit()
+        db.refresh(content_record)
+
+        # Save to Vector DB for semantic search
+        try:
+            vector_client = get_vector_client()
+            vector_client.add_image_metadata(
+                content_id=content_record.id,
+                prompt=request.prompt,
+                image_url=image_url,
+                model="dall-e-3",
+                metadata={
+                    "user_id": request.user_id,
+                    "size": request.size,
+                    "quality": request.quality
+                }
+            )
+        except Exception as e:
+            # Vector DB 저장 실패해도 메인 플로우는 계속 진행
+            print(f"⚠️  Warning: Failed to save to Vector DB: {e}")
 
         return {
             "success": True,
@@ -512,6 +558,112 @@ async def delete_segment(segment_id: int, db: Session = Depends(get_db)):
     db.delete(segment)
     db.commit()
     return {"success": True, "message": "Segment deleted successfully"}
+
+
+# ==========================================
+# Vector DB & Semantic Search Endpoints
+# ==========================================
+
+@app.get("/vector/stats")
+async def get_vector_stats():
+    """Get Vector DB statistics"""
+    try:
+        vector_client = get_vector_client()
+        stats = vector_client.get_collection_stats()
+        return {
+            "success": True,
+            "stats": stats
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/creatives/similar/text")
+async def search_similar_texts(
+    query: str,
+    n_results: int = 5,
+    model: Optional[str] = None,
+    user_id: Optional[int] = None
+):
+    """
+    Search for similar text content using semantic search
+
+    Query Parameters:
+    - query: Search query text
+    - n_results: Number of results to return (default: 5)
+    - model: Filter by model (e.g., 'gpt-3.5-turbo')
+    - user_id: Filter by user ID
+    """
+    try:
+        vector_client = get_vector_client()
+
+        # 메타데이터 필터 구성
+        where = {}
+        if model:
+            where["model"] = model
+        if user_id:
+            where["user_id"] = user_id
+
+        # 유사도 검색
+        results = vector_client.search_similar_texts(
+            query=query,
+            n_results=n_results,
+            where=where if where else None
+        )
+
+        return {
+            "success": True,
+            "query": query,
+            "count": len(results),
+            "results": results
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/creatives/similar/image")
+async def search_similar_images(
+    query: str,
+    n_results: int = 5,
+    model: Optional[str] = None,
+    user_id: Optional[int] = None
+):
+    """
+    Search for similar image prompts using semantic search
+
+    Query Parameters:
+    - query: Search query text
+    - n_results: Number of results to return (default: 5)
+    - model: Filter by model (e.g., 'dall-e-3')
+    - user_id: Filter by user ID
+    """
+    try:
+        vector_client = get_vector_client()
+
+        # 메타데이터 필터 구성
+        where = {}
+        if model:
+            where["model"] = model
+        if user_id:
+            where["user_id"] = user_id
+
+        # 유사도 검색
+        results = vector_client.search_similar_images(
+            query=query,
+            n_results=n_results,
+            where=where if where else None
+        )
+
+        return {
+            "success": True,
+            "query": query,
+            "count": len(results),
+            "results": results
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==========================================
