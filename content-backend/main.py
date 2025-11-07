@@ -2,7 +2,7 @@
 Artify Content Backend - FastAPI
 Provides AI generation, segments management, and analytics
 """
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 import random
 import psutil
 import shutil
+import time
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -23,20 +24,128 @@ from slowapi.errors import RateLimitExceeded
 from database import get_db, init_db, Segment, GeneratedContent, Metric, GenerationJob, UserQuota
 from vector_client import get_vector_client
 from cache import get_cache, TTL_SEGMENTS, TTL_BRAND_GUIDELINES, TTL_VECTOR_STATS, make_cache_key
+from logger import get_logger, RequestLogger
+from exceptions import register_exception_handlers, ArtifyException, QuotaExceededError
 
 load_dotenv()
 
-# Initialize FastAPI app
+# Initialize logger
+logger = get_logger("main")
+api_logger = get_logger("api")
+
+# Initialize FastAPI app with enhanced documentation
 app = FastAPI(
     title="Artify Content API",
-    description="AI-powered content generation and analytics",
-    version="2.0.0"
+    description="""
+# Artify Content Generation Platform API
+
+AI-powered content generation and analytics platform with advanced features.
+
+## Key Features
+
+* 🤖 **AI Text Generation** - GPT-3.5-turbo powered content creation
+* 🎨 **AI Image Generation** - DALL-E 3 image generation
+* 🔒 **Rate Limiting** - 10/min for text, 5/min for images
+* 📊 **User Quotas** - Daily and monthly usage limits
+* 💰 **Cost Tracking** - Real-time cost estimation and analytics
+* 🔍 **Vector Search** - Semantic search with ChromaDB
+* 📚 **Brand Guidelines** - RAG-powered brand consistency
+* ⚡ **Redis Caching** - High-performance caching layer
+* 📈 **Analytics Dashboard** - Comprehensive metrics and monitoring
+* 🔄 **Prompt Caching** - Duplicate detection and cost savings
+
+## Authentication
+
+Currently, this API does not require authentication. Rate limiting is applied per IP address.
+
+## Rate Limits
+
+- Text Generation: 10 requests/minute
+- Image Generation: 5 requests/minute
+
+## Support
+
+For issues and feature requests, please contact the development team.
+    """,
+    version="2.0.0",
+    terms_of_service="https://artify-ruddy.vercel.app/terms",
+    contact={
+        "name": "Artify Support",
+        "url": "https://artify-ruddy.vercel.app",
+        "email": "support@artify.com"
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT"
+    },
+    openapi_tags=[
+        {
+            "name": "health",
+            "description": "Health check and system status endpoints"
+        },
+        {
+            "name": "ai-generation",
+            "description": "AI content generation endpoints (text and images)"
+        },
+        {
+            "name": "segments",
+            "description": "User segment management"
+        },
+        {
+            "name": "analytics",
+            "description": "Usage analytics and cost tracking"
+        },
+        {
+            "name": "vector-db",
+            "description": "Vector database operations for semantic search"
+        },
+        {
+            "name": "brand-guidelines",
+            "description": "Brand guidelines management and RAG"
+        },
+        {
+            "name": "cache",
+            "description": "Cache management and statistics"
+        },
+        {
+            "name": "monitoring",
+            "description": "System monitoring and operational metrics"
+        }
+    ]
 )
+
+# Register exception handlers
+register_exception_handlers(app)
 
 # Rate Limiter Configuration
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Request Logging Middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all HTTP requests with timing"""
+    start_time = time.time()
+
+    # Process request
+    response = await call_next(request)
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log request
+    RequestLogger.log_request(
+        method=request.method,
+        path=request.url.path,
+        status_code=response.status_code,
+        duration_ms=duration_ms
+    )
+
+    # Add custom headers
+    response.headers["X-Process-Time"] = f"{duration_ms:.2f}ms"
+
+    return response
+
 
 # CORS Configuration
 app.add_middleware(
@@ -53,14 +162,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+logger.info("CORS middleware configured")
+
 # OpenAI client
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY or OPENAI_API_KEY == "":
-    print("⚠️  WARNING: OPENAI_API_KEY not set. AI generation will fail.")
+    logger.warning("OPENAI_API_KEY not set. AI generation will fail.")
     openai_client = None
 else:
     openai_client = OpenAI(api_key=OPENAI_API_KEY)
-    print("✅ OpenAI API client initialized")
+    logger.info("OpenAI API client initialized")
 
 
 # Cost estimation (USD per token)
@@ -233,7 +344,7 @@ class BrandTextRequest(BaseModel):
 # Health & Root Endpoints
 # ==========================================
 
-@app.get("/")
+@app.get("/", tags=["health"])
 async def root():
     return {
         "message": "Artify Content API",
@@ -292,7 +403,7 @@ async def root():
     }
 
 
-@app.get("/health")
+@app.get("/health", tags=["health"])
 async def health_check(db: Session = Depends(get_db)):
     """Enhanced health check endpoint with detailed system status"""
 
@@ -432,14 +543,24 @@ async def health_check(db: Session = Depends(get_db)):
 # AI Generation Endpoints
 # ==========================================
 
-@app.post("/generate/text")
+@app.post("/generate/text", tags=["ai-generation"])
 @limiter.limit("10/minute")
 async def generate_text(
     req: Request,
     request: TextGenerationRequest,
     db: Session = Depends(get_db)
 ):
-    """Generate AI text using OpenAI GPT"""
+    """
+    Generate AI text using OpenAI GPT-3.5-turbo
+
+    **Rate Limit:** 10 requests per minute
+
+    **Features:**
+    - Real-time cost estimation
+    - Token usage tracking
+    - User quota enforcement
+    - Automatic caching for duplicate prompts
+    """
 
     # Check if OpenAI client is initialized
     if not openai_client:
@@ -807,9 +928,13 @@ async def generate_image(
 # Segments Management Endpoints
 # ==========================================
 
-@app.get("/segments", response_model=List[SegmentResponse])
+@app.get("/segments", response_model=List[SegmentResponse], tags=["segments"])
 async def get_segments(db: Session = Depends(get_db)):
-    """Get all segments with Redis caching"""
+    """
+    Get all user segments
+
+    **Caching:** Results are cached for 1 hour in Redis
+    """
     cache = get_cache()
     cache_key = "segments:all"
 
@@ -1699,9 +1824,9 @@ async def get_cost_history(
     }
 
 
-@app.get("/cache/stats")
+@app.get("/cache/stats", tags=["cache"])
 async def get_cache_stats():
-    """Get Redis cache statistics"""
+    """Get Redis cache statistics and performance metrics"""
     cache = get_cache()
     stats = cache.get_stats()
     return {
@@ -1721,7 +1846,7 @@ async def flush_cache():
     }
 
 
-@app.get("/monitoring/dashboard")
+@app.get("/monitoring/dashboard", tags=["monitoring"])
 async def monitoring_dashboard(db: Session = Depends(get_db)):
     """
     Comprehensive monitoring dashboard with system metrics and operational statistics
@@ -1942,13 +2067,18 @@ async def monitoring_dashboard(db: Session = Depends(get_db)):
     return dashboard
 
 
-@app.get("/analytics/cache-savings")
+@app.get("/analytics/cache-savings", tags=["analytics"])
 async def get_cache_savings(
     user_id: Optional[int] = None,
     db: Session = Depends(get_db)
 ):
     """
     Get cache performance and cost savings analytics
+
+    **Features:**
+    - Prompt cache hit/miss rates
+    - Estimated cost savings from caching
+    - Duplicate prompt detection statistics
 
     Query Parameters:
     - user_id: Filter by user (optional)
