@@ -3,6 +3,9 @@ const EditorPage = {
     canvas: null,
     currentPanel: null,
     project: null,
+    historyStack: [],
+    historyStep: -1,
+    isLoadingState: false,
 
     async init(projectId) {
         console.log('Initializing editor with project:', projectId);
@@ -106,6 +109,14 @@ const EditorPage = {
                             </button>
                             <button
                                 class="panel-tab"
+                                data-panel="layers"
+                                onclick="EditorPage.openPanel('layers')"
+                                title="레이어"
+                            >
+                                📚
+                            </button>
+                            <button
+                                class="panel-tab"
                                 data-panel="history"
                                 onclick="EditorPage.openPanel('history')"
                                 title="히스토리"
@@ -176,10 +187,25 @@ const EditorPage = {
             backgroundColor: '#ffffff'
         });
 
-        // Add default grid/guides
+        // Canvas event listeners for history
         this.canvas.on('object:modified', () => {
             this.saveToHistory();
         });
+
+        this.canvas.on('object:added', () => {
+            if (!this.isLoadingState) {
+                this.saveToHistory();
+            }
+        });
+
+        this.canvas.on('object:removed', () => {
+            if (!this.isLoadingState) {
+                this.saveToHistory();
+            }
+        });
+
+        // Save initial state
+        this.saveToHistory();
 
         console.log('Canvas initialized');
     },
@@ -212,6 +238,9 @@ const EditorPage = {
             case 'analytics':
                 this.loadAnalyticsPanel(panelContent);
                 break;
+            case 'layers':
+                this.loadLayersPanel(panelContent);
+                break;
             case 'history':
                 this.loadHistoryPanel(panelContent);
                 break;
@@ -229,6 +258,16 @@ const EditorPage = {
                         <span class="tool-icon">T</span>
                         <span>텍스트</span>
                     </button>
+                    <button class="tool-btn" onclick="EditorPage.uploadImage()">
+                        <span class="tool-icon">🖼️</span>
+                        <span>이미지</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3 class="panel-section-title">기본 도형</h3>
+                <div class="tool-grid">
                     <button class="tool-btn" onclick="EditorPage.addShape('rect')">
                         <span class="tool-icon">▭</span>
                         <span>사각형</span>
@@ -237,9 +276,21 @@ const EditorPage = {
                         <span class="tool-icon">●</span>
                         <span>원</span>
                     </button>
-                    <button class="tool-btn" onclick="EditorPage.uploadImage()">
-                        <span class="tool-icon">🖼️</span>
-                        <span>이미지</span>
+                    <button class="tool-btn" onclick="EditorPage.addShape('triangle')">
+                        <span class="tool-icon">▲</span>
+                        <span>삼각형</span>
+                    </button>
+                    <button class="tool-btn" onclick="EditorPage.addShape('star')">
+                        <span class="tool-icon">★</span>
+                        <span>별</span>
+                    </button>
+                    <button class="tool-btn" onclick="EditorPage.addShape('polygon')">
+                        <span class="tool-icon">⬡</span>
+                        <span>다각형</span>
+                    </button>
+                    <button class="tool-btn" onclick="EditorPage.addShape('line')">
+                        <span class="tool-icon">―</span>
+                        <span>선</span>
                     </button>
                 </div>
             </div>
@@ -365,6 +416,155 @@ const EditorPage = {
         `;
     },
 
+    loadLayersPanel(container) {
+        if (!this.canvas) {
+            container.innerHTML = '<p>Canvas not initialized</p>';
+            return;
+        }
+
+        const objects = this.canvas.getObjects();
+
+        container.innerHTML = `
+            <div class="panel-section">
+                <h3 class="panel-section-title">📚 레이어 관리</h3>
+                <p style="color: #6b7280; font-size: 14px; margin-bottom: 16px;">
+                    레이어 순서를 변경하거나 선택할 수 있습니다
+                </p>
+
+                <div class="layer-controls" style="margin-bottom: 16px; display: flex; gap: 8px;">
+                    <button class="tool-btn" style="flex: 1;" onclick="EditorPage.bringToFront()">
+                        맨 앞으로
+                    </button>
+                    <button class="tool-btn" style="flex: 1;" onclick="EditorPage.sendToBack()">
+                        맨 뒤로
+                    </button>
+                </div>
+
+                <div class="layers-list">
+                    ${objects.length === 0 ? `
+                        <div class="empty-state">
+                            <p>레이어가 없습니다</p>
+                        </div>
+                    ` : objects.map((obj, index) => {
+                        const isSelected = this.canvas.getActiveObject() === obj;
+                        const layerName = this.getLayerName(obj);
+                        return `
+                            <div class="layer-item ${isSelected ? 'active' : ''}"
+                                 onclick="EditorPage.selectLayer(${index})"
+                                 style="cursor: pointer; padding: 12px; margin-bottom: 8px; background: ${isSelected ? '#667eea' : '#f3f4f6'}; color: ${isSelected ? '#fff' : '#000'}; border-radius: 8px; display: flex; align-items: center; gap: 12px;">
+                                <div style="font-size: 24px;">${this.getLayerIcon(obj)}</div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600;">${layerName}</div>
+                                    <div style="font-size: 12px; opacity: 0.8;">Layer ${objects.length - index}</div>
+                                </div>
+                                <div style="display: flex; gap: 4px;">
+                                    <button class="tool-btn" style="padding: 4px 8px; font-size: 12px;"
+                                            onclick="event.stopPropagation(); EditorPage.moveLayerUp(${index})">
+                                        ▲
+                                    </button>
+                                    <button class="tool-btn" style="padding: 4px 8px; font-size: 12px;"
+                                            onclick="event.stopPropagation(); EditorPage.moveLayerDown(${index})">
+                                        ▼
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).reverse().join('')}
+                </div>
+            </div>
+        `;
+    },
+
+    getLayerName(obj) {
+        if (obj.type === 'i-text' || obj.type === 'text') {
+            return obj.text || 'Text';
+        } else if (obj.type === 'image') {
+            return 'Image';
+        } else if (obj.type === 'rect') {
+            return 'Rectangle';
+        } else if (obj.type === 'circle') {
+            return 'Circle';
+        } else if (obj.type === 'triangle') {
+            return 'Triangle';
+        } else if (obj.type === 'polygon') {
+            return 'Polygon';
+        } else if (obj.type === 'line') {
+            return 'Line';
+        }
+        return obj.type || 'Object';
+    },
+
+    getLayerIcon(obj) {
+        const icons = {
+            'i-text': 'T',
+            'text': 'T',
+            'image': '🖼️',
+            'rect': '▭',
+            'circle': '●',
+            'triangle': '▲',
+            'polygon': '⬡',
+            'line': '―'
+        };
+        return icons[obj.type] || '📄';
+    },
+
+    selectLayer(index) {
+        const objects = this.canvas.getObjects();
+        const reverseIndex = objects.length - 1 - index;
+        const obj = objects[reverseIndex];
+
+        if (obj) {
+            this.canvas.setActiveObject(obj);
+            this.canvas.renderAll();
+            this.loadLayersPanel(document.getElementById('panel-content'));
+            this.updatePropertiesPanel();
+        }
+    },
+
+    moveLayerUp(index) {
+        const objects = this.canvas.getObjects();
+        const reverseIndex = objects.length - 1 - index;
+        const obj = objects[reverseIndex];
+
+        if (obj && reverseIndex < objects.length - 1) {
+            obj.bringForward();
+            this.canvas.renderAll();
+            this.loadLayersPanel(document.getElementById('panel-content'));
+        }
+    },
+
+    moveLayerDown(index) {
+        const objects = this.canvas.getObjects();
+        const reverseIndex = objects.length - 1 - index;
+        const obj = objects[reverseIndex];
+
+        if (obj && reverseIndex > 0) {
+            obj.sendBackwards();
+            this.canvas.renderAll();
+            this.loadLayersPanel(document.getElementById('panel-content'));
+        }
+    },
+
+    bringToFront() {
+        const obj = this.canvas.getActiveObject();
+        if (obj) {
+            obj.bringToFront();
+            this.canvas.renderAll();
+            this.loadLayersPanel(document.getElementById('panel-content'));
+            UI.toast('레이어를 맨 앞으로 이동했습니다', 'success');
+        }
+    },
+
+    sendToBack() {
+        const obj = this.canvas.getActiveObject();
+        if (obj) {
+            obj.sendToBack();
+            this.canvas.renderAll();
+            this.loadLayersPanel(document.getElementById('panel-content'));
+            UI.toast('레이어를 맨 뒤로 이동했습니다', 'success');
+        }
+    },
+
     // Canvas Operations
     addText() {
         if (!this.canvas) return;
@@ -380,7 +580,6 @@ const EditorPage = {
         this.canvas.add(text);
         this.canvas.setActiveObject(text);
         this.canvas.renderAll();
-        this.saveToHistory();
         UI.toast('텍스트가 추가되었습니다', 'success');
     },
 
@@ -388,28 +587,91 @@ const EditorPage = {
         if (!this.canvas) return;
 
         let shape;
-        if (type === 'rect') {
-            shape = new fabric.Rect({
-                left: 100,
-                top: 100,
-                width: 200,
-                height: 150,
-                fill: '#667eea'
-            });
-        } else if (type === 'circle') {
-            shape = new fabric.Circle({
-                left: 100,
-                top: 100,
-                radius: 75,
-                fill: '#667eea'
-            });
+        const defaultColor = '#667eea';
+
+        switch(type) {
+            case 'rect':
+                shape = new fabric.Rect({
+                    left: 100,
+                    top: 100,
+                    width: 200,
+                    height: 150,
+                    fill: defaultColor
+                });
+                break;
+
+            case 'circle':
+                shape = new fabric.Circle({
+                    left: 100,
+                    top: 100,
+                    radius: 75,
+                    fill: defaultColor
+                });
+                break;
+
+            case 'triangle':
+                shape = new fabric.Triangle({
+                    left: 100,
+                    top: 100,
+                    width: 150,
+                    height: 150,
+                    fill: defaultColor
+                });
+                break;
+
+            case 'line':
+                shape = new fabric.Line([50, 100, 250, 100], {
+                    left: 100,
+                    top: 100,
+                    stroke: defaultColor,
+                    strokeWidth: 3
+                });
+                break;
+
+            case 'polygon':
+                // Pentagon
+                shape = new fabric.Polygon([
+                    { x: 100, y: 0 },
+                    { x: 195, y: 69 },
+                    { x: 159, y: 181 },
+                    { x: 41, y: 181 },
+                    { x: 5, y: 69 }
+                ], {
+                    left: 100,
+                    top: 100,
+                    fill: defaultColor
+                });
+                break;
+
+            case 'star':
+                // Create a 5-point star
+                const points = [];
+                const outerRadius = 80;
+                const innerRadius = 35;
+                const centerX = 100;
+                const centerY = 100;
+
+                for (let i = 0; i < 10; i++) {
+                    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    const angle = (Math.PI * i) / 5 - Math.PI / 2;
+                    points.push({
+                        x: centerX + radius * Math.cos(angle),
+                        y: centerY + radius * Math.sin(angle)
+                    });
+                }
+
+                shape = new fabric.Polygon(points, {
+                    left: 100,
+                    top: 100,
+                    fill: defaultColor
+                });
+                break;
         }
 
         if (shape) {
             this.canvas.add(shape);
             this.canvas.setActiveObject(shape);
             this.canvas.renderAll();
-            this.saveToHistory();
             UI.toast('도형이 추가되었습니다', 'success');
         }
     },
@@ -458,8 +720,212 @@ const EditorPage = {
     },
 
     applyTemplate(type) {
-        UI.toast(`${type} 템플릿을 적용하는 중...`, 'info');
-        // Template logic here
+        if (!this.canvas) return;
+
+        // Clear canvas
+        this.canvas.clear();
+        this.canvas.backgroundColor = '#ffffff';
+
+        const templates = {
+            social: () => {
+                // Instagram post template (1080x1080)
+                this.canvas.setDimensions({ width: 1080, height: 1080 });
+                this.canvas.backgroundColor = '#f5f5f5';
+
+                // Background gradient
+                const gradient = new fabric.Rect({
+                    left: 0,
+                    top: 0,
+                    width: 1080,
+                    height: 1080,
+                    fill: new fabric.Gradient({
+                        type: 'linear',
+                        coords: { x1: 0, y1: 0, x2: 1080, y2: 1080 },
+                        colorStops: [
+                            { offset: 0, color: '#667eea' },
+                            { offset: 1, color: '#764ba2' }
+                        ]
+                    }),
+                    selectable: false
+                });
+                this.canvas.add(gradient);
+
+                // Title text
+                const title = new fabric.IText('소셜 미디어 포스트', {
+                    left: 540,
+                    top: 400,
+                    fontSize: 72,
+                    fontWeight: 'bold',
+                    fill: '#ffffff',
+                    textAlign: 'center',
+                    originX: 'center',
+                    originY: 'center'
+                });
+                this.canvas.add(title);
+
+                // Subtitle
+                const subtitle = new fabric.IText('내용을 수정하세요', {
+                    left: 540,
+                    top: 680,
+                    fontSize: 36,
+                    fill: '#ffffff',
+                    textAlign: 'center',
+                    originX: 'center',
+                    originY: 'center'
+                });
+                this.canvas.add(subtitle);
+            },
+
+            banner: () => {
+                // Web banner template (1200x400)
+                this.canvas.setDimensions({ width: 1200, height: 400 });
+                this.canvas.backgroundColor = '#ffffff';
+
+                // Background
+                const bg = new fabric.Rect({
+                    left: 0,
+                    top: 0,
+                    width: 1200,
+                    height: 400,
+                    fill: '#667eea',
+                    selectable: false
+                });
+                this.canvas.add(bg);
+
+                // Accent shape
+                const circle = new fabric.Circle({
+                    left: 900,
+                    top: 50,
+                    radius: 150,
+                    fill: 'rgba(255, 255, 255, 0.1)',
+                    selectable: false
+                });
+                this.canvas.add(circle);
+
+                // Title
+                const title = new fabric.IText('웹 배너 제목', {
+                    left: 80,
+                    top: 120,
+                    fontSize: 64,
+                    fontWeight: 'bold',
+                    fill: '#ffffff'
+                });
+                this.canvas.add(title);
+
+                // CTA button
+                const button = new fabric.Rect({
+                    left: 80,
+                    top: 260,
+                    width: 200,
+                    height: 60,
+                    fill: '#ffffff',
+                    rx: 10,
+                    ry: 10
+                });
+                this.canvas.add(button);
+
+                const buttonText = new fabric.IText('자세히 보기', {
+                    left: 180,
+                    top: 290,
+                    fontSize: 24,
+                    fontWeight: 'bold',
+                    fill: '#667eea',
+                    originX: 'center',
+                    originY: 'center'
+                });
+                this.canvas.add(buttonText);
+            },
+
+            poster: () => {
+                // Event poster template (800x1200)
+                this.canvas.setDimensions({ width: 800, height: 1200 });
+                this.canvas.backgroundColor = '#ffffff';
+
+                // Background
+                const bg = new fabric.Rect({
+                    left: 0,
+                    top: 0,
+                    width: 800,
+                    height: 1200,
+                    fill: '#1a1a2e',
+                    selectable: false
+                });
+                this.canvas.add(bg);
+
+                // Accent shape - star
+                const starPoints = [];
+                const outerRadius = 120;
+                const innerRadius = 50;
+                const centerX = 400;
+                const centerY = 250;
+
+                for (let i = 0; i < 10; i++) {
+                    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    const angle = (Math.PI * i) / 5 - Math.PI / 2;
+                    starPoints.push({
+                        x: centerX + radius * Math.cos(angle),
+                        y: centerY + radius * Math.sin(angle)
+                    });
+                }
+
+                const star = new fabric.Polygon(starPoints, {
+                    left: 400,
+                    top: 250,
+                    fill: '#ffd700',
+                    originX: 'center',
+                    originY: 'center'
+                });
+                this.canvas.add(star);
+
+                // Event title
+                const title = new fabric.IText('이벤트 제목', {
+                    left: 400,
+                    top: 500,
+                    fontSize: 72,
+                    fontWeight: 'bold',
+                    fill: '#ffffff',
+                    textAlign: 'center',
+                    originX: 'center',
+                    originY: 'center'
+                });
+                this.canvas.add(title);
+
+                // Date
+                const date = new fabric.IText('2025.11.07', {
+                    left: 400,
+                    top: 700,
+                    fontSize: 48,
+                    fill: '#667eea',
+                    textAlign: 'center',
+                    originX: 'center',
+                    originY: 'center'
+                });
+                this.canvas.add(date);
+
+                // Details
+                const details = new fabric.IText('오후 2:00 | 서울시 강남구', {
+                    left: 400,
+                    top: 800,
+                    fontSize: 32,
+                    fill: '#cccccc',
+                    textAlign: 'center',
+                    originX: 'center',
+                    originY: 'center'
+                });
+                this.canvas.add(details);
+            }
+        };
+
+        if (templates[type]) {
+            this.isLoadingState = true;
+            templates[type]();
+            this.canvas.renderAll();
+            this.isLoadingState = false;
+            this.saveToHistory();
+            UI.toast(`${type} 템플릿이 적용되었습니다`, 'success');
+        } else {
+            UI.toast('템플릿을 찾을 수 없습니다', 'error');
+        }
     },
 
     // Project Management
@@ -557,27 +1023,73 @@ const EditorPage = {
 
     // History Management
     saveToHistory() {
-        const history = state.get('history') || [];
-        history.push({
-            canvas: this.canvas.toJSON(),
-            timestamp: Date.now(),
-            action: '변경사항'
-        });
+        if (!this.canvas || this.isLoadingState) return;
 
-        // Keep only last 50 items
-        if (history.length > 50) {
-            history.shift();
+        const json = this.canvas.toJSON();
+
+        // Remove future states if we're not at the end
+        if (this.historyStep < this.historyStack.length - 1) {
+            this.historyStack = this.historyStack.slice(0, this.historyStep + 1);
         }
 
-        state.set('history', history);
+        // Add new state
+        this.historyStack.push(json);
+
+        // Keep only last 50 states
+        if (this.historyStack.length > 50) {
+            this.historyStack.shift();
+        } else {
+            this.historyStep++;
+        }
+
+        // Update undo/redo button states
+        this.updateHistoryButtons();
     },
 
     undo() {
-        UI.toast('실행 취소 기능 준비 중', 'info');
+        if (this.historyStep > 0) {
+            this.historyStep--;
+            this.loadHistoryState(this.historyStep);
+            UI.toast('실행 취소', 'success');
+        } else {
+            UI.toast('더 이상 실행 취소할 수 없습니다', 'info');
+        }
     },
 
     redo() {
-        UI.toast('다시 실행 기능 준비 중', 'info');
+        if (this.historyStep < this.historyStack.length - 1) {
+            this.historyStep++;
+            this.loadHistoryState(this.historyStep);
+            UI.toast('다시 실행', 'success');
+        } else {
+            UI.toast('더 이상 다시 실행할 수 없습니다', 'info');
+        }
+    },
+
+    loadHistoryState(step) {
+        if (!this.historyStack[step]) return;
+
+        this.isLoadingState = true;
+        this.canvas.loadFromJSON(this.historyStack[step], () => {
+            this.canvas.renderAll();
+            this.isLoadingState = false;
+            this.updateHistoryButtons();
+        });
+    },
+
+    updateHistoryButtons() {
+        const undoBtn = document.querySelector('button[onclick*="undo"]');
+        const redoBtn = document.querySelector('button[onclick*="redo"]');
+
+        if (undoBtn) {
+            undoBtn.disabled = this.historyStep <= 0;
+            undoBtn.style.opacity = this.historyStep <= 0 ? '0.5' : '1';
+        }
+
+        if (redoBtn) {
+            redoBtn.disabled = this.historyStep >= this.historyStack.length - 1;
+            redoBtn.style.opacity = this.historyStep >= this.historyStack.length - 1 ? '0.5' : '1';
+        }
     },
 
     restoreVersion(index) {
@@ -623,20 +1135,98 @@ const EditorPage = {
                 </div>
             </div>
 
-            ${activeObject.type === 'i-text' ? `
+            ${activeObject.type === 'i-text' || activeObject.type === 'text' ? `
                 <div class="property-group">
                     <label class="property-label">폰트 크기</label>
-                    <input type="number" class="property-input"
+                    <input type="number" class="property-input" min="8" max="200"
                            value="${activeObject.fontSize}"
                            onchange="EditorPage.updateObjectProperty('fontSize', this.value)">
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">폰트</label>
+                    <select class="property-input"
+                            value="${activeObject.fontFamily || 'Arial'}"
+                            onchange="EditorPage.updateObjectProperty('fontFamily', this.value)">
+                        <option value="Arial">Arial</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Comic Sans MS">Comic Sans MS</option>
+                        <option value="Impact">Impact</option>
+                    </select>
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">텍스트 스타일</label>
+                    <div class="property-row" style="gap: 8px;">
+                        <button class="tool-btn" style="flex: 1; padding: 8px;"
+                                onclick="EditorPage.toggleTextStyle('fontWeight')"
+                                title="굵게">
+                            <strong>B</strong>
+                        </button>
+                        <button class="tool-btn" style="flex: 1; padding: 8px;"
+                                onclick="EditorPage.toggleTextStyle('fontStyle')"
+                                title="기울임">
+                            <em>I</em>
+                        </button>
+                        <button class="tool-btn" style="flex: 1; padding: 8px;"
+                                onclick="EditorPage.toggleTextStyle('underline')"
+                                title="밑줄">
+                            <u>U</u>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">정렬</label>
+                    <div class="property-row" style="gap: 8px;">
+                        <button class="tool-btn" style="flex: 1; padding: 8px;"
+                                onclick="EditorPage.updateObjectProperty('textAlign', 'left')">
+                            ≡
+                        </button>
+                        <button class="tool-btn" style="flex: 1; padding: 8px;"
+                                onclick="EditorPage.updateObjectProperty('textAlign', 'center')">
+                            ≡
+                        </button>
+                        <button class="tool-btn" style="flex: 1; padding: 8px;"
+                                onclick="EditorPage.updateObjectProperty('textAlign', 'right')">
+                            ≡
+                        </button>
+                    </div>
                 </div>
             ` : ''}
 
             <div class="property-group">
                 <label class="property-label">색상</label>
                 <input type="color" class="property-input"
-                       value="${activeObject.fill}"
+                       value="${activeObject.fill || '#000000'}"
                        onchange="EditorPage.updateObjectProperty('fill', this.value)">
+            </div>
+
+            ${activeObject.stroke ? `
+                <div class="property-group">
+                    <label class="property-label">테두리 색상</label>
+                    <input type="color" class="property-input"
+                           value="${activeObject.stroke}"
+                           onchange="EditorPage.updateObjectProperty('stroke', this.value)">
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">테두리 두께</label>
+                    <input type="number" class="property-input" min="0" max="50"
+                           value="${activeObject.strokeWidth || 0}"
+                           onchange="EditorPage.updateObjectProperty('strokeWidth', this.value)">
+                </div>
+            ` : ''}
+
+            <div class="property-group">
+                <label class="property-label">투명도</label>
+                <input type="range" class="property-input" min="0" max="1" step="0.1"
+                       value="${activeObject.opacity || 1}"
+                       oninput="EditorPage.updateObjectProperty('opacity', this.value)">
+                <span style="font-size: 12px; color: #666;">${Math.round((activeObject.opacity || 1) * 100)}%</span>
             </div>
 
             <div class="property-group">
@@ -668,12 +1258,34 @@ const EditorPage = {
                 value / activeObject.height;
             activeObject.scale(scale);
         } else {
-            activeObject.set(property, property === 'fontSize' || property === 'left' || property === 'top' ?
-                Number(value) : value);
+            // Parse numeric values
+            const numericProps = ['fontSize', 'left', 'top', 'strokeWidth', 'opacity'];
+            const parsedValue = numericProps.includes(property) ? Number(value) : value;
+            activeObject.set(property, parsedValue);
         }
 
         this.canvas.renderAll();
-        this.saveToHistory();
+        this.updatePropertiesPanel();
+    },
+
+    toggleTextStyle(style) {
+        const activeObject = this.canvas.getActiveObject();
+        if (!activeObject || (activeObject.type !== 'i-text' && activeObject.type !== 'text')) return;
+
+        switch(style) {
+            case 'fontWeight':
+                activeObject.set('fontWeight', activeObject.fontWeight === 'bold' ? 'normal' : 'bold');
+                break;
+            case 'fontStyle':
+                activeObject.set('fontStyle', activeObject.fontStyle === 'italic' ? 'normal' : 'italic');
+                break;
+            case 'underline':
+                activeObject.set('underline', !activeObject.underline);
+                break;
+        }
+
+        this.canvas.renderAll();
+        this.updatePropertiesPanel();
     },
 
     deleteObject() {
