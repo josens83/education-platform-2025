@@ -30,17 +30,20 @@ col1, col2, col3 = st.columns(3)
 with col1:
     st.info("### 🎯 Segments")
     st.write("타겟 세그먼트를 관리하고 분석합니다.")
-    st.write("기능 준비 중입니다.")
+    if st.button("세그먼트 관리 →", key="segments_btn"):
+        st.switch_page("pages/1_🎯_Segments.py")
 
 with col2:
     st.success("### ✨ Generate")
     st.write("AI 기반 콘텐츠를 생성합니다.")
-    st.write("기능 준비 중입니다.")
+    if st.button("콘텐츠 생성 →", key="generate_btn"):
+        st.switch_page("pages/2_✨_Generate.py")
 
 with col3:
     st.warning("### 📊 Dashboard")
     st.write("콘텐츠 성과를 분석합니다.")
-    st.write("기능 준비 중입니다.")
+    if st.button("대시보드 →", key="dashboard_btn"):
+        st.switch_page("pages/3_📊_Dashboard.py")
 
 st.markdown("---")
 
