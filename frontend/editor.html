@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Artify - Canva Style Editor</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="css/auth.css">
     <style>
         * {
             margin: 0;
@@ -949,7 +950,11 @@
                 <button class="header-btn" onclick="showTemplateModal()" aria-label="캔버스 크기 변경">📐 캔버스 크기</button>
                 <button class="header-btn" onclick="showExportModal()" aria-label="다운로드">📥 다운로드</button>
                 <button class="header-btn primary" onclick="saveProject()" aria-label="프로젝트 저장">💾 저장</button>
-                <button class="header-btn" onclick="handleLogout()" aria-label="로그아웃">로그아웃</button>
+                <div id="editor-auth-container" style="display: inline-block; margin-left: 10px;">
+                    <button class="btn-login" onclick="AuthUI.showLoginModal()">
+                        로그인
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -5805,5 +5810,10 @@
             }
         });
     </script>
+    <!-- Authentication Scripts -->
+    <script src="js/ui-kit.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/editor-auth-init.js"></script>
+
 </body>
 </html>
