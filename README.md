@@ -104,6 +104,7 @@ cp .env.example .env
 
 `.env` 파일 편집:
 
+**로컬 PostgreSQL 사용 시:**
 ```env
 DATABASE_URL=postgresql://username:password@localhost:5432/artify_content_db
 OPENAI_API_KEY=sk-...
@@ -111,9 +112,27 @@ HOST=0.0.0.0
 PORT=8000
 ```
 
+**Supabase 사용 시 (권장):**
+```env
+# Supabase PostgreSQL 연결
+DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.joywrnyrvpsaevhiqokw.supabase.co:5432/postgres
+
+# Supabase 프로젝트 정보
+# 프로젝트명: artify-content
+# Region: Singapore (Southeast Asia)
+# 프로젝트 ID: joywrnyrvpsaevhiqokw
+# API URL: https://joywrnyrvpsaevhiqokw.supabase.co
+
+OPENAI_API_KEY=sk-...
+HOST=0.0.0.0
+PORT=8000
+```
+
 ### 3. 데이터베이스 설정
 
-PostgreSQL에 데이터베이스 생성:
+#### 옵션 1: 로컬 PostgreSQL
+
+로컬 PostgreSQL에 데이터베이스 생성:
 
 ```bash
 # PostgreSQL 접속
@@ -128,6 +147,21 @@ CREATE USER artify_user WITH PASSWORD 'your_password';
 GRANT ALL PRIVILEGES ON DATABASE artify_db TO artify_user;
 GRANT ALL PRIVILEGES ON DATABASE artify_content_db TO artify_user;
 ```
+
+#### 옵션 2: Supabase (권장)
+
+**Content Backend는 Supabase를 사용합니다:**
+
+1. Supabase 프로젝트: `artify-content`
+2. Region: Singapore (Southeast Asia)
+3. 프로젝트 ID: `joywrnyrvpsaevhiqokw`
+4. Database URL: `postgresql://postgres:[PASSWORD]@db.joywrnyrvpsaevhiqokw.supabase.co:5432/postgres`
+
+Supabase 대시보드에서:
+- Database → Connection String 복사
+- `.env` 파일의 `DATABASE_URL`에 붙여넣기
+
+**Backend는 로컬 PostgreSQL 또는 별도 클라우드 DB 사용**
 
 ### 4. Backend 설치 및 실행
 
@@ -276,45 +310,90 @@ Swagger UI는 추가 예정입니다.
 - created_at (TIMESTAMP)
 - updated_at (TIMESTAMP)
 
-#### Content Backend Database (artify_content_db)
+#### Content Backend Database (Supabase - artify_content)
 
-**segments**
+**총 7개 테이블 + 6개 인덱스**
+
+##### 정적 데이터
+
+**users** (사용자)
 - id (INTEGER PRIMARY KEY)
-- name (VARCHAR)
+- username (VARCHAR UNIQUE)
+- email (VARCHAR UNIQUE)
+- password_hash (VARCHAR)
+- created_at (TIMESTAMP DEFAULT NOW())
+- updated_at (TIMESTAMP DEFAULT NOW())
+
+**campaigns** (캠페인)
+- id (INTEGER PRIMARY KEY)
+- user_id (INTEGER FK → users.id)
+- name (VARCHAR NOT NULL)
 - description (TEXT)
-- criteria (TEXT - JSON)
-- created_at (TIMESTAMP)
-- updated_at (TIMESTAMP)
+- status (VARCHAR) - 'draft', 'active', 'paused', 'completed'
+- budget (FLOAT)
+- start_date (TIMESTAMP)
+- end_date (TIMESTAMP)
+- created_at (TIMESTAMP DEFAULT NOW())
+- updated_at (TIMESTAMP DEFAULT NOW())
 
-**generated_content**
+**segments** (타겟 세그먼트)
 - id (INTEGER PRIMARY KEY)
-- content_type (VARCHAR) - 'text' or 'image'
-- prompt (TEXT)
-- result (TEXT)
-- model (VARCHAR)
-- created_at (TIMESTAMP)
+- name (VARCHAR NOT NULL)
+- description (TEXT)
+- criteria (TEXT) - JSON 형식 기준
+- created_at (TIMESTAMP DEFAULT NOW())
+- updated_at (TIMESTAMP DEFAULT NOW())
 
-**gen_jobs** (비용 추적)
+##### 동적 데이터
+
+**creatives** (생성된 콘텐츠)
 - id (INTEGER PRIMARY KEY)
-- user_id (INTEGER)
-- job_type (VARCHAR)
-- model (VARCHAR)
-- prompt (TEXT)
+- campaign_id (INTEGER FK → campaigns.id)
+- content_type (VARCHAR) - 'text', 'image', 'video'
+- prompt (TEXT NOT NULL)
+- result (TEXT NOT NULL)
+- model (VARCHAR) - 'gpt-3.5-turbo', 'dall-e-3'
+- status (VARCHAR) - 'pending', 'completed', 'failed'
+- created_at (TIMESTAMP DEFAULT NOW())
+
+**gen_jobs** (AI 생성 작업 로그 - 비용 추적)
+- id (INTEGER PRIMARY KEY)
+- user_id (INTEGER FK → users.id)
+- job_type (VARCHAR NOT NULL) - 'text', 'image'
+- model (VARCHAR NOT NULL)
+- prompt (TEXT NOT NULL)
 - prompt_tokens (INTEGER)
 - completion_tokens (INTEGER)
 - total_tokens (INTEGER)
-- estimated_cost (FLOAT)
-- status (VARCHAR)
+- estimated_cost (FLOAT DEFAULT 0.0) - USD
+- status (VARCHAR DEFAULT 'completed') - 'pending', 'completed', 'failed'
 - error_message (TEXT)
-- created_at (TIMESTAMP)
+- created_at (TIMESTAMP DEFAULT NOW())
 - completed_at (TIMESTAMP)
 
-**metrics**
+**metrics** (성과 데이터)
 - id (INTEGER PRIMARY KEY)
-- project_id (INTEGER)
-- metric_name (VARCHAR)
-- metric_value (FLOAT)
-- timestamp (TIMESTAMP)
+- campaign_id (INTEGER FK → campaigns.id)
+- metric_name (VARCHAR NOT NULL) - 'impressions', 'clicks', 'conversions'
+- metric_value (FLOAT NOT NULL)
+- timestamp (TIMESTAMP DEFAULT NOW())
+
+**feedbacks** (피드백)
+- id (INTEGER PRIMARY KEY)
+- creative_id (INTEGER FK → creatives.id)
+- user_id (INTEGER FK → users.id)
+- rating (INTEGER) - 1-5
+- comment (TEXT)
+- created_at (TIMESTAMP DEFAULT NOW())
+
+##### 인덱스 (6개)
+
+1. `idx_campaigns_user_id` ON campaigns(user_id)
+2. `idx_creatives_campaign_id` ON creatives(campaign_id)
+3. `idx_gen_jobs_user_id` ON gen_jobs(user_id)
+4. `idx_gen_jobs_created_at` ON gen_jobs(created_at)
+5. `idx_metrics_campaign_id` ON metrics(campaign_id)
+6. `idx_feedbacks_creative_id` ON feedbacks(creative_id)
 
 ## 🔐 보안
 

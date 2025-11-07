@@ -25,6 +25,8 @@ pip install -r requirements.txt
 
 `.env` 파일 생성:
 
+#### 옵션 1: 로컬 PostgreSQL
+
 ```env
 # Database Configuration
 DATABASE_URL=postgresql://user:password@localhost:5432/artify_content_db
@@ -37,7 +39,30 @@ HOST=0.0.0.0
 PORT=8000
 ```
 
+#### 옵션 2: Supabase (권장 - 프로덕션 환경)
+
+```env
+# Supabase PostgreSQL 연결
+DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.joywrnyrvpsaevhiqokw.supabase.co:5432/postgres
+
+# Supabase 프로젝트 정보
+# 프로젝트명: artify-content
+# Region: Singapore (Southeast Asia)
+# 프로젝트 ID: joywrnyrvpsaevhiqokw
+# API URL: https://joywrnyrvpsaevhiqokw.supabase.co
+# Dashboard: https://supabase.com/dashboard/project/joywrnyrvpsaevhiqokw
+
+# OpenAI API Key
+OPENAI_API_KEY=sk-...
+
+# Server Configuration
+HOST=0.0.0.0
+PORT=8000
+```
+
 ### 데이터베이스 초기화
+
+#### 옵션 1: 로컬 PostgreSQL
 
 ```bash
 # PostgreSQL 접속
@@ -47,7 +72,21 @@ psql -U postgres
 CREATE DATABASE artify_content_db;
 ```
 
-서버가 시작될 때 자동으로 테이블이 생성됩니다.
+#### 옵션 2: Supabase (권장)
+
+Supabase는 이미 설정되어 있습니다:
+- 프로젝트명: **artify-content**
+- Region: **Singapore (Southeast Asia)**
+- 프로젝트 ID: `joywrnyrvpsaevhiqokw`
+- Connection String: Supabase Dashboard → Database → Connection String에서 확인
+
+**Supabase 대시보드에서:**
+1. Settings → Database 이동
+2. Connection String 복사 (URI 형식)
+3. `.env` 파일의 `DATABASE_URL`에 붙여넣기
+4. `[YOUR-PASSWORD]`를 실제 비밀번호로 교체
+
+서버가 시작될 때 자동으로 테이블이 생성됩니다 (SQLAlchemy ORM).
 
 ### 실행
 
@@ -472,55 +511,136 @@ GET /health
 
 ## 🗃️ 데이터베이스 스키마
 
-### segments 테이블
+**Supabase Database: artify-content**
+
+**총 7개 테이블 + 6개 인덱스**
+
+### 정적 데이터 테이블
+
+#### users 테이블 (사용자)
+
+| 컬럼 | 타입 | 제약조건 | 설명 |
+|------|------|----------|------|
+| id | INTEGER | PRIMARY KEY | 사용자 ID |
+| username | VARCHAR(255) | UNIQUE, NOT NULL | 사용자명 |
+| email | VARCHAR(255) | UNIQUE, NOT NULL | 이메일 |
+| password_hash | VARCHAR(255) | NOT NULL | 해시된 비밀번호 |
+| created_at | TIMESTAMP | DEFAULT NOW() | 생성일시 |
+| updated_at | TIMESTAMP | DEFAULT NOW() | 수정일시 |
+
+#### campaigns 테이블 (캠페인)
+
+| 컬럼 | 타입 | 제약조건 | 설명 |
+|------|------|----------|------|
+| id | INTEGER | PRIMARY KEY | 캠페인 ID |
+| user_id | INTEGER | FK → users.id | 소유자 ID |
+| name | VARCHAR(255) | NOT NULL | 캠페인명 |
+| description | TEXT | | 설명 |
+| status | VARCHAR(50) | DEFAULT 'draft' | 상태: 'draft', 'active', 'paused', 'completed' |
+| budget | FLOAT | | 예산 |
+| start_date | TIMESTAMP | | 시작일 |
+| end_date | TIMESTAMP | | 종료일 |
+| created_at | TIMESTAMP | DEFAULT NOW() | 생성일시 |
+| updated_at | TIMESTAMP | DEFAULT NOW() | 수정일시 |
+
+#### segments 테이블 (타겟 세그먼트)
 
 | 컬럼 | 타입 | 제약조건 | 설명 |
 |------|------|----------|------|
 | id | INTEGER | PRIMARY KEY | 세그먼트 ID |
 | name | VARCHAR(255) | NOT NULL | 세그먼트명 |
 | description | TEXT | | 설명 |
-| criteria | TEXT | | JSON 기준 |
+| criteria | TEXT | | JSON 형식 타겟팅 기준 |
 | created_at | TIMESTAMP | DEFAULT NOW() | 생성일시 |
 | updated_at | TIMESTAMP | DEFAULT NOW() | 수정일시 |
 
-### generated_content 테이블
+### 동적 데이터 테이블
+
+#### creatives 테이블 (생성된 콘텐츠)
 
 | 컬럼 | 타입 | 제약조건 | 설명 |
 |------|------|----------|------|
 | id | INTEGER | PRIMARY KEY | 콘텐츠 ID |
-| content_type | VARCHAR(50) | NOT NULL | 'text' or 'image' |
-| prompt | TEXT | NOT NULL | 프롬프트 |
-| result | TEXT | NOT NULL | 생성 결과 |
-| model | VARCHAR(100) | | 사용 모델 |
+| campaign_id | INTEGER | FK → campaigns.id | 캠페인 ID |
+| content_type | VARCHAR(50) | NOT NULL | 콘텐츠 유형: 'text', 'image', 'video' |
+| prompt | TEXT | NOT NULL | 생성 프롬프트 |
+| result | TEXT | NOT NULL | 생성 결과 (텍스트 또는 URL) |
+| model | VARCHAR(100) | | 사용 모델: 'gpt-3.5-turbo', 'dall-e-3' |
+| status | VARCHAR(50) | DEFAULT 'completed' | 상태: 'pending', 'completed', 'failed' |
 | created_at | TIMESTAMP | DEFAULT NOW() | 생성일시 |
 
-### gen_jobs 테이블 (비용 추적)
+**인덱스:** `idx_creatives_campaign_id` ON campaign_id
+
+#### gen_jobs 테이블 (AI 생성 작업 로그 - 비용 추적)
 
 | 컬럼 | 타입 | 제약조건 | 설명 |
 |------|------|----------|------|
 | id | INTEGER | PRIMARY KEY | 작업 ID |
-| user_id | INTEGER | | 사용자 ID |
-| job_type | VARCHAR(50) | NOT NULL | 'text' or 'image' |
+| user_id | INTEGER | FK → users.id | 사용자 ID |
+| job_type | VARCHAR(50) | NOT NULL | 작업 유형: 'text', 'image' |
 | model | VARCHAR(100) | NOT NULL | 사용 모델 |
 | prompt | TEXT | NOT NULL | 프롬프트 |
-| prompt_tokens | INTEGER | | 입력 토큰 수 |
-| completion_tokens | INTEGER | | 출력 토큰 수 |
+| prompt_tokens | INTEGER | | 입력 토큰 수 (텍스트 생성 시) |
+| completion_tokens | INTEGER | | 출력 토큰 수 (텍스트 생성 시) |
 | total_tokens | INTEGER | | 전체 토큰 수 |
 | estimated_cost | FLOAT | DEFAULT 0.0 | 예상 비용 (USD) |
-| status | VARCHAR(50) | DEFAULT 'completed' | 상태 |
+| status | VARCHAR(50) | DEFAULT 'completed' | 상태: 'pending', 'completed', 'failed' |
 | error_message | TEXT | | 에러 메시지 |
 | created_at | TIMESTAMP | DEFAULT NOW() | 생성일시 |
 | completed_at | TIMESTAMP | | 완료일시 |
 
-### metrics 테이블
+**인덱스:**
+- `idx_gen_jobs_user_id` ON user_id
+- `idx_gen_jobs_created_at` ON created_at
+
+#### metrics 테이블 (성과 데이터)
 
 | 컬럼 | 타입 | 제약조건 | 설명 |
 |------|------|----------|------|
 | id | INTEGER | PRIMARY KEY | 메트릭 ID |
-| project_id | INTEGER | | 프로젝트 ID |
-| metric_name | VARCHAR(255) | NOT NULL | 메트릭명 |
-| metric_value | FLOAT | NOT NULL | 값 |
-| timestamp | TIMESTAMP | DEFAULT NOW() | 타임스탬프 |
+| campaign_id | INTEGER | FK → campaigns.id | 캠페인 ID |
+| metric_name | VARCHAR(255) | NOT NULL | 메트릭명: 'impressions', 'clicks', 'conversions' |
+| metric_value | FLOAT | NOT NULL | 메트릭 값 |
+| timestamp | TIMESTAMP | DEFAULT NOW() | 측정 시간 |
+
+**인덱스:** `idx_metrics_campaign_id` ON campaign_id
+
+#### feedbacks 테이블 (피드백)
+
+| 컬럼 | 타입 | 제약조건 | 설명 |
+|------|------|----------|------|
+| id | INTEGER | PRIMARY KEY | 피드백 ID |
+| creative_id | INTEGER | FK → creatives.id | 콘텐츠 ID |
+| user_id | INTEGER | FK → users.id | 사용자 ID |
+| rating | INTEGER | CHECK (1-5) | 평점 (1-5) |
+| comment | TEXT | | 피드백 내용 |
+| created_at | TIMESTAMP | DEFAULT NOW() | 생성일시 |
+
+**인덱스:** `idx_feedbacks_creative_id` ON creative_id
+
+### 데이터베이스 인덱스 요약
+
+총 **6개 인덱스**로 쿼리 성능 최적화:
+
+1. `idx_campaigns_user_id` ON campaigns(user_id)
+2. `idx_creatives_campaign_id` ON creatives(campaign_id)
+3. `idx_gen_jobs_user_id` ON gen_jobs(user_id)
+4. `idx_gen_jobs_created_at` ON gen_jobs(created_at)
+5. `idx_metrics_campaign_id` ON metrics(campaign_id)
+6. `idx_feedbacks_creative_id` ON feedbacks(creative_id)
+
+### 외래 키 관계
+
+```
+users (1) ──< campaigns (N)
+users (1) ──< gen_jobs (N)
+users (1) ──< feedbacks (N)
+
+campaigns (1) ──< creatives (N)
+campaigns (1) ──< metrics (N)
+
+creatives (1) ──< feedbacks (N)
+```
 
 ---
 
