@@ -67,6 +67,29 @@
             gap: 16px;
         }
 
+        .btn-login {
+            padding: 10px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        /* User Profile */
+        .user-profile {
+            position: relative;
+        }
+
         .user-avatar {
             width: 40px;
             height: 40px;
@@ -79,6 +102,88 @@
             font-weight: 600;
             cursor: pointer;
             box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
+            transition: all 0.2s;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Profile Dropdown */
+        .profile-dropdown {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            min-width: 260px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s;
+            z-index: 2000;
+        }
+
+        .profile-dropdown.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-header {
+            padding: 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .dropdown-user-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .dropdown-user-email {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 8px 0;
+        }
+
+        .dropdown-item {
+            width: 100%;
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            text-align: left;
+            font-size: 14px;
+            color: #4b5563;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .dropdown-item:hover {
+            background: #f3f4f6;
+        }
+
+        .dropdown-item:first-of-type {
+            border-radius: 12px 12px 0 0;
+        }
+
+        .dropdown-item:last-of-type {
+            border-radius: 0 0 12px 12px;
+        }
+
+        .dropdown-item span {
+            font-size: 18px;
         }
 
         /* Main Content Area */
@@ -405,6 +510,166 @@
             background: #e5e7eb;
         }
 
+        /* Auth Modal Specific Styles */
+        .auth-modal {
+            max-width: 480px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .password-strength {
+            margin-top: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .error-message {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: none;
+            border-left: 4px solid #dc2626;
+        }
+
+        .form-footer {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .form-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        .form-link:hover {
+            color: #5568d3;
+            text-decoration: underline;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Profile Modal Specific */
+        .profile-info {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+
+        .profile-info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .profile-info-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .profile-info-label {
+            font-size: 14px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .profile-info-value {
+            font-size: 14px;
+            color: #1f2937;
+            font-weight: 600;
+        }
+
+        .section-divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 32px 0;
+        }
+
+        .danger-zone {
+            background: #fef2f2;
+            border: 2px solid #fecaca;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+
+        .danger-zone-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #dc2626;
+            margin-bottom: 12px;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .hero-title {
@@ -438,9 +703,9 @@
             <a href="#/editor" class="nav-link">에디터</a>
         </nav>
         <div class="header-actions">
-            <div class="user-avatar" onclick="alert('프로필 기능 준비 중')">
-                😊
-            </div>
+            <button class="btn-login" onclick="AuthUI.showLoginModal()">
+                로그인
+            </button>
         </div>
     </header>
 
@@ -454,6 +719,203 @@
 
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
+
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="login-modal">
+        <div class="modal auth-modal">
+            <h2 class="modal-title">로그인</h2>
+            <div class="error-message"></div>
+            <form onsubmit="AuthUI.handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label" for="login-email">이메일</label>
+                    <input
+                        type="email"
+                        id="login-email"
+                        class="form-input"
+                        placeholder="your@email.com"
+                        required
+                    >
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="login-password">비밀번호</label>
+                    <input
+                        type="password"
+                        id="login-password"
+                        class="form-input"
+                        placeholder="••••••••"
+                        required
+                    >
+                </div>
+                <button type="submit" class="btn-submit">로그인</button>
+                <div class="form-footer">
+                    <p style="color: #6b7280; font-size: 14px;">
+                        계정이 없으신가요?
+                        <a href="javascript:void(0)" class="form-link" onclick="AuthUI.showRegisterModal()">
+                            회원가입
+                        </a>
+                    </p>
+                    <p style="color: #6b7280; font-size: 13px; margin-top: 12px;">
+                        <strong>데모 계정:</strong> user@artify.com / user123
+                    </p>
+                </div>
+            </form>
+            <button
+                class="btn-cancel"
+                onclick="AuthUI.hideLoginModal()"
+                style="position: absolute; top: 20px; right: 20px; padding: 8px 12px; border-radius: 6px;"
+            >
+                ✕
+            </button>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div class="modal-overlay" id="register-modal">
+        <div class="modal auth-modal">
+            <h2 class="modal-title">회원가입</h2>
+            <div class="error-message"></div>
+            <form onsubmit="AuthUI.handleRegister(event)">
+                <div class="form-group">
+                    <label class="form-label" for="register-name">이름</label>
+                    <input
+                        type="text"
+                        id="register-name"
+                        class="form-input"
+                        placeholder="홍길동"
+                        required
+                    >
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="register-email">이메일</label>
+                    <input
+                        type="email"
+                        id="register-email"
+                        class="form-input"
+                        placeholder="your@email.com"
+                        required
+                    >
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="register-password">비밀번호</label>
+                    <input
+                        type="password"
+                        id="register-password"
+                        class="form-input"
+                        placeholder="••••••••"
+                        required
+                        minlength="6"
+                    >
+                    <div id="password-strength" class="password-strength"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="register-password-confirm">비밀번호 확인</label>
+                    <input
+                        type="password"
+                        id="register-password-confirm"
+                        class="form-input"
+                        placeholder="••••••••"
+                        required
+                        minlength="6"
+                    >
+                </div>
+                <button type="submit" class="btn-submit">회원가입</button>
+                <div class="form-footer">
+                    <p style="color: #6b7280; font-size: 14px;">
+                        이미 계정이 있으신가요?
+                        <a href="javascript:void(0)" class="form-link" onclick="AuthUI.showLoginModal()">
+                            로그인
+                        </a>
+                    </p>
+                </div>
+            </form>
+            <button
+                class="btn-cancel"
+                onclick="AuthUI.hideRegisterModal()"
+                style="position: absolute; top: 20px; right: 20px; padding: 8px 12px; border-radius: 6px;"
+            >
+                ✕
+            </button>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div class="modal-overlay" id="profile-modal">
+        <div class="modal">
+            <h2 class="modal-title">내 프로필</h2>
+            <div class="error-message"></div>
+
+            <!-- User Info Section -->
+            <div class="profile-info">
+                <div class="profile-info-item">
+                    <span class="profile-info-label">이름</span>
+                    <span class="profile-info-value" id="profile-user-name">사용자</span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="profile-info-label">이메일</span>
+                    <span class="profile-info-value" id="profile-user-email">user@example.com</span>
+                </div>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <!-- Change Password Section -->
+            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">비밀번호 변경</h3>
+            <form onsubmit="AuthUI.handleChangePassword(event)">
+                <div class="form-group">
+                    <label class="form-label" for="current-password">현재 비밀번호</label>
+                    <input
+                        type="password"
+                        id="current-password"
+                        class="form-input"
+                        placeholder="••••••••"
+                    >
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="new-password">새 비밀번호</label>
+                    <input
+                        type="password"
+                        id="new-password"
+                        class="form-input"
+                        placeholder="••••••••"
+                        minlength="6"
+                    >
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="confirm-new-password">새 비밀번호 확인</label>
+                    <input
+                        type="password"
+                        id="confirm-new-password"
+                        class="form-input"
+                        placeholder="••••••••"
+                        minlength="6"
+                    >
+                </div>
+                <button type="submit" class="btn-submit">비밀번호 변경</button>
+            </form>
+
+            <!-- Danger Zone -->
+            <div class="danger-zone">
+                <div class="danger-zone-title">위험 영역</div>
+                <p style="font-size: 14px; color: #6b7280; margin-bottom: 12px;">
+                    계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다.
+                </p>
+                <button
+                    class="btn-danger"
+                    onclick="if(confirm('정말로 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) { alert('계정 삭제 기능은 준비 중입니다.'); }"
+                >
+                    계정 삭제
+                </button>
+            </div>
+
+            <button
+                class="btn-cancel"
+                onclick="AuthUI.hideProfileModal()"
+                style="position: absolute; top: 20px; right: 20px; padding: 8px 12px; border-radius: 6px;"
+            >
+                ✕
+            </button>
+        </div>
+    </div>
 
     <!-- Config -->
     <script>
@@ -471,6 +933,7 @@
     <script src="js/state.js"></script>
     <script src="js/api.js"></script>
     <script src="js/ui-kit.js"></script>
+    <script src="js/auth.js"></script>
     <script src="js/router.js"></script>
     <script src="js/home.js"></script>
 
@@ -526,6 +989,13 @@
                 console.log('Backend health check: OK');
             }
         })();
+
+        // Initialize authentication UI
+        setTimeout(() => {
+            if (typeof AuthUI !== 'undefined') {
+                AuthUI.updateUserUI();
+            }
+        }, 100);
     </script>
 </body>
 </html>
