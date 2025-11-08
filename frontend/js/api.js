@@ -1,26 +1,26 @@
 // API.js - API 통신 래퍼
 
-// 백엔드 URL 상수 정의
-const NODE_BACKEND = 'https://artify-backend-3y4r.onrender.com';
-const CONTENT_BACKEND = 'https://artify-content-api.onrender.com';
-
-// 환경 감지 (localhost면 개발 환경)
-const isProduction = window.location.hostname !== 'localhost' &&
-                     window.location.hostname !== '127.0.0.1';
-
 class API {
     constructor() {
+        // 환경 감지 (localhost면 개발 환경)
+        const isLocalhost = window.location.hostname === 'localhost' ||
+                           window.location.hostname === '127.0.0.1';
+
         // 환경에 따라 자동으로 백엔드 URL 설정
         this.config = window.APP_CONFIG || {
-            BACKEND_URL: isProduction ? NODE_BACKEND : 'http://localhost:3001',
-            CONTENT_BACKEND_URL: isProduction ? CONTENT_BACKEND : 'http://localhost:8000'
+            BACKEND_URL: isLocalhost
+                ? 'http://localhost:3001'
+                : 'https://artify-backend-3y4r.onrender.com',
+            CONTENT_BACKEND_URL: isLocalhost
+                ? 'http://localhost:8000'
+                : 'https://artify-content-api.onrender.com'
         };
 
         this.token = localStorage.getItem('token');
 
         // 디버깅을 위한 로그
-        console.log('API Config:', {
-            environment: isProduction ? 'Production' : 'Development',
+        console.log('[API] Config:', {
+            environment: isLocalhost ? 'Development' : 'Production',
             nodeBackend: this.config.BACKEND_URL,
             contentBackend: this.config.CONTENT_BACKEND_URL
         });

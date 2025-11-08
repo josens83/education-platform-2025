@@ -919,11 +919,25 @@
 
     <!-- Config -->
     <script>
-        // Configuration
+        // Auto-detect environment and set API URLs
+        const isLocalhost = window.location.hostname === 'localhost' ||
+                           window.location.hostname === '127.0.0.1';
+
         window.APP_CONFIG = {
-            BACKEND_URL: 'http://localhost:3000',
-            CONTENT_BACKEND_URL: 'https://artify-content-api.onrender.com'
+            // Backend API (Node.js Express)
+            BACKEND_URL: isLocalhost
+                ? 'http://localhost:3001'
+                : 'https://artify-backend-3y4r.onrender.com',
+
+            // Content Backend API (Python FastAPI)
+            CONTENT_BACKEND_URL: isLocalhost
+                ? 'http://localhost:8000'
+                : 'https://artify-content-api.onrender.com'
         };
+
+        console.log('Environment:', isLocalhost ? 'Development' : 'Production');
+        console.log('Backend URL:', window.APP_CONFIG.BACKEND_URL);
+        console.log('Content Backend URL:', window.APP_CONFIG.CONTENT_BACKEND_URL);
     </script>
 
     <!-- Chart.js CDN -->
