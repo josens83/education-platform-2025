@@ -554,17 +554,30 @@ const GeneratePage = {
     },
 
     /**
-     * Open result in editor
+     * Open result in editor with auto-placement
      */
     openInEditor(resultId) {
         const result = this.generatedResults.find(r => r.id === resultId);
-        if (!result) return;
+        if (!result) {
+            UI.toast('결과를 찾을 수 없습니다', 'error');
+            return;
+        }
 
-        // Store result in sessionStorage for editor
-        sessionStorage.setItem('generatedContent', JSON.stringify({
+        // Store result in sessionStorage for editor (키 이름 통일: artify_editor_content)
+        sessionStorage.setItem('artify_editor_content', JSON.stringify({
             text: result.text?.content,
-            image: result.image?.url
+            image: result.image?.url,
+            segment: result.segment ? {
+                id: result.segment.id,
+                name: result.segment.name
+            } : null
         }));
+
+        console.log('[GeneratePage] Sending content to editor:', {
+            hasText: !!result.text?.content,
+            hasImage: !!result.image?.url,
+            segment: result.segment?.name
+        });
 
         // Navigate to editor
         window.location.href = 'editor.html?from=generate';
