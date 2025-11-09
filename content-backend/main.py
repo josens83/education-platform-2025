@@ -355,7 +355,7 @@ async def update_quota_cost(user_id: int, cost: float, db: Session):
 class TextGenerationRequest(BaseModel):
     prompt: str
     user_id: int = 1  # Default to user 1 for now (should come from auth)
-    model: Optional[str] = "gpt-3.5-turbo"  # "gpt-3.5-turbo" or "gemini-pro"
+    model: Optional[str] = "auto"  # "gpt-3.5-turbo", "gemini-pro", "gpt-4-turbo", or "auto" for smart selection
     segment_id: Optional[int] = None
     tone: Optional[str] = "전문적"
     keywords: Optional[List[str]] = []
@@ -704,38 +704,61 @@ async def generate_text(
     db: Session = Depends(get_db)
 ):
     """
-    Generate AI text using GPT-3.5-turbo or Gemini Pro
+    Generate AI text using GPT-3.5-turbo, Gemini Pro, or GPT-4 Turbo
 
     **Supported Models:**
-    - gpt-3.5-turbo (OpenAI)
-    - gemini-pro (Google)
+    - gpt-3.5-turbo (OpenAI) - Fast & economical
+    - gemini-pro (Google) - Rich context & analytical
+    - gpt-4-turbo (OpenAI) - Complex understanding
+    - auto - Smart model selection based on prompt
 
     **Rate Limit:** 10 requests per minute
 
     **Features:**
-    - Real-time cost estimation
-    - Token usage tracking
-    - User quota enforcement
-    - Automatic caching for duplicate prompts
-    - Multi-model support
+    - 🤖 AI Router: Intelligent model selection
+    - 💰 Real-time cost estimation
+    - 📊 Token usage tracking
+    - 👤 User quota enforcement
+    - 💾 Automatic caching for duplicate prompts
+    - 🎯 Multi-model support
     """
 
-    # Validate model parameter
-    supported_models = ["gpt-3.5-turbo", "gemini-pro"]
-    if request.model not in supported_models:
+    # Import AI Router
+    from ai_router import AIRouter
+
+    # Smart Model Selection
+    selected_model = request.model
+    router_info = None
+
+    if request.model == "auto" or request.model is None:
+        # Use AI Router to select best model
+        router_result = AIRouter.select_model(
+            prompt=request.prompt,
+            task_type="text",
+            tone=request.tone,
+            max_tokens=request.max_tokens
+        )
+        selected_model = router_result["model"]
+        router_info = router_result
+
+        print(f"🤖 AI Router selected: {selected_model} (reason: {router_result['reason']})")
+
+    # Validate selected model
+    supported_models = ["gpt-3.5-turbo", "gemini-pro", "gpt-4-turbo"]
+    if selected_model not in supported_models:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported model: {request.model}. Supported models: {', '.join(supported_models)}"
+            detail=f"Unsupported model: {selected_model}. Supported models: {', '.join(supported_models)} or 'auto'"
         )
 
-    # Check if requested model's client is initialized
-    if request.model == "gpt-3.5-turbo" and not openai_client:
+    # Check if selected model's client is initialized
+    if selected_model in ["gpt-3.5-turbo", "gpt-4-turbo"] and not openai_client:
         raise HTTPException(
             status_code=503,
             detail="OpenAI API key not configured. Please set OPENAI_API_KEY environment variable."
         )
 
-    if request.model == "gemini-pro" and not gemini_client:
+    if selected_model == "gemini-pro" and not gemini_client:
         raise HTTPException(
             status_code=503,
             detail="Google API key not configured. Please set GOOGLE_API_KEY environment variable."
@@ -750,7 +773,7 @@ async def generate_text(
         cache_hit = vector_client.search_prompt_cache(
             query=request.prompt,
             job_type="text",
-            model=request.model,
+            model=selected_model,
             similarity_threshold=0.95  # 95% similarity
         )
 
@@ -763,7 +786,7 @@ async def generate_text(
                 content_type="text",
                 prompt=request.prompt,
                 result=cached_text,
-                model=request.model,
+                model=selected_model,
                 cache_key=cache_hit["cache_id"],
                 is_cached_result=True
             )
@@ -775,7 +798,9 @@ async def generate_text(
                 "success": True,
                 "text": cached_text,
                 "prompt": request.prompt,
-                "model": request.model,
+                "model": selected_model,
+                "requested_model": request.model,
+                "router_info": router_info,
                 "cached": True,
                 "cache_info": {
                     "cache_id": cache_hit["cache_id"],
@@ -798,9 +823,10 @@ async def generate_text(
     job = GenerationJob(
         user_id=request.user_id,
         job_type="text",
-        model=request.model,
+        model=selected_model,
         prompt=request.prompt,
-        status="pending"
+        status="pending",
+        segment_id=request.segment_id
     )
     db.add(job)
     db.commit()
@@ -827,10 +853,10 @@ async def generate_text(
         completion_tokens = 0
         total_tokens = 0
 
-        if request.model == "gpt-3.5-turbo":
-            # OpenAI GPT-3.5 Turbo
+        if selected_model in ["gpt-3.5-turbo", "gpt-4-turbo"]:
+            # OpenAI GPT (3.5 or 4)
             response = openai_client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model=selected_model,
                 messages=[
                     {"role": "system", "content": "You are a helpful content creation assistant for marketing campaigns. Create engaging, persuasive content in Korean."},
                     {"role": "user", "content": enhanced_prompt}
@@ -845,7 +871,7 @@ async def generate_text(
             completion_tokens = usage.completion_tokens
             total_tokens = usage.total_tokens
 
-        elif request.model == "gemini-pro":
+        elif selected_model == "gemini-pro":
             # Google Gemini Pro
             response = gemini_client.generate_content(
                 enhanced_prompt,
@@ -863,8 +889,12 @@ async def generate_text(
             completion_tokens = len(generated_text) // 4
             total_tokens = prompt_tokens + completion_tokens
 
-        # Calculate cost
-        estimated_cost = calculate_text_cost(request.model, prompt_tokens, completion_tokens)
+        # Calculate cost (use AI Router's estimation if available)
+        from ai_router import AIRouter
+        estimated_cost = AIRouter.estimate_cost(selected_model, prompt_tokens, completion_tokens)
+        if estimated_cost == 0.0:
+            # Fallback to old calculation
+            estimated_cost = calculate_text_cost(selected_model, prompt_tokens, completion_tokens)
 
         # Update job with success
         job.status = "completed"
@@ -883,7 +913,7 @@ async def generate_text(
             content_type="text",
             prompt=request.prompt,
             result=generated_text,
-            model=request.model
+            model=selected_model
         )
         db.add(content_record)
         db.commit()
@@ -896,7 +926,7 @@ async def generate_text(
                 content_id=content_record.id,
                 text=generated_text,
                 prompt=request.prompt,
-                model=request.model,
+                model=selected_model,
                 metadata={
                     "user_id": request.user_id,
                     "segment_id": request.segment_id,
@@ -910,7 +940,7 @@ async def generate_text(
                 cache_id = vector_client.add_prompt_cache(
                     prompt=request.prompt,
                     result=generated_text,
-                    model=request.model,
+                    model=selected_model,
                     job_type="text",
                     metadata={
                         "user_id": request.user_id,
@@ -931,7 +961,9 @@ async def generate_text(
             "success": True,
             "text": generated_text,
             "prompt": request.prompt,
-            "model": request.model,
+            "model": selected_model,
+            "requested_model": request.model,
+            "router_info": router_info,
             "usage": {
                 "prompt_tokens": prompt_tokens,
                 "completion_tokens": completion_tokens,
