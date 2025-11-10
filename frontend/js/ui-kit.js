@@ -198,6 +198,13 @@ const UI = {
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         `;
 
+        // Handle thumbnail - check if it's a gradient or URL
+        const thumbnailStyle = thumbnail
+            ? (thumbnail.startsWith('linear-gradient') || thumbnail.startsWith('radial-gradient')
+                ? `background-image: ${thumbnail};`
+                : `background-image: url('${thumbnail}');`)
+            : '';
+
         card.innerHTML = `
             ${thumbnail ? `
                 <div class="card-thumbnail" style="
@@ -206,7 +213,7 @@ const UI = {
                     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     border-radius: 10px;
                     margin-bottom: 16px;
-                    background-image: url('${thumbnail}');
+                    ${thumbnailStyle}
                     background-size: cover;
                     background-position: center;
                 "></div>
