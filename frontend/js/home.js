@@ -96,7 +96,9 @@ const HomePage = {
         const grid = document.getElementById('projects-grid');
         if (!grid) return;
 
-        UI.showLoading('프로젝트 로딩 중...');
+        if (typeof UI !== 'undefined') {
+            UI.showLoading('프로젝트 로딩 중...');
+        }
 
         try {
             // Load from state or API
@@ -105,8 +107,19 @@ const HomePage = {
             if (!projects || projects.length === 0) {
                 // Try to load from API
                 try {
-                    projects = await api.getProjects();
-                    state.set('projects', projects);
+                    // Wait for API to be available
+                    if (!window.api) {
+                        console.warn('[HomePage] API not loaded yet, waiting...');
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+
+                    const api = window.api;
+                    if (api && api.getProjects) {
+                        projects = await api.getProjects();
+                        state.set('projects', projects);
+                    } else {
+                        throw new Error('API not available');
+                    }
                 } catch (error) {
                     console.error('Failed to load projects:', error);
                     // Use dummy data
@@ -117,7 +130,9 @@ const HomePage = {
 
             this.renderProjects(projects);
         } finally {
-            UI.hideLoading();
+            if (typeof UI !== 'undefined') {
+                UI.hideLoading();
+            }
         }
     },
 
@@ -154,7 +169,9 @@ const HomePage = {
     },
 
     async createNewProject() {
-        UI.showLoading('새 프로젝트 생성 중...');
+        if (typeof UI !== 'undefined') {
+            UI.showLoading('새 프로젝트 생성 중...');
+        }
 
         try {
             const newProject = {
@@ -169,8 +186,13 @@ const HomePage = {
 
             // Try to create via API
             try {
-                const created = await api.createProject(newProject);
-                router.navigate('/editor', { id: created.id });
+                const api = window.api;
+                if (api && api.createProject) {
+                    const created = await api.createProject(newProject);
+                    router.navigate('/editor', { id: created.id });
+                } else {
+                    throw new Error('API not available');
+                }
             } catch (error) {
                 console.error('Failed to create project:', error);
                 // Create locally
@@ -185,7 +207,9 @@ const HomePage = {
                 router.navigate('/editor', { id });
             }
         } finally {
-            UI.hideLoading();
+            if (typeof UI !== 'undefined') {
+                UI.hideLoading();
+            }
         }
     },
 

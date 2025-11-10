@@ -979,11 +979,28 @@
 
         // Check API health on startup
         (async () => {
-            const isHealthy = await api.healthCheck();
-            if (!isHealthy) {
-                UI.toast('백엔드 서버에 연결할 수 없습니다. 일부 기능이 제한될 수 있습니다.', 'error');
-            } else {
-                console.log('Backend health check: OK');
+            try {
+                // Wait for API to be available
+                if (!window.api) {
+                    console.warn('API not loaded yet, waiting...');
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+
+                const api = window.api;
+                if (api && api.healthCheck) {
+                    const isHealthy = await api.healthCheck();
+                    if (!isHealthy) {
+                        if (typeof UI !== 'undefined') {
+                            UI.toast('백엔드 서버에 연결할 수 없습니다. 일부 기능이 제한될 수 있습니다.', 'error');
+                        }
+                    } else {
+                        console.log('Backend health check: OK');
+                    }
+                } else {
+                    console.warn('API healthCheck not available');
+                }
+            } catch (error) {
+                console.error('Health check error:', error);
             }
         })();
 
