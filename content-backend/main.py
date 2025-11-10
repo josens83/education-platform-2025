@@ -1297,33 +1297,39 @@ async def get_segments(db: Session = Depends(get_db)):
 
     **Caching:** Results are cached for 1 hour in Redis
     """
-    cache = get_cache()
-    cache_key = "segments:all"
+    try:
+        cache = get_cache()
+        cache_key = "segments:all"
 
-    # 캐시 확인
-    cached = cache.get(cache_key)
-    if cached:
-        logger.info("Cache HIT: segments")
-        return cached
+        # 캐시 확인
+        cached = cache.get(cache_key)
+        if cached:
+            logger.info("Cache HIT: segments")
+            return cached
 
-    # DB 조회
-    segments = db.query(Segment).all()
+        # DB 조회
+        segments = db.query(Segment).all()
+        logger.info(f"Loaded {len(segments)} segments from database")
 
-    # 캐시 저장 (1시간)
-    segments_dict = [
-        {
-            "id": s.id,
-            "name": s.name,
-            "description": s.description,
-            "criteria": s.criteria,
-            "created_at": s.created_at.isoformat(),
-            "updated_at": s.updated_at.isoformat()
-        }
-        for s in segments
-    ]
-    cache.set(cache_key, segments_dict, TTL_SEGMENTS)
+        # 캐시 저장 (1시간)
+        segments_dict = [
+            {
+                "id": s.id,
+                "name": s.name,
+                "description": s.description,
+                "criteria": s.criteria,
+                "created_at": s.created_at.isoformat(),
+                "updated_at": s.updated_at.isoformat()
+            }
+            for s in segments
+        ]
+        cache.set(cache_key, segments_dict, TTL_SEGMENTS)
 
-    return segments
+        return segments_dict
+    except Exception as e:
+        logger.error(f"Error loading segments: {str(e)}", exc_info=True)
+        # Return empty list instead of crashing
+        return []
 
 
 @app.post("/segments", response_model=SegmentResponse)
