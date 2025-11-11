@@ -701,8 +701,8 @@ async def health_check(db: Session = Depends(get_db)):
 @app.post("/generate/text", tags=["ai-generation"])
 @limiter.limit("10/minute")
 async def generate_text(
-    req: Request,
-    request: TextGenerationRequest,
+    request: Request,
+    body: TextGenerationRequest,
     db: Session = Depends(get_db)
 ):
     """
@@ -729,16 +729,16 @@ async def generate_text(
     from ai_router import AIRouter
 
     # Smart Model Selection
-    selected_model = request.model
+    selected_model = body.model
     router_info = None
 
-    if request.model == "auto" or request.model is None:
+    if body.model == "auto" or body.model is None:
         # Use AI Router to select best model
         router_result = AIRouter.select_model(
-            prompt=request.prompt,
+            prompt=body.prompt,
             task_type="text",
-            tone=request.tone,
-            max_tokens=request.max_tokens
+            tone=body.tone,
+            max_tokens=body.max_tokens
         )
         selected_model = router_result["model"]
         router_info = router_result
@@ -767,13 +767,13 @@ async def generate_text(
         )
 
     # Check user quota before generation
-    await check_quota(request.user_id, "text", db)
+    await check_quota(body.user_id, "text", db)
 
     # Check cache first
     try:
         vector_client = get_vector_client()
         cache_hit = vector_client.search_prompt_cache(
-            query=request.prompt,
+            query=body.prompt,
             job_type="text",
             model=selected_model,
             similarity_threshold=0.95  # 95% similarity
@@ -786,7 +786,7 @@ async def generate_text(
             # Save to database with cache flag
             content_record = GeneratedContent(
                 content_type="text",
-                prompt=request.prompt,
+                prompt=body.prompt,
                 result=cached_text,
                 model=selected_model,
                 cache_key=cache_hit["cache_id"],
@@ -799,9 +799,9 @@ async def generate_text(
             return {
                 "success": True,
                 "text": cached_text,
-                "prompt": request.prompt,
+                "prompt": body.prompt,
                 "model": selected_model,
-                "requested_model": request.model,
+                "requested_model": body.model,
                 "router_info": router_info,
                 "cached": True,
                 "cache_info": {
@@ -823,30 +823,30 @@ async def generate_text(
         print(f"⚠️  Warning: Cache check failed: {e}")
 
     job = GenerationJob(
-        user_id=request.user_id,
+        user_id=body.user_id,
         job_type="text",
         model=selected_model,
-        prompt=request.prompt,
+        prompt=body.prompt,
         status="pending",
-        segment_id=request.segment_id
+        segment_id=body.segment_id
     )
     db.add(job)
     db.commit()
 
     try:
         # Build enhanced prompt with segment, tone, and keywords
-        enhanced_prompt = request.prompt
+        enhanced_prompt = body.prompt
 
-        if request.segment_id:
-            segment = db.query(Segment).filter(Segment.id == request.segment_id).first()
+        if body.segment_id:
+            segment = db.query(Segment).filter(Segment.id == body.segment_id).first()
             if segment:
                 enhanced_prompt += f"\n타겟 세그먼트: {segment.name}"
 
-        if request.tone:
-            enhanced_prompt += f"\n톤: {request.tone}"
+        if body.tone:
+            enhanced_prompt += f"\n톤: {body.tone}"
 
-        if request.keywords and len(request.keywords) > 0:
-            keywords_str = ", ".join(request.keywords)
+        if body.keywords and len(body.keywords) > 0:
+            keywords_str = ", ".join(body.keywords)
             enhanced_prompt += f"\n필수 키워드: {keywords_str}"
 
         # 🧠 RAG: Retrieve brand guidelines and high-performing examples
@@ -864,12 +864,12 @@ async def generate_text(
             # 1. Retrieve brand guidelines if segment exists
             # Note: Brand guidelines feature ready, but requires brand_id in Segment model
             # This will be enabled when Segment table has brand_id column
-            if request.segment_id:
-                segment = db.query(Segment).filter(Segment.id == request.segment_id).first()
+            if body.segment_id:
+                segment = db.query(Segment).filter(Segment.id == body.segment_id).first()
                 if segment and hasattr(segment, 'brand_id') and segment.brand_id:
                     brand_context = vector_client.get_brand_context(
                         brand_id=segment.brand_id,
-                        query=request.prompt,
+                        query=body.prompt,
                         n_results=2
                     )
                     if brand_context:
@@ -878,7 +878,7 @@ async def generate_text(
 
             # 2. Retrieve high-performing similar content as examples
             similar_high_performers = vector_client.search_high_performing_texts(
-                query=request.prompt,
+                query=body.prompt,
                 min_score=0.05,  # Performance score threshold
                 n_results=3
             )
@@ -924,8 +924,8 @@ async def generate_text(
                     {"role": "system", "content": system_message},
                     {"role": "user", "content": enhanced_prompt}
                 ],
-                max_tokens=request.max_tokens,
-                temperature=request.temperature
+                max_tokens=body.max_tokens,
+                temperature=body.temperature
             )
 
             generated_text = response.choices[0].message.content
@@ -941,8 +941,8 @@ async def generate_text(
             response = gemini_client.generate_content(
                 gemini_prompt,
                 generation_config=genai.types.GenerationConfig(
-                    max_output_tokens=request.max_tokens,
-                    temperature=request.temperature
+                    max_output_tokens=body.max_tokens,
+                    temperature=body.temperature
                 )
             )
 
@@ -971,12 +971,12 @@ async def generate_text(
         db.commit()
 
         # Update user quota with actual cost
-        await update_quota_cost(request.user_id, estimated_cost, db)
+        await update_quota_cost(body.user_id, estimated_cost, db)
 
         # Save to database
         content_record = GeneratedContent(
             content_type="text",
-            prompt=request.prompt,
+            prompt=body.prompt,
             result=generated_text,
             model=selected_model
         )
@@ -990,25 +990,25 @@ async def generate_text(
             vector_client.add_text_content(
                 content_id=content_record.id,
                 text=generated_text,
-                prompt=request.prompt,
+                prompt=body.prompt,
                 model=selected_model,
                 metadata={
-                    "user_id": request.user_id,
-                    "segment_id": request.segment_id,
-                    "tone": request.tone,
-                    "keywords": ",".join(request.keywords) if request.keywords else None
+                    "user_id": body.user_id,
+                    "segment_id": body.segment_id,
+                    "tone": body.tone,
+                    "keywords": ",".join(body.keywords) if body.keywords else None
                 }
             )
 
             # Also add to prompt cache for future reuse
             try:
                 cache_id = vector_client.add_prompt_cache(
-                    prompt=request.prompt,
+                    prompt=body.prompt,
                     result=generated_text,
                     model=selected_model,
                     job_type="text",
                     metadata={
-                        "user_id": request.user_id,
+                        "user_id": body.user_id,
                         "prompt_tokens": prompt_tokens,
                         "completion_tokens": completion_tokens,
                         "cost_usd": estimated_cost
@@ -1025,9 +1025,9 @@ async def generate_text(
         return {
             "success": True,
             "text": generated_text,
-            "prompt": request.prompt,
+            "prompt": body.prompt,
             "model": selected_model,
-            "requested_model": request.model,
+            "requested_model": body.model,
             "router_info": router_info,
             "rag_info": rag_info,
             "usage": {
@@ -1051,8 +1051,8 @@ async def generate_text(
 @app.post("/generate/image")
 @limiter.limit("5/minute")
 async def generate_image(
-    req: Request,
-    request: ImageGenerationRequest,
+    request: Request,
+    body: ImageGenerationRequest,
     db: Session = Depends(get_db)
 ):
     """
