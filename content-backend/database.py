@@ -366,6 +366,32 @@ def init_db():
             gen_jobs_columns = [col['name'] for col in inspector.get_columns('gen_jobs')]
             gen_jobs_columns_info = {col['name']: col for col in inspector.get_columns('gen_jobs')}
 
+            with engine.connect() as conn:
+                # Remove foreign key constraint on user_id if it exists
+                # This allows the app to work without a users table
+                try:
+                    # Try to drop the foreign key constraint
+                    # PostgreSQL constraint names are usually: <table>_<column>_fkey
+                    conn.execute(text('ALTER TABLE gen_jobs DROP CONSTRAINT IF EXISTS gen_jobs_user_id_fkey'))
+                    conn.commit()
+                    print("✓ Removed foreign key constraint gen_jobs_user_id_fkey")
+                except Exception as e:
+                    print(f"⚠️  Could not remove foreign key constraint: {str(e)}")
+                    conn.rollback()
+
+                # First, fix prompt column if it's JSON type (should be TEXT)
+                if 'prompt' in gen_jobs_columns:
+                    prompt_col_info = gen_jobs_columns_info.get('prompt')
+                    if prompt_col_info and str(prompt_col_info['type']).upper() in ['JSON', 'JSONB']:
+                        try:
+                            # Change column type from JSON to TEXT
+                            conn.execute(text('ALTER TABLE gen_jobs ALTER COLUMN prompt TYPE TEXT USING prompt::text'))
+                            conn.commit()
+                            print("✓ Changed 'prompt' column type from JSON to TEXT in gen_jobs table")
+                        except Exception as e:
+                            print(f"⚠️  Could not change 'prompt' column type: {str(e)}")
+                            conn.rollback()
+
             # Define all required columns for gen_jobs
             gen_jobs_required_columns = {
                 'user_id': 'INTEGER',
@@ -384,19 +410,6 @@ def init_db():
             }
 
             with engine.connect() as conn:
-                # First, fix prompt column if it's JSON type (should be TEXT)
-                if 'prompt' in gen_jobs_columns:
-                    prompt_col_info = gen_jobs_columns_info.get('prompt')
-                    if prompt_col_info and str(prompt_col_info['type']).upper() in ['JSON', 'JSONB']:
-                        try:
-                            # Change column type from JSON to TEXT
-                            conn.execute(text('ALTER TABLE gen_jobs ALTER COLUMN prompt TYPE TEXT USING prompt::text'))
-                            conn.commit()
-                            print("✓ Changed 'prompt' column type from JSON to TEXT in gen_jobs table")
-                        except Exception as e:
-                            print(f"⚠️  Could not change 'prompt' column type: {str(e)}")
-                            conn.rollback()
-
                 # Add missing columns to gen_jobs
                 for col_name, col_type in gen_jobs_required_columns.items():
                     if col_name not in gen_jobs_columns:
