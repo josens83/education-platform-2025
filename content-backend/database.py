@@ -361,19 +361,37 @@ def init_db():
                             print(f"⚠️  Could not add column '{col_name}': {str(e)}")
                             conn.rollback()
 
-        # Check if gen_jobs table exists and add segment_id column if missing
+        # Check if gen_jobs table exists and add missing columns
         if 'gen_jobs' in inspector.get_table_names():
             gen_jobs_columns = [col['name'] for col in inspector.get_columns('gen_jobs')]
 
+            # Define all required columns for gen_jobs
+            gen_jobs_required_columns = {
+                'user_id': 'INTEGER',
+                'job_type': 'VARCHAR(50)',
+                'model': 'VARCHAR(100)',
+                'prompt': 'TEXT',
+                'prompt_tokens': 'INTEGER',
+                'completion_tokens': 'INTEGER',
+                'total_tokens': 'INTEGER',
+                'estimated_cost': 'FLOAT DEFAULT 0.0',
+                'status': "VARCHAR(50) DEFAULT 'completed'",
+                'error_message': 'TEXT',
+                'segment_id': 'INTEGER',
+                'created_at': 'TIMESTAMP',
+                'completed_at': 'TIMESTAMP'
+            }
+
             with engine.connect() as conn:
-                # Add segment_id column if missing
-                if 'segment_id' not in gen_jobs_columns:
-                    try:
-                        conn.execute(text('ALTER TABLE gen_jobs ADD COLUMN segment_id INTEGER'))
-                        conn.commit()
-                        print("✓ Added column 'segment_id' to gen_jobs table")
-                    except Exception as e:
-                        print(f"⚠️  Could not add column 'segment_id' to gen_jobs: {str(e)}")
-                        conn.rollback()
+                # Add missing columns to gen_jobs
+                for col_name, col_type in gen_jobs_required_columns.items():
+                    if col_name not in gen_jobs_columns:
+                        try:
+                            conn.execute(text(f'ALTER TABLE gen_jobs ADD COLUMN {col_name} {col_type}'))
+                            conn.commit()
+                            print(f"✓ Added column '{col_name}' to gen_jobs table")
+                        except Exception as e:
+                            print(f"⚠️  Could not add column '{col_name}' to gen_jobs: {str(e)}")
+                            conn.rollback()
     except Exception as e:
         print(f"⚠️  Error checking/adding table columns: {str(e)}")
