@@ -2909,6 +2909,73 @@
             }
         }
 
+        // P16: Zoom & Pan Functions (moved before setupEventListeners to fix hoisting)
+        function handleWheel(e) {
+            e.preventDefault();
+
+            const oldZoom = zoom;
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * delta));
+
+            // Zoom toward mouse position
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            panX = mouseX - (mouseX - panX) * (zoom / oldZoom);
+            panY = mouseY - (mouseY - panY) * (zoom / oldZoom);
+
+            updateZoomLevel();
+            render();
+        }
+
+        function handleSpaceKeyDown(e) {
+            if (e.code === 'Space' && !isEditingText && !spacePressed) {
+                e.preventDefault();
+                spacePressed = true;
+                document.getElementById('canvasContainer').classList.add('panning');
+            }
+        }
+
+        function handleSpaceKeyUp(e) {
+            if (e.code === 'Space') {
+                spacePressed = false;
+                isPanning = false;
+                document.getElementById('canvasContainer').classList.remove('panning', 'dragging');
+            }
+        }
+
+        function handlePanStart(e) {
+            if (spacePressed) {
+                isPanning = true;
+                panStart = { x: e.clientX - panX, y: e.clientY - panY };
+                document.getElementById('canvasContainer').classList.add('dragging');
+            }
+        }
+
+        function handlePanMove(e) {
+            if (isPanning && spacePressed) {
+                panX = e.clientX - panStart.x;
+                panY = e.clientY - panStart.y;
+                render();
+            }
+        }
+
+        function handlePanEnd() {
+            if (isPanning) {
+                isPanning = false;
+                document.getElementById('canvasContainer').classList.remove('dragging');
+            }
+        }
+
+        // Convert screen coordinates to canvas coordinates (accounting for zoom/pan)
+        function screenToCanvas(screenX, screenY) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (screenX - rect.left - panX) / zoom;
+            const y = (screenY - rect.top - panY) / zoom;
+            return { x, y };
+        }
+
         function setupEventListeners() {
             canvas.addEventListener('mousedown', handleMouseDown);
             canvas.addEventListener('mousemove', handleMouseMove);
@@ -6378,71 +6445,7 @@
             render();
         }
 
-        function handleWheel(e) {
-            e.preventDefault();
-
-            const oldZoom = zoom;
-            const delta = e.deltaY > 0 ? 0.9 : 1.1;
-            zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * delta));
-
-            // Zoom toward mouse position
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-
-            panX = mouseX - (mouseX - panX) * (zoom / oldZoom);
-            panY = mouseY - (mouseY - panY) * (zoom / oldZoom);
-
-            updateZoomLevel();
-            render();
-        }
-
-        function handleSpaceKeyDown(e) {
-            if (e.code === 'Space' && !isEditingText && !spacePressed) {
-                e.preventDefault();
-                spacePressed = true;
-                document.getElementById('canvasContainer').classList.add('panning');
-            }
-        }
-
-        function handleSpaceKeyUp(e) {
-            if (e.code === 'Space') {
-                spacePressed = false;
-                isPanning = false;
-                document.getElementById('canvasContainer').classList.remove('panning', 'dragging');
-            }
-        }
-
-        function handlePanStart(e) {
-            if (spacePressed) {
-                isPanning = true;
-                panStart = { x: e.clientX - panX, y: e.clientY - panY };
-                document.getElementById('canvasContainer').classList.add('dragging');
-            }
-        }
-
-        function handlePanMove(e) {
-            if (isPanning && spacePressed) {
-                panX = e.clientX - panStart.x;
-                panY = e.clientY - panStart.y;
-                render();
-            }
-        }
-
-        function handlePanEnd() {
-            if (isPanning) {
-                isPanning = false;
-                document.getElementById('canvasContainer').classList.remove('dragging');
-            }
-        }
-
-        // Convert screen coordinates to canvas coordinates (accounting for zoom/pan)
-        function screenToCanvas(screenX, screenY) {
-            const rect = canvas.getBoundingClientRect();
-            const x = (screenX - rect.left - panX) / zoom;
-            const y = (screenY - rect.top - panY) / zoom;
-            return { x, y };
-        }
+        // Duplicate functions removed - already defined above
 
         // Close modals when clicking outside
         document.addEventListener('click', function(e) {
