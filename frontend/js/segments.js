@@ -143,17 +143,37 @@ const SegmentsPage = {
                 throw new Error('API not available');
             }
 
-            // Fetch segments from backend with timeout (30s for cold start)
+            // Fetch segments from backend with timeout (60s for cold start)
             console.log('[SegmentsPage] Fetching from:', `${api.config.CONTENT_BACKEND_URL}/segments`);
 
             const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('요청 시간이 초과되었습니다 (30초). 서버가 시작 중일 수 있습니다.')), 30000)
+                setTimeout(() => reject(new Error('요청 시간이 초과되었습니다 (60초). 서버가 시작 중일 수 있습니다.')), 60000)
             );
 
-            const response = await Promise.race([
-                api.request(`${api.config.CONTENT_BACKEND_URL}/segments`),
-                timeoutPromise
-            ]);
+            let response;
+            try {
+                response = await Promise.race([
+                    api.request(`${api.config.CONTENT_BACKEND_URL}/segments`),
+                    timeoutPromise
+                ]);
+            } catch (error) {
+                // If timeout, retry once after 5 seconds
+                if (error.message.includes('시간이 초과')) {
+                    console.warn('[SegmentsPage] Request timed out, retrying in 5 seconds...');
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+
+                    const retryTimeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('재시도도 시간 초과되었습니다. 서버가 응답하지 않습니다.')), 60000)
+                    );
+
+                    response = await Promise.race([
+                        api.request(`${api.config.CONTENT_BACKEND_URL}/segments`),
+                        retryTimeoutPromise
+                    ]);
+                } else {
+                    throw error;
+                }
+            }
 
             console.log('[SegmentsPage] API Response:', response);
 
