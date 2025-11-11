@@ -325,20 +325,31 @@ def init_db():
         if 'segments' in inspector.get_table_names():
             existing_columns = [col['name'] for col in inspector.get_columns('segments')]
 
-            # Define required columns
-            required_columns = {
-                'criteria': 'TEXT',
-                'description': 'TEXT',
-                'created_at': 'TIMESTAMP',
-                'updated_at': 'TIMESTAMP',
-                'tone': 'VARCHAR(100)',
-                'keywords': 'TEXT',
-                'reference_urls': 'TEXT',
-                'prompt_template': 'TEXT'
-            }
-
-            # Add missing columns
+            # First, handle problematic columns
             with engine.connect() as conn:
+                # Remove NOT NULL constraint from 'filters' if it exists (legacy column)
+                if 'filters' in existing_columns:
+                    try:
+                        conn.execute(text('ALTER TABLE segments ALTER COLUMN filters DROP NOT NULL'))
+                        conn.commit()
+                        print("✓ Removed NOT NULL constraint from 'filters' column")
+                    except Exception as e:
+                        print(f"⚠️  Could not modify 'filters' column: {str(e)}")
+                        conn.rollback()
+
+                # Define required columns
+                required_columns = {
+                    'criteria': 'TEXT',
+                    'description': 'TEXT',
+                    'created_at': 'TIMESTAMP',
+                    'updated_at': 'TIMESTAMP',
+                    'tone': 'VARCHAR(100)',
+                    'keywords': 'TEXT',
+                    'reference_urls': 'TEXT',
+                    'prompt_template': 'TEXT'
+                }
+
+                # Add missing columns
                 for col_name, col_type in required_columns.items():
                     if col_name not in existing_columns:
                         try:
