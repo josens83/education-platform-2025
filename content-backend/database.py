@@ -109,6 +109,7 @@ class GenerationJob(Base):
     estimated_cost = Column(Float, default=0.0)  # in USD
     status = Column(String(50), default='completed')  # 'pending', 'completed', 'failed'
     error_message = Column(Text, nullable=True)
+    segment_id = Column(Integer, nullable=True)  # Track which segment was used for generation
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
 
@@ -359,5 +360,20 @@ def init_db():
                         except Exception as e:
                             print(f"⚠️  Could not add column '{col_name}': {str(e)}")
                             conn.rollback()
+
+        # Check if gen_jobs table exists and add segment_id column if missing
+        if 'gen_jobs' in inspector.get_table_names():
+            gen_jobs_columns = [col['name'] for col in inspector.get_columns('gen_jobs')]
+
+            with engine.connect() as conn:
+                # Add segment_id column if missing
+                if 'segment_id' not in gen_jobs_columns:
+                    try:
+                        conn.execute(text('ALTER TABLE gen_jobs ADD COLUMN segment_id INTEGER'))
+                        conn.commit()
+                        print("✓ Added column 'segment_id' to gen_jobs table")
+                    except Exception as e:
+                        print(f"⚠️  Could not add column 'segment_id' to gen_jobs: {str(e)}")
+                        conn.rollback()
     except Exception as e:
-        print(f"⚠️  Error checking/adding segments columns: {str(e)}")
+        print(f"⚠️  Error checking/adding table columns: {str(e)}")
