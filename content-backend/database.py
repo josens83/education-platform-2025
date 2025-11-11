@@ -314,3 +314,39 @@ def get_db():
 def init_db():
     """Initialize database tables"""
     Base.metadata.create_all(bind=engine)
+
+    # Add missing columns to segments table if they don't exist
+    # This is a safety measure for existing databases
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(engine)
+
+        # Check if segments table exists
+        if 'segments' in inspector.get_table_names():
+            existing_columns = [col['name'] for col in inspector.get_columns('segments')]
+
+            # Define required columns
+            required_columns = {
+                'criteria': 'TEXT',
+                'description': 'TEXT',
+                'created_at': 'TIMESTAMP',
+                'updated_at': 'TIMESTAMP',
+                'tone': 'VARCHAR(100)',
+                'keywords': 'TEXT',
+                'reference_urls': 'TEXT',
+                'prompt_template': 'TEXT'
+            }
+
+            # Add missing columns
+            with engine.connect() as conn:
+                for col_name, col_type in required_columns.items():
+                    if col_name not in existing_columns:
+                        try:
+                            conn.execute(text(f'ALTER TABLE segments ADD COLUMN {col_name} {col_type}'))
+                            conn.commit()
+                            print(f"✓ Added column '{col_name}' to segments table")
+                        except Exception as e:
+                            print(f"⚠️  Could not add column '{col_name}': {str(e)}")
+                            conn.rollback()
+    except Exception as e:
+        print(f"⚠️  Error checking/adding segments columns: {str(e)}")
