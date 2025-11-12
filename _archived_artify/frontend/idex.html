@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artify - AI Art Generator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">
+                <h1>Artify</h1>
+            </div>
+            <nav>
+                <span id="userDisplay">Loading...</span>
+                <button onclick="handleLogout()" class="btn-logout">로그아웃</button>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h2>나만의 프로젝트 관리</h2>
+                <button onclick="handleCreateProject()" class="btn-primary">새 프로젝트 만들기</button>
+            </div>
+        </section>
+
+        <section class="projects">
+            <div class="container">
+                <h3>내 프로젝트</h3>
+                <div id="projectsList">
+                    프로젝트를 불러오는 중...
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script>
+        // 인증 확인
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return false;
+            }
+            return true;
+        }
+
+        // 로그아웃
+        function handleLogout() {
+            if (confirm('로그아웃 하시겠습니까?')) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = 'login.html';
+            }
+        }
+
+        // 새 프로젝트
+        function handleCreateProject() {
+            const projectName = prompt('프로젝트 이름을 입력하세요:');
+            if (!projectName) return;
+
+            const token = localStorage.getItem('token');
+            
+            fetch(API_URL + '/projects', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({ name: projectName })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.project) {
+                    alert('프로젝트가 생성되었습니다!');
+                    window.location.href = 'editor.html?id=' + data.project.id;
+                } else {
+                    alert('프로젝트 생성 실패: ' + (data.error || '알 수 없는 오류'));
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                alert('프로젝트 생성 중 오류가 발생했습니다.');
+            });
+        }
+
+        // 프로젝트 목록 로드
+        function loadProjects() {
+            const token = localStorage.getItem('token');
+            
+            fetch(API_URL + '/projects', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                const projectsList = document.getElementById('projectsList');
+                
+                if (data.projects && data.projects.length > 0) {
+                    projectsList.innerHTML = data.projects.map(project => `
+                        <div class="project-card">
+                            <h4>${project.name}</h4>
+                            <p>생성일: ${new Date(project.createdAt).toLocaleDateString('ko-KR')}</p>
+                            <button onclick="openProject(${project.id})">열기</button>
+                        </div>
+                    `).join('');
+                } else {
+                    projectsList.innerHTML = '<p>프로젝트가 없습니다. 새 프로젝트를 만들어보세요!</p>';
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                document.getElementById('projectsList').innerHTML = '<p>프로젝트를 불러오는 중 오류가 발생했습니다.</p>';
+            });
+        }
+
+        // 프로젝트 열기
+        function openProject(id) {
+            window.location.href = 'editor.html?id=' + id;
+        }
+
+        // 사용자 정보 표시
+        function displayUser() {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const userDisplay = document.getElementById('userDisplay');
+            if (user.username) {
+                userDisplay.textContent = user.username + '님';
+            } else {
+                userDisplay.textContent = '사용자';
+            }
+        }
+
+        // 페이지 로드 시
+        if (checkAuth()) {
+            displayUser();
+            loadProjects();
+        }
+    </script>
+</body>
+</html>

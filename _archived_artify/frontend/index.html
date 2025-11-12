@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artify - AI 마케팅 플랫폼</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(180deg, #eef3ff 0%, #ffffff 40%);
+            color: #1f2937;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .main-header {
+            position: sticky;
+            top: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+            padding: 16px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.08);
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            cursor: pointer;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: #4b5563;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-link:hover {
+            color: #667eea;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn-login {
+            padding: 10px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        /* User Profile */
+        .user-profile {
+            position: relative;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
+            transition: all 0.2s;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Profile Dropdown */
+        .profile-dropdown {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            min-width: 260px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s;
+            z-index: 2000;
+        }
+
+        .profile-dropdown.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-header {
+            padding: 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .dropdown-user-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .dropdown-user-email {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 8px 0;
+        }
+
+        .dropdown-item {
+            width: 100%;
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            text-align: left;
+            font-size: 14px;
+            color: #4b5563;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .dropdown-item:hover {
+            background: #f3f4f6;
+        }
+
+        .dropdown-item:first-of-type {
+            border-radius: 12px 12px 0 0;
+        }
+
+        .dropdown-item:last-of-type {
+            border-radius: 0 0 12px 12px;
+        }
+
+        .dropdown-item span {
+            font-size: 18px;
+        }
+
+        /* Main Content Area */
+        #app {
+            min-height: calc(100vh - 80px);
+        }
+
+        /* Home Page Styles */
+        .home-page {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        /* Hero Section */
+        .hero-section {
+            text-align: center;
+            padding: 60px 20px;
+            margin-bottom: 60px;
+        }
+
+        .hero-title {
+            font-size: 56px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 24px;
+            line-height: 1.2;
+        }
+
+        .hero-search {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 16px 24px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            border-radius: 14px;
+            font-size: 16px;
+            background: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .btn-new-project {
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s;
+        }
+
+        .btn-new-project:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 24px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Main Cards */
+        .main-cards {
+            margin-bottom: 60px;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 14px;
+            padding: 32px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            border: 2px solid transparent;
+        }
+
+        .card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 28px rgba(102, 126, 234, 0.15);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+
+        .card-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #1f2937;
+        }
+
+        .card-description {
+            font-size: 14px;
+            color: #6b7280;
+            line-height: 1.5;
+        }
+
+        /* Recent Section */
+        .recent-section {
+            margin-bottom: 60px;
+        }
+
+        .section-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 32px;
+            color: #1f2937;
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 24px;
+        }
+
+        .project-card {
+            background: white;
+            border-radius: 14px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            border: 2px solid transparent;
+        }
+
+        .project-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 28px rgba(102, 126, 234, 0.15);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+
+        .card-thumbnail {
+            width: 100%;
+            height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 64px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .project-info {
+            padding: 20px;
+        }
+
+        .project-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1f2937;
+        }
+
+        .project-meta {
+            font-size: 13px;
+            color: #9ca3af;
+        }
+
+        /* Loading State */
+        .loading-spinner {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(102, 126, 234, 0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 2000;
+        }
+
+        .toast {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.success { border-left: 4px solid #10b981; }
+        .toast.error { border-left: 4px solid #ef4444; }
+        .toast.info { border-left: 4px solid #667eea; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalPop 0.3s ease-out;
+        }
+
+        @keyframes modalPop {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: #1f2937;
+        }
+
+        .modal-body {
+            margin-bottom: 24px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-cancel {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .btn-cancel:hover {
+            background: #e5e7eb;
+        }
+
+        /* Auth Modal Specific Styles */
+        .auth-modal {
+            max-width: 480px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .password-strength {
+            margin-top: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .error-message {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: none;
+            border-left: 4px solid #dc2626;
+        }
+
+        .form-footer {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .form-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        .form-link:hover {
+            color: #5568d3;
+            text-decoration: underline;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Profile Modal Specific */
+        .profile-info {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+
+        .profile-info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .profile-info-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .profile-info-label {
+            font-size: 14px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .profile-info-value {
+            font-size: 14px;
+            color: #1f2937;
+            font-weight: 600;
+        }
+
+        .section-divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 32px 0;
+        }
+
+        .danger-zone {
+            background: #fef2f2;
+            border: 2px solid #fecaca;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+
+        .danger-zone-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #dc2626;
+            margin-bottom: 12px;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 36px;
+            }
+
+            .hero-search {
+                flex-direction: column;
+            }
+
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .main-header {
+                padding: 12px 20px;
+            }
+
+            .header-nav {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="main-header">
+        <div class="logo" onclick="router.navigate('/')">Artify</div>
+        <nav class="header-nav">
+            <a href="index.html" class="nav-link">홈</a>
+            <a href="segments.html" class="nav-link">세그먼트</a>
+            <a href="generate.html" class="nav-link">AI 생성</a>
+            <a href="analytics.html" class="nav-link">분석</a>
+            <a href="editor.html" class="nav-link">에디터</a>
+        </nav>
+        <div class="header-actions">
+            <button class="btn-login" onclick="AuthUI.showLoginModal()">
+                로그인
+            </button>
+        </div>
+    </header>
+
+    <!-- Main App Container -->
+    <div id="app">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>로딩 중...</p>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="login-modal">
+        <div class="modal auth-modal">
+            <h2 class="modal-title">로그인</h2>
+            <div class="error-message"></div>
+            <form onsubmit="AuthUI.handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label" for="login-email">이메일</label>
+                    <input
+                        type="email"
+                        id="login-email"
+                        class="form-input"
+                        placeholder="your@email.com"
+                        required
+                    >
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="login-password">비밀번호</label>
+                    <input
+                        type="password"
+                        id="login-password"
+                        class="form-input"
+                        placeholder="••••••••"
+                        required
+                    >
+                </div>
+                <button type="submit" class="btn-submit">로그인</button>
+                <div class="form-footer">
+                    <p style="color: #6b7280; font-size: 14px;">
+                        계정이 없으신가요?
+                        <a href="javascript:void(0)" class="form-link" onclick="AuthUI.showRegisterModal()">
+                            회원가입
+                        </a>
+                    </p>
+                    <p style="color: #6b7280; font-size: 13px; margin-top: 12px;">
+                        <strong>데모 계정:</strong> user@artify.com / user123
+                    </p>
+                </div>
+            </form>
+            <button
+                class="btn-cancel"
+                onclick="AuthUI.hideLoginModal()"
+                style="position: absolute; top: 20px; right: 20px; padding: 8px 12px; border-radius: 6px;"
+            >
+                ✕
+            </button>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div class="modal-overlay" id="register-modal">
+        <div class="modal auth-modal">
+            <h2 class="modal-title">회원가입</h2>
+            <div class="error-message"></div>
+            <form onsubmit="AuthUI.handleRegister(event)">
+                <div class="form-group">
+                    <label class="form-label" for="register-name">이름</label>
+                    <input
+                        type="text"
+                        id="register-name"
+                        class="form-input"
+                        placeholder="홍길동"
+                        required
+                    >
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="register-email">이메일</label>
+                    <input
+                        type="email"
+                        id="register-email"
+                        class="form-input"
+                        placeholder="your@email.com"
+                        required
+                    >
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="register-password">비밀번호</label>
+                    <input
+                        type="password"
+                        id="register-password"
+                        class="form-input"
+                        placeholder="••••••••"
+                        required
+                        minlength="6"
+                    >
+                    <div id="password-strength" class="password-strength"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="register-password-confirm">비밀번호 확인</label>
+                    <input
+                        type="password"
+                        id="register-password-confirm"
+                        class="form-input"
+                        placeholder="••••••••"
+                        required
+                        minlength="6"
+                    >
+                </div>
+                <button type="submit" class="btn-submit">회원가입</button>
+                <div class="form-footer">
+                    <p style="color: #6b7280; font-size: 14px;">
+                        이미 계정이 있으신가요?
+                        <a href="javascript:void(0)" class="form-link" onclick="AuthUI.showLoginModal()">
+                            로그인
+                        </a>
+                    </p>
+                </div>
+            </form>
+            <button
+                class="btn-cancel"
+                onclick="AuthUI.hideRegisterModal()"
+                style="position: absolute; top: 20px; right: 20px; padding: 8px 12px; border-radius: 6px;"
+            >
+                ✕
+            </button>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div class="modal-overlay" id="profile-modal">
+        <div class="modal">
+            <h2 class="modal-title">내 프로필</h2>
+            <div class="error-message"></div>
+
+            <!-- User Info Section -->
+            <div class="profile-info">
+                <div class="profile-info-item">
+                    <span class="profile-info-label">이름</span>
+                    <span class="profile-info-value" id="profile-user-name">사용자</span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="profile-info-label">이메일</span>
+                    <span class="profile-info-value" id="profile-user-email">user@example.com</span>
+                </div>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <!-- Change Password Section -->
+            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">비밀번호 변경</h3>
+            <form onsubmit="AuthUI.handleChangePassword(event)">
+                <div class="form-group">
+                    <label class="form-label" for="current-password">현재 비밀번호</label>
+                    <input
+                        type="password"
+                        id="current-password"
+                        class="form-input"
+                        placeholder="••••••••"
+                    >
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="new-password">새 비밀번호</label>
+                    <input
+                        type="password"
+                        id="new-password"
+                        class="form-input"
+                        placeholder="••••••••"
+                        minlength="6"
+                    >
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="confirm-new-password">새 비밀번호 확인</label>
+                    <input
+                        type="password"
+                        id="confirm-new-password"
+                        class="form-input"
+                        placeholder="••••••••"
+                        minlength="6"
+                    >
+                </div>
+                <button type="submit" class="btn-submit">비밀번호 변경</button>
+            </form>
+
+            <!-- Danger Zone -->
+            <div class="danger-zone">
+                <div class="danger-zone-title">위험 영역</div>
+                <p style="font-size: 14px; color: #6b7280; margin-bottom: 12px;">
+                    계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다.
+                </p>
+                <button
+                    class="btn-danger"
+                    onclick="if(confirm('정말로 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) { alert('계정 삭제 기능은 준비 중입니다.'); }"
+                >
+                    계정 삭제
+                </button>
+            </div>
+
+            <button
+                class="btn-cancel"
+                onclick="AuthUI.hideProfileModal()"
+                style="position: absolute; top: 20px; right: 20px; padding: 8px 12px; border-radius: 6px;"
+            >
+                ✕
+            </button>
+        </div>
+    </div>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- Core JavaScript Files -->
+    <!-- Load config first as ES module -->
+    <script type="module" src="js/config.js"></script>
+    <script src="js/state.js"></script>
+    <!-- API.js is now an ES module that imports config.js -->
+    <script type="module" src="js/api.js"></script>
+    <script src="js/ui-kit.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/router.js"></script>
+    <script src="js/home.js"></script>
+
+    <!-- Initialize App -->
+    <script>
+        // Register routes
+        router
+            .register('/', (params) => {
+                console.log('Route: Home');
+                HomePage.init();
+            })
+            .register('/editor', (params) => {
+                console.log('Route: Editor', params);
+
+                // Check if editor page exists
+                if (params.id) {
+                    // Load existing project
+                    window.location.href = `editor.html?id=${params.id}`;
+                } else if (params.mode) {
+                    // Open editor with specific mode
+                    window.location.href = `editor.html?mode=${params.mode}`;
+                } else {
+                    // Create new project
+                    window.location.href = 'editor.html';
+                }
+            })
+            .register('/404', () => {
+                const app = document.getElementById('app');
+                app.innerHTML = `
+                    <div style="text-align: center; padding: 100px 20px;">
+                        <h1 style="font-size: 80px; margin-bottom: 24px;">404</h1>
+                        <p style="font-size: 24px; color: #6b7280; margin-bottom: 32px;">페이지를 찾을 수 없습니다</p>
+                        <button class="btn btn-primary" onclick="router.navigate('/')">
+                            홈으로 돌아가기
+                        </button>
+                    </div>
+                `;
+            });
+
+        // Initialize
+        console.log('Artify Platform initialized');
+        console.log('API endpoints:', window.APP_CONFIG);
+
+        // Load initial route
+        router.handleRoute();
+
+        // Check API health on startup
+        (async () => {
+            try {
+                // Wait for API to be available
+                if (!window.api) {
+                    console.warn('API not loaded yet, waiting...');
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+
+                const api = window.api;
+                if (api && api.healthCheck) {
+                    const isHealthy = await api.healthCheck();
+                    if (!isHealthy) {
+                        if (typeof UI !== 'undefined') {
+                            UI.toast('백엔드 서버에 연결할 수 없습니다. 일부 기능이 제한될 수 있습니다.', 'error');
+                        }
+                    } else {
+                        console.log('Backend health check: OK');
+                    }
+                } else {
+                    console.warn('API healthCheck not available');
+                }
+            } catch (error) {
+                console.error('Health check error:', error);
+            }
+        })();
+
+        // Initialize authentication UI
+        setTimeout(() => {
+            if (typeof AuthUI !== 'undefined') {
+                AuthUI.updateUserUI();
+            }
+        }, 100);
+    </script>
+</body>
+</html>
