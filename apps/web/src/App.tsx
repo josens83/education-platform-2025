@@ -1,0 +1,87 @@
+import { useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { initializeApi } from './lib/api';
+import { useAuthStore } from './store/authStore';
+
+// Pages (추후 생성 예정)
+import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import DashboardPage from './pages/DashboardPage';
+import BooksPage from './pages/BooksPage';
+import BookDetailPage from './pages/BookDetailPage';
+import ReaderPage from './pages/ReaderPage';
+
+// Layout
+import Layout from './components/Layout';
+
+/**
+ * 보호된 라우트 컴포넌트
+ * - 인증되지 않은 사용자는 로그인 페이지로 리다이렉트
+ */
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+/**
+ * 메인 앱 컴포넌트
+ */
+function App() {
+  useEffect(() => {
+    // API 클라이언트 초기화
+    initializeApi();
+  }, []);
+
+  return (
+    <Routes>
+      {/* 공개 라우트 */}
+      <Route path="/" element={<Layout />}>
+        <Route index element={<HomePage />} />
+        <Route path="login" element={<LoginPage />} />
+        <Route path="register" element={<RegisterPage />} />
+
+        {/* 보호된 라우트 */}
+        <Route
+          path="dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="books"
+          element={
+            <ProtectedRoute>
+              <BooksPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="books/:id"
+          element={
+            <ProtectedRoute>
+              <BookDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="reader/:chapterId"
+          element={
+            <ProtectedRoute>
+              <ReaderPage />
+            </ProtectedRoute>
+          }
+        />
+      </Route>
+    </Routes>
+  );
+}
+
+export default App;
