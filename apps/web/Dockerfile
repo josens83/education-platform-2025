@@ -4,21 +4,20 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# 공유 패키지 먼저 복사
-COPY packages/ ./packages/
+# 전체 프로젝트 복사
+COPY . .
 
-# Web app package.json 복사
-COPY apps/web/package*.json ./apps/web/
+# 1. api-client 패키지 빌드 (TypeScript 컴파일)
+WORKDIR /app/packages/api-client
+RUN npm install && npm run build
 
-# 의존성 설치
+# 2. shared 패키지 빌드 (TypeScript 컴파일)
+WORKDIR /app/packages/shared
+RUN npm install && npm run build
+
+# 3. Web app 빌드 (이제 컴파일된 패키지를 사용할 수 있음)
 WORKDIR /app/apps/web
-RUN npm ci
-
-# 소스 코드 복사
-COPY apps/web/ ./
-
-# 빌드
-RUN npm run build
+RUN npm install && npm run build
 
 # Production stage
 FROM nginx:alpine
