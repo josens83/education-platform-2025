@@ -1,0 +1,48 @@
+version: '3.8'
+
+# 개발 환경용 Docker Compose
+# Hot reload 및 개발 도구 포함
+
+services:
+  # PostgreSQL 데이터베이스 (개발용)
+  postgres:
+    image: postgres:16-alpine
+    container_name: education-db-dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: education_platform_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - education-dev-network
+
+  # pgAdmin (데이터베이스 관리 UI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: education-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - education-dev-network
+
+volumes:
+  postgres_dev_data:
+    driver: local
+
+networks:
+  education-dev-network:
+    driver: bridge

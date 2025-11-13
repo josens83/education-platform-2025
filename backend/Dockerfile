@@ -1,13 +1,21 @@
-﻿FROM node:18
+# Backend API Dockerfile
+FROM node:20-alpine
 
 WORKDIR /app
 
+# 의존성 설치
 COPY package*.json ./
+RUN npm ci --only=production
 
-RUN npm install
-
+# 소스 코드 복사
 COPY . .
 
+# 포트 노출
 EXPOSE 3001
 
+# 헬스체크
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3001/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# 앱 실행
 CMD ["node", "server.js"]
