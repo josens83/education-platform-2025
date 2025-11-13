@@ -1,0 +1,7 @@
+# robots.txt for English Education Platform
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+Sitemap: https://yourdomain.com/sitemap.xml
