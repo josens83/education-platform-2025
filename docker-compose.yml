@@ -34,7 +34,7 @@ services:
       DATABASE_URL: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-education_platform}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET:-change-this-secret-key}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
     ports:
       - "3001:3001"
     depends_on:
