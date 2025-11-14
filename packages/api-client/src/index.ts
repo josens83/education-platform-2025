@@ -185,8 +185,8 @@ export class EducationApiClient {
   /**
    * 챕터 상세 조회
    */
-  async getChapter(id: number): Promise<Types.Chapter> {
-    const response = await this.client.get<Types.ApiResponse<Types.Chapter>>(
+  async getChapter(id: number): Promise<{ chapter: Types.Chapter; audio: any | null }> {
+    const response = await this.client.get<Types.ApiResponse<{ chapter: Types.Chapter; audio: any | null }>>(
       `/api/chapters/${id}`
     );
     return response.data.data!;
