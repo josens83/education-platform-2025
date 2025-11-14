@@ -24,6 +24,13 @@ export default function ReaderPage() {
 
   const chapter = data?.chapter;
 
+  // 챕터의 퀴즈 목록 조회
+  const { data: quizzes } = useQuery(
+    ['chapterQuizzes', id],
+    () => api.getChapterQuizzes(id),
+    { enabled: !!id }
+  );
+
   // 진도 저장 mutation
   const saveProgressMutation = useMutation(
     (progressData: { chapter_id: number; progress_percentage: number; time_spent_seconds?: number }) =>
@@ -166,6 +173,46 @@ export default function ReaderPage() {
             </button>
           </div>
         </div>
+
+        {/* 퀴즈 섹션 */}
+        {quizzes && quizzes.length > 0 && (
+          <div className="mt-6 bg-white rounded-xl shadow-lg p-6">
+            <h3 className="font-semibold text-xl mb-4">📝 이 챕터의 퀴즈</h3>
+            <p className="text-gray-600 mb-4">
+              챕터 내용을 이해했는지 퀴즈로 확인해보세요!
+            </p>
+            <div className="space-y-3">
+              {quizzes.map((quiz) => (
+                <Link
+                  key={quiz.id}
+                  to={`/quiz/${quiz.id}`}
+                  className="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 group-hover:text-primary-600 transition">
+                        {quiz.title}
+                      </h4>
+                      {quiz.description && (
+                        <p className="text-sm text-gray-600 mt-1">{quiz.description}</p>
+                      )}
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                        <span>난이도: {quiz.difficulty_level}</span>
+                        <span>합격 점수: {quiz.passing_score}%</span>
+                        {quiz.time_limit_minutes && (
+                          <span>제한시간: {quiz.time_limit_minutes}분</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-gray-400 group-hover:text-primary-600 transition">
+                      →
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 오디오 플레이어 (추후 구현) */}
         {data?.audio && (
