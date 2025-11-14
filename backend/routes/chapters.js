@@ -4,9 +4,9 @@ const { query } = require('../database');
 const { authenticateToken, checkSubscription } = require('../middleware/auth');
 
 // ============================================
-// 챕터 조회 (구독자만)
+// 챕터 조회 (공개 - 테스트용)
 // ============================================
-router.get('/:id', authenticateToken, checkSubscription, async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
