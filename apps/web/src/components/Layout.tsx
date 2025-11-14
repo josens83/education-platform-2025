@@ -42,6 +42,12 @@ export default function Layout() {
                   >
                     책 목록
                   </Link>
+                  <Link
+                    to="/subscription"
+                    className="text-gray-700 hover:text-primary-600 transition"
+                  >
+                    구독
+                  </Link>
                   <div className="flex items-center gap-4">
                     <Link
                       to="/profile"
