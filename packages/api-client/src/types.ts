@@ -84,10 +84,16 @@ export interface Chapter {
   book_id: number;
   chapter_number: number;
   title: string;
+  slug?: string;
+  content?: string;
   content_text?: string;
   content_html?: string;
+  content_type?: string;
   word_count?: number;
   estimated_minutes?: number;
+  display_order?: number;
+  is_published?: boolean;
+  book_title?: string; // JOIN으로 가져오는 필드
   created_at: string;
   updated_at: string;
 }
