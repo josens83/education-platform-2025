@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import ProfilePage from './pages/ProfilePage';
+import SubscriptionPage from './pages/SubscriptionPage';
 import BooksPage from './pages/BooksPage';
 import BookDetailPage from './pages/BookDetailPage';
 import ReaderPage from './pages/ReaderPage';
@@ -67,6 +68,14 @@ function App() {
           element={
             <ProtectedRoute>
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="subscription"
+          element={
+            <ProtectedRoute>
+              <SubscriptionPage />
             </ProtectedRoute>
           }
         />

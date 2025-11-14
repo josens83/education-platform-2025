@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
@@ -48,6 +49,13 @@ export default function ProfilePage() {
       }
     },
   });
+
+  // 구독 정보 조회
+  const { data: subscription } = useQuery('mySubscription', () => api.getMySubscription());
+  const { data: plans } = useQuery('subscriptionPlans', () => api.getSubscriptionPlans());
+
+  // 현재 구독 플랜 찾기
+  const currentPlan = plans?.find((p) => p.id === subscription?.plan_id);
 
   // 프로필 업데이트 mutation
   const updateProfileMutation = useMutation(
@@ -290,6 +298,75 @@ export default function ProfilePage() {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* 구독 상태 */}
+          <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
+            <h2 className="text-xl font-bold mb-6">구독 상태</h2>
+
+            {subscription && subscription.status === 'active' && currentPlan ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-primary-50 to-primary-100 rounded-lg">
+                  <div>
+                    <div className="flex items-center gap-3 mb-1">
+                      <h3 className="text-lg font-bold text-primary-900">{currentPlan.name}</h3>
+                      <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                        활성
+                      </span>
+                    </div>
+                    <p className="text-sm text-primary-700">
+                      {currentPlan.description || '프리미엄 콘텐츠를 이용하실 수 있습니다'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-primary-600">
+                      {currentPlan.price === 0 ? '무료' : `${currentPlan.price.toLocaleString()}원`}
+                    </div>
+                    <div className="text-xs text-primary-600">
+                      / {currentPlan.billing_cycle === 'annual' ? '년' : '월'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600">시작일:</span>
+                    <span className="font-semibold">{new Date(subscription.start_date).toLocaleDateString()}</span>
+                  </div>
+                  {subscription.end_date && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600">만료일:</span>
+                      <span className="font-semibold">{new Date(subscription.end_date).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600">자동 갱신:</span>
+                    <span className="font-semibold">{subscription.auto_renew ? '활성' : '비활성'}</span>
+                  </div>
+                </div>
+
+                <Link
+                  to="/subscription"
+                  className="block w-full md:w-auto text-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-semibold"
+                >
+                  구독 관리하기
+                </Link>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-5xl mb-4">💳</div>
+                <h3 className="text-lg font-semibold mb-2">활성화된 구독이 없습니다</h3>
+                <p className="text-gray-600 mb-6">
+                  프리미엄 플랜을 구독하고 더 많은 콘텐츠를 이용해보세요!
+                </p>
+                <Link
+                  to="/subscription"
+                  className="inline-block px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-semibold"
+                >
+                  구독 플랜 보기 →
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* 액션 버튼 */}
