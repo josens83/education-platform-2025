@@ -1,15 +1,20 @@
-import { useQuery } from 'react-query';
-import { useParams, Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useQuery, useMutation } from 'react-query';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 
 /**
  * 챕터 읽기 페이지
  * - 챕터 내용 표시
+ * - 학습 진도 자동 저장
  * - 오디오 재생 (추후 구현)
  */
 export default function ReaderPage() {
   const { chapterId } = useParams<{ chapterId: string }>();
+  const navigate = useNavigate();
   const id = parseInt(chapterId || '0');
+  const [hasStarted, setHasStarted] = useState(false);
 
   const { data, isLoading, error } = useQuery(
     ['chapter', id],
@@ -18,6 +23,48 @@ export default function ReaderPage() {
   );
 
   const chapter = data?.chapter;
+
+  // 진도 저장 mutation
+  const saveProgressMutation = useMutation(
+    (progressData: { chapter_id: number; progress_percentage: number; time_spent_seconds?: number }) =>
+      api.updateProgress(progressData),
+    {
+      onError: (error: any) => {
+        console.error('Failed to save progress:', error);
+      },
+    }
+  );
+
+  // 챕터 시작 시 진도 저장
+  useEffect(() => {
+    if (chapter && !hasStarted) {
+      saveProgressMutation.mutate({
+        chapter_id: chapter.id,
+        progress_percentage: 0,
+        time_spent_seconds: 0,
+      });
+      setHasStarted(true);
+    }
+  }, [chapter, hasStarted]);
+
+  // 챕터 완료 처리
+  const handleComplete = () => {
+    if (chapter) {
+      saveProgressMutation.mutate(
+        {
+          chapter_id: chapter.id,
+          progress_percentage: 100,
+        },
+        {
+          onSuccess: () => {
+            toast.success('챕터를 완료했습니다! 🎉');
+            // 책 상세 페이지로 이동
+            navigate(`/books/${chapter.book_id}`);
+          },
+        }
+      );
+    }
+  };
 
   if (isLoading) {
     return (
@@ -101,6 +148,23 @@ export default function ReaderPage() {
               챕터 내용이 아직 준비되지 않았습니다.
             </p>
           )}
+
+          {/* 완료 버튼 */}
+          <div className="mt-8 pt-8 border-t border-gray-200 flex items-center justify-between">
+            <Link
+              to={`/books/${chapter.book_id}`}
+              className="text-gray-600 hover:text-gray-900"
+            >
+              ← 책으로 돌아가기
+            </Link>
+            <button
+              onClick={handleComplete}
+              disabled={saveProgressMutation.isLoading}
+              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50"
+            >
+              {saveProgressMutation.isLoading ? '저장 중...' : '✓ 챕터 완료'}
+            </button>
+          </div>
         </div>
 
         {/* 오디오 플레이어 (추후 구현) */}
