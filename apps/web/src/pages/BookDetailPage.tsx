@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/authStore';
  * 책 상세 페이지
  * - 책 정보 표시
  * - 챕터 목록
+ * - 학습 진도 표시
  */
 export default function BookDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +25,29 @@ export default function BookDetailPage() {
     () => api.getBookChapters(bookId),
     { enabled: !!bookId }
   );
+
+  // 학습 진도 조회 (로그인한 경우에만)
+  const { data: progressList } = useQuery(
+    ['progress', bookId],
+    () => api.getMyProgress(bookId),
+    { enabled: isAuthenticated && !!bookId }
+  );
+
+  // 챕터별 진도 매핑
+  const progressMap = new Map(
+    progressList?.map((p) => [p.chapter_id, p]) || []
+  );
+
+  // 완료한 챕터 수 계산
+  const completedCount = progressList?.filter((p) => p.is_completed).length || 0;
+  const totalChapters = chapters?.length || 0;
+  const progressPercentage = totalChapters > 0 ? Math.round((completedCount / totalChapters) * 100) : 0;
+
+  // 마지막 읽은 챕터 찾기 (완료되지 않았고 진행 중인 챕터)
+  const lastReadProgress = progressList
+    ?.filter((p) => !p.is_completed && p.progress_percentage < 100)
+    ?.sort((a, b) => new Date(b.last_accessed_at).getTime() - new Date(a.last_accessed_at).getTime())[0];
+  const lastReadChapter = chapters?.find((c) => c.id === lastReadProgress?.chapter_id);
 
   if (bookLoading || chaptersLoading) {
     return (
@@ -125,16 +149,46 @@ export default function BookDetailPage() {
                 </div>
               </div>
 
-              {/* 첫 챕터 읽기 버튼 */}
+              {/* 진도 표시 (로그인한 경우) */}
+              {isAuthenticated && progressList && progressList.length > 0 && (
+                <div className="mb-6 p-4 bg-primary-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-primary-900">학습 진도</span>
+                    <span className="text-sm font-semibold text-primary-600">
+                      {completedCount} / {totalChapters} 챕터 완료
+                    </span>
+                  </div>
+                  <div className="w-full bg-white rounded-full h-2">
+                    <div
+                      className="bg-primary-600 h-2 rounded-full transition-all"
+                      style={{ width: `${progressPercentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+
+              {/* 읽기 버튼 */}
               {chapters && chapters.length > 0 && (
                 isAuthenticated ? (
-                  <Link
-                    to={`/reader/${chapters[0].id}`}
-                    className="inline-block px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-semibold"
-                  >
-                    읽기 시작 →
-                  </Link>
+                  lastReadChapter ? (
+                    // 이어서 읽기 버튼
+                    <Link
+                      to={`/reader/${lastReadChapter.id}`}
+                      className="inline-block px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-semibold"
+                    >
+                      📖 이어서 읽기 (Chapter {lastReadChapter.chapter_number})
+                    </Link>
+                  ) : (
+                    // 처음 읽기 버튼
+                    <Link
+                      to={`/reader/${chapters[0].id}`}
+                      className="inline-block px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-semibold"
+                    >
+                      읽기 시작 →
+                    </Link>
+                  )
                 ) : (
+                  // 로그인 필요
                   <div>
                     <Link
                       to="/login"
@@ -161,40 +215,58 @@ export default function BookDetailPage() {
             <p className="text-gray-500 text-center py-8">아직 챕터가 없습니다.</p>
           ) : (
             <div className="space-y-3">
-              {chapters?.map((chapter) => (
-                <Link
-                  key={chapter.id}
-                  to={isAuthenticated ? `/reader/${chapter.id}` : '/login'}
-                  state={!isAuthenticated ? { from: `/reader/${chapter.id}` } : undefined}
-                  className="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition group"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-1">
-                        <span className="text-sm font-semibold text-gray-500">
-                          Chapter {chapter.chapter_number}
-                        </span>
-                        {chapter.estimated_minutes && (
-                          <span className="text-xs text-gray-400">
-                            ⏱️ {chapter.estimated_minutes}분
+              {chapters?.map((chapter) => {
+                const progress = progressMap.get(chapter.id);
+                const isCompleted = progress?.is_completed || false;
+                const isInProgress = progress && !progress.is_completed && progress.progress_percentage > 0;
+
+                return (
+                  <Link
+                    key={chapter.id}
+                    to={isAuthenticated ? `/reader/${chapter.id}` : '/login'}
+                    state={!isAuthenticated ? { from: `/reader/${chapter.id}` } : undefined}
+                    className={`block p-4 border rounded-lg hover:border-primary-500 hover:bg-primary-50 transition group ${
+                      isCompleted ? 'border-green-200 bg-green-50' : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-1">
+                          <span className="text-sm font-semibold text-gray-500">
+                            Chapter {chapter.chapter_number}
                           </span>
-                        )}
-                        {!isAuthenticated && (
-                          <span className="text-xs px-2 py-0.5 bg-primary-100 text-primary-700 rounded">
-                            🔒 로그인 필요
-                          </span>
-                        )}
+                          {chapter.estimated_minutes && (
+                            <span className="text-xs text-gray-400">
+                              ⏱️ {chapter.estimated_minutes}분
+                            </span>
+                          )}
+                          {isCompleted && (
+                            <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded font-semibold">
+                              ✓ 완료
+                            </span>
+                          )}
+                          {isInProgress && !isCompleted && (
+                            <span className="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded">
+                              📖 읽는 중
+                            </span>
+                          )}
+                          {!isAuthenticated && (
+                            <span className="text-xs px-2 py-0.5 bg-primary-100 text-primary-700 rounded">
+                              🔒 로그인 필요
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="font-semibold text-gray-900 group-hover:text-primary-600 transition">
+                          {chapter.title}
+                        </h3>
                       </div>
-                      <h3 className="font-semibold text-gray-900 group-hover:text-primary-600 transition">
-                        {chapter.title}
-                      </h3>
+                      <div className="text-gray-400 group-hover:text-primary-600 transition">
+                        {isCompleted ? '✓' : '→'}
+                      </div>
                     </div>
-                    <div className="text-gray-400 group-hover:text-primary-600 transition">
-                      →
-                    </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>
