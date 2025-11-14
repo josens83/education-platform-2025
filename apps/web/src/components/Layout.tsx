@@ -43,7 +43,12 @@ export default function Layout() {
                     책 목록
                   </Link>
                   <div className="flex items-center gap-4">
-                    <span className="text-sm text-gray-600">{user?.username}</span>
+                    <Link
+                      to="/profile"
+                      className="text-gray-700 hover:text-primary-600 transition"
+                    >
+                      👤 {user?.username}
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition"
