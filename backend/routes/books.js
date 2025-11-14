@@ -107,6 +107,34 @@ router.get('/:id', async (req, res) => {
 });
 
 // ============================================
+// 책의 챕터 목록 조회
+// ============================================
+router.get('/:id/chapters', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const chaptersResult = await query(
+      `SELECT id, chapter_number, title, slug, estimated_minutes, is_published, display_order
+       FROM chapters
+       WHERE book_id = $1 AND is_published = true
+       ORDER BY display_order, chapter_number`,
+      [id]
+    );
+
+    res.json({
+      status: 'success',
+      data: chaptersResult.rows
+    });
+  } catch (error) {
+    console.error('챕터 목록 조회 오류:', error);
+    res.status(500).json({
+      status: 'error',
+      message: '챕터 조회 중 오류가 발생했습니다'
+    });
+  }
+});
+
+// ============================================
 // 책 생성 (관리자 전용)
 // ============================================
 router.post('/', authenticateToken, authorizeRoles('admin', 'teacher'), async (req, res) => {
