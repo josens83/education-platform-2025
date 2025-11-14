@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
@@ -9,7 +9,11 @@ import { useAuthStore } from '../store/authStore';
  */
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const setAuth = useAuthStore((state) => state.setAuth);
+
+  // 로그인 후 이동할 페이지 (location state에서 가져오기)
+  const from = (location.state as any)?.from || '/dashboard';
 
   const [formData, setFormData] = useState({
     email: '',
@@ -25,7 +29,7 @@ export default function LoginPage() {
       const { user, token } = await api.login(formData);
       setAuth(user, token);
       toast.success('로그인 성공!');
-      navigate('/dashboard');
+      navigate(from, { replace: true });
     } catch (error: any) {
       toast.error(error.response?.data?.message || '로그인에 실패했습니다.');
     } finally {

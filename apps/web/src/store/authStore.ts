@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@education-platform/api-client';
+import { api } from '../lib/api';
 
 interface AuthState {
   user: User | null;
@@ -23,6 +24,9 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       setAuth: (user, token) => {
+        // API 클라이언트에 토큰 설정
+        api.setToken(token);
+
         set({
           user,
           token,
@@ -31,6 +35,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       clearAuth: () => {
+        // API 클라이언트 토큰 제거
+        api.logout();
+
         set({
           user: null,
           token: null,

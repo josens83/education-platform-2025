@@ -40,13 +40,17 @@ function App() {
 
   return (
     <Routes>
-      {/* 공개 라우트 */}
       <Route path="/" element={<Layout />}>
+        {/* 공개 라우트 */}
         <Route index element={<HomePage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
 
-        {/* 보호된 라우트 */}
+        {/* 책 목록 및 상세는 공개 (프리미엄 모델) */}
+        <Route path="books" element={<BooksPage />} />
+        <Route path="books/:id" element={<BookDetailPage />} />
+
+        {/* 보호된 라우트 - 인증 필요 */}
         <Route
           path="dashboard"
           element={
@@ -55,22 +59,8 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="books"
-          element={
-            <ProtectedRoute>
-              <BooksPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="books/:id"
-          element={
-            <ProtectedRoute>
-              <BookDetailPage />
-            </ProtectedRoute>
-          }
-        />
+
+        {/* 챕터 읽기는 로그인 필수 (나중에 구독 체크 추가 예정) */}
         <Route
           path="reader/:chapterId"
           element={
