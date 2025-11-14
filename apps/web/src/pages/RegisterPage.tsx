@@ -1,12 +1,17 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const setAuth = useAuthStore((state) => state.setAuth);
+
+  // 회원가입 후 이동할 페이지 (location state에서 가져오기)
+  const from = (location.state as any)?.from || '/dashboard';
+
   const [formData, setFormData] = useState({ email: '', password: '', username: '' });
   const [loading, setLoading] = useState(false);
 
@@ -17,7 +22,7 @@ export default function RegisterPage() {
       const { user, token } = await api.register(formData);
       setAuth(user, token);
       toast.success('회원가입 성공!');
-      navigate('/dashboard');
+      navigate(from, { replace: true });
     } catch (error: any) {
       toast.error(error.response?.data?.message || '회원가입에 실패했습니다.');
     } finally {

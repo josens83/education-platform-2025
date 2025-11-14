@@ -1,6 +1,7 @@
 import { useQuery } from 'react-query';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../lib/api';
+import { useAuthStore } from '../store/authStore';
 
 /**
  * 책 상세 페이지
@@ -9,6 +10,7 @@ import { api } from '../lib/api';
  */
 export default function BookDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const bookId = parseInt(id || '0');
 
   const { data: book, isLoading: bookLoading } = useQuery(
@@ -125,12 +127,27 @@ export default function BookDetailPage() {
 
               {/* 첫 챕터 읽기 버튼 */}
               {chapters && chapters.length > 0 && (
-                <Link
-                  to={`/reader/${chapters[0].id}`}
-                  className="inline-block px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-semibold"
-                >
-                  읽기 시작 →
-                </Link>
+                isAuthenticated ? (
+                  <Link
+                    to={`/reader/${chapters[0].id}`}
+                    className="inline-block px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-semibold"
+                  >
+                    읽기 시작 →
+                  </Link>
+                ) : (
+                  <div>
+                    <Link
+                      to="/login"
+                      state={{ from: `/reader/${chapters[0].id}` }}
+                      className="inline-block px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-semibold"
+                    >
+                      로그인하고 읽기 →
+                    </Link>
+                    <p className="text-sm text-gray-500 mt-2">
+                      💡 책을 읽으려면 로그인이 필요합니다
+                    </p>
+                  </div>
+                )
               )}
             </div>
           </div>
@@ -144,10 +161,11 @@ export default function BookDetailPage() {
             <p className="text-gray-500 text-center py-8">아직 챕터가 없습니다.</p>
           ) : (
             <div className="space-y-3">
-              {chapters?.map((chapter, index) => (
+              {chapters?.map((chapter) => (
                 <Link
                   key={chapter.id}
-                  to={`/reader/${chapter.id}`}
+                  to={isAuthenticated ? `/reader/${chapter.id}` : '/login'}
+                  state={!isAuthenticated ? { from: `/reader/${chapter.id}` } : undefined}
                   className="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition group"
                 >
                   <div className="flex items-center justify-between">
@@ -159,6 +177,11 @@ export default function BookDetailPage() {
                         {chapter.estimated_minutes && (
                           <span className="text-xs text-gray-400">
                             ⏱️ {chapter.estimated_minutes}분
+                          </span>
+                        )}
+                        {!isAuthenticated && (
+                          <span className="text-xs px-2 py-0.5 bg-primary-100 text-primary-700 rounded">
+                            🔒 로그인 필요
                           </span>
                         )}
                       </div>
