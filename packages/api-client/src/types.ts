@@ -63,13 +63,17 @@ export interface Book {
   id: number;
   category_id: number;
   title: string;
+  slug: string;
+  subtitle?: string;
   author: string;
   description?: string;
   cover_image_url?: string;
   difficulty_level: string;
+  target_grade?: string;
   estimated_hours?: number;
   tags?: string[];
   is_published: boolean;
+  is_featured?: boolean;
   publish_date?: string;
   created_at: string;
   updated_at: string;
