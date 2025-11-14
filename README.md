@@ -178,29 +178,73 @@ education-platform-2025/
 
 ### 필수 요구사항
 
-- Node.js 20+
-- PostgreSQL 16+ (또는 Docker)
+- **Docker Desktop** (권장) - Windows/Mac/Linux
+- 또는 Node.js 20+ + PostgreSQL 16+ (로컬 개발)
 - npm 또는 yarn
 
-### 방법 1: Docker를 사용한 빠른 시작 (권장)
+### 방법 1: Docker를 사용한 빠른 시작 (권장) ⭐
 
-가장 빠르고 간단한 방법입니다. Docker가 설치되어 있어야 합니다.
+가장 빠르고 간단한 방법입니다. Docker Desktop이 설치되어 있어야 합니다.
 
 ```bash
 # 1. 저장소 클론
 git clone <repository-url>
 cd education-platform-2025
 
-# 2. 환경 변수 설정
-cp .env.example .env
-# .env 파일을 편집하여 환경 변수 설정
+# 2. Docker Compose로 전체 스택 빌드 및 실행
+docker-compose up -d --build
 
-# 3. Docker Compose로 전체 스택 실행
-docker-compose up -d
-
-# 4. 서비스 확인
+# 3. 서비스 확인
 # Backend API: http://localhost:3001
 # Web App: http://localhost:80
+# PostgreSQL: localhost:5432
+
+# 4. 로그 확인 (선택사항)
+docker-compose logs -f web      # 웹 앱 로그
+docker-compose logs -f backend  # 백엔드 로그
+docker-compose logs -f postgres # 데이터베이스 로그
+```
+
+#### 샘플 데이터 자동 로딩
+
+Docker Compose를 사용하면 **샘플 데이터가 자동으로 로드**됩니다:
+
+- **3권의 샘플 책**: Charlie and the Chocolate Factory, The Little Prince, 1984
+- 각 책마다 여러 챕터와 실제 콘텐츠 포함
+- 카테고리, 난이도 등급 등 완전한 데이터
+
+#### Phase 1 기능 테스트하기
+
+1. **책 목록 페이지**: http://localhost/books
+   - 3권의 샘플 책이 카드 형태로 표시됩니다
+   - 책 표지, 제목, 저자, 난이도, 예상 독서 시간 확인
+
+2. **책 상세 페이지**: http://localhost/books/2
+   - 책의 상세 정보와 챕터 목록 표시
+   - "읽기 시작" 버튼 클릭
+
+3. **챕터 읽기 페이지**: http://localhost/reader/4
+   - 챕터 내용이 HTML 형식으로 표시됩니다
+   - 상단에 책 제목과 챕터 정보 표시
+   - "뒤로" 버튼으로 책 상세 페이지로 이동
+
+#### Docker 명령어 참고
+
+```bash
+# 컨테이너 중지
+docker-compose down
+
+# 컨테이너 재시작 (코드 변경 후)
+docker-compose restart web backend
+
+# 완전히 재빌드 (캐시 무시)
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+
+# 데이터베이스 초기화 (주의: 모든 데이터 삭제)
+docker-compose down -v
+docker-compose up -d --build
 ```
 
 상세한 Docker 배포 가이드는 [deployment/README.md](deployment/README.md)를 참조하세요.
@@ -384,43 +428,70 @@ Authorization: Bearer <your-jwt-token>
 
 ## 🎯 주요 기능 구현 상태
 
-### ✅ 완료
+### ✅ Phase 1 완료 - Books & Reader Pages
 
-**Backend & 인프라**
+**Backend API**
 - [x] 데이터베이스 스키마 설계
 - [x] Backend API 구조
-- [x] 인증 시스템 (회원가입/로그인)
-- [x] 사용자 프로필 관리
-- [x] 책/챕터 관리
-- [x] 학습 진도 추적
-- [x] 퀴즈 시스템 (자동 채점)
-- [x] 구독 관리
+- [x] 책/챕터 관리 API
+  - [x] `GET /api/books` - 책 목록 조회
+  - [x] `GET /api/books/:id` - 책 상세 조회
+  - [x] `GET /api/books/:id/chapters` - 챕터 목록 조회
+  - [x] `GET /api/chapters/:id` - 챕터 내용 조회 (공개)
+- [x] 샘플 데이터 자동 로딩 (Docker)
 
 **공유 패키지**
 - [x] API 클라이언트 라이브러리
+  - [x] TypeScript 타입 정의 (Book, Chapter 등)
+  - [x] API 메서드 (getBooks, getBook, getBookChapters, getChapter)
 - [x] 공통 유틸리티 및 타입 정의
 
-**웹 앱**
-- [x] React + Vite 프로젝트 구조
-- [x] 라우팅 및 인증 플로우
-- [x] 기본 UI 컴포넌트 및 페이지
-
-**모바일 앱**
-- [x] React Native + Expo 프로젝트 구조
-- [x] 네비게이션 시스템
-- [x] 기본 화면 구조
+**웹 앱 - Phase 1 Features**
+- [x] React + Vite + TypeScript 프로젝트 구조
+- [x] 라우팅 시스템 (React Router)
+- [x] **책 목록 페이지** (`/books`)
+  - [x] API 통합 (React Query)
+  - [x] 카드 기반 레이아웃
+  - [x] 난이도 배지, 독서 시간 표시
+  - [x] 로딩 및 에러 상태 처리
+- [x] **책 상세 페이지** (`/books/:id`)
+  - [x] 책 정보 표시 (제목, 저자, 설명)
+  - [x] 챕터 목록 표시
+  - [x] "읽기 시작" 버튼
+- [x] **챕터 읽기 페이지** (`/reader/:chapterId`)
+  - [x] HTML 콘텐츠 렌더링
+  - [x] Prose 스타일링 (Tailwind)
+  - [x] 네비게이션 (뒤로 가기)
+  - [x] 예상 독서 시간 표시
 
 **배포**
 - [x] Docker 컨테이너 설정
-- [x] Docker Compose (개발/프로덕션)
-- [x] CI/CD 파이프라인 (GitHub Actions)
+- [x] Docker Compose (프로덕션)
 - [x] Nginx 웹 서버 설정
+- [x] 멀티스테이지 빌드 최적화
 
-### 🚧 진행 중
+### 🚧 Phase 2 계획 - Authentication & User Features
 
-- [ ] 전자책 리더 UI 완성
+**Backend**
+- [x] 인증 시스템 (회원가입/로그인) - API만 구현됨
+- [x] 사용자 프로필 관리 - API만 구현됨
+- [x] 학습 진도 추적 - API만 구현됨
+- [x] 퀴즈 시스템 (자동 채점) - API만 구현됨
+- [x] 구독 관리 - API만 구현됨
+
+**웹 앱 - 구현 예정**
+- [ ] 로그인/회원가입 페이지 UI
+- [ ] 사용자 프로필 페이지
+- [ ] 대시보드 (학습 통계)
+- [ ] 학습 진도 저장 기능
+- [ ] 퀴즈 페이지
+- [ ] 구독 관리 페이지
+
+### 📝 Phase 3 계획 - Advanced Features
+
 - [ ] 오디오 플레이어 (텍스트-오디오 싱크)
-- [ ] 대시보드 및 통계 UI 구현
+- [ ] 북마크 및 노트 기능 UI
+- [ ] 단어장 기능 UI
 - [ ] 모바일 앱 UI 완성
 - [ ] 결제 시스템 통합
 - [ ] 콘텐츠 관리 시스템 (CMS)
@@ -492,6 +563,141 @@ curl -X POST http://localhost:3001/api/auth/login \
 
 # 책 목록 조회
 curl http://localhost:3001/api/books
+
+# 챕터 내용 조회
+curl http://localhost:3001/api/chapters/4
+```
+
+### 데이터베이스 직접 접근
+
+```bash
+# PostgreSQL 컨테이너에 접속
+docker exec -it education-postgres psql -U postgres -d education_platform
+
+# 샘플 데이터 확인
+SELECT id, title, author FROM books;
+SELECT id, chapter_number, title FROM chapters WHERE book_id = 2;
+
+# 종료
+\q
+```
+
+## 🔧 트러블슈팅
+
+### Docker 관련 이슈
+
+#### 문제: 웹 페이지에 변경사항이 반영되지 않음
+
+**증상**: 코드를 수정했지만 브라우저에서 변경사항이 보이지 않음
+
+**해결방법**:
+```bash
+# 1. Docker 이미지 완전히 재빌드
+docker-compose down
+docker rmi education-platform-2025-web
+docker-compose build --no-cache web
+docker-compose up -d
+
+# 2. 브라우저 캐시 강력 새로고침
+# Chrome/Edge: Ctrl + Shift + R (Windows) / Cmd + Shift + R (Mac)
+# Firefox: Ctrl + F5 (Windows) / Cmd + Shift + R (Mac)
+```
+
+#### 문제: 데이터베이스에 샘플 데이터가 없음
+
+**증상**: `/books` 페이지에 책이 표시되지 않음
+
+**해결방법**:
+```bash
+# 데이터베이스 볼륨 삭제 후 재생성
+docker-compose down -v  # -v 옵션으로 볼륨도 삭제
+docker-compose up -d --build
+
+# 데이터 확인
+docker exec -it education-postgres psql -U postgres -d education_platform -c "SELECT COUNT(*) FROM books;"
+```
+
+#### 문제: 포트 충돌
+
+**증상**: `Error starting userland proxy: listen tcp4 0.0.0.0:80: bind: address already in use`
+
+**해결방법**:
+```bash
+# 포트 사용 중인 프로세스 확인 (Windows)
+netstat -ano | findstr :80
+
+# 포트 사용 중인 프로세스 확인 (Mac/Linux)
+lsof -i :80
+
+# docker-compose.yml에서 포트 변경
+# web 서비스의 ports를 "8080:80"으로 변경 후
+docker-compose up -d
+# 접속: http://localhost:8080
+```
+
+### API 관련 이슈
+
+#### 문제: CORS 에러
+
+**증상**: 브라우저 콘솔에 `CORS policy` 에러
+
+**해결방법**:
+- `backend/.env` 파일에서 `CORS_ORIGIN` 확인
+- 웹 앱이 실행되는 포트와 일치하는지 확인
+- Docker 사용 시: `CORS_ORIGIN=http://localhost` 또는 `http://localhost:80`
+- 로컬 개발 시: `CORS_ORIGIN=http://localhost:3000`
+
+#### 문제: 404 Not Found on API calls
+
+**증상**: `/api/books` 요청이 404 반환
+
+**해결방법**:
+```bash
+# 백엔드 컨테이너 로그 확인
+docker-compose logs backend
+
+# 백엔드 컨테이너가 실행 중인지 확인
+docker-compose ps
+
+# 백엔드 재시작
+docker-compose restart backend
+```
+
+### TypeScript 빌드 에러
+
+#### 문제: Type errors during build
+
+**증상**: `error TS2339: Property does not exist on type`
+
+**해결방법**:
+```bash
+# 1. packages/api-client 재빌드
+cd packages/api-client
+npm run build
+
+# 2. 웹 앱 node_modules 재설치
+cd apps/web
+rm -rf node_modules
+npm install
+
+# 3. Docker 재빌드
+docker-compose build --no-cache web
+```
+
+### 성능 이슈
+
+#### 문제: Docker 빌드가 너무 느림
+
+**해결방법**:
+```bash
+# Docker Desktop 설정에서 리소스 할당 증가
+# Settings > Resources > Advanced
+# - CPU: 4 cores 이상
+# - Memory: 4GB 이상
+
+# Docker 빌드 캐시 활용 (--no-cache 없이)
+docker-compose build
+docker-compose up -d
 ```
 
 ## 🤝 기여
