@@ -12,6 +12,8 @@ import ProfilePage from './pages/ProfilePage';
 import BooksPage from './pages/BooksPage';
 import BookDetailPage from './pages/BookDetailPage';
 import ReaderPage from './pages/ReaderPage';
+import QuizPage from './pages/QuizPage';
+import QuizResultPage from './pages/QuizResultPage';
 
 // Layout
 import Layout from './components/Layout';
@@ -75,6 +77,24 @@ function App() {
           element={
             <ProtectedRoute>
               <ReaderPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 퀴즈는 로그인 필수 */}
+        <Route
+          path="quiz/:quizId"
+          element={
+            <ProtectedRoute>
+              <QuizPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="quiz/:quizId/result"
+          element={
+            <ProtectedRoute>
+              <QuizResultPage />
             </ProtectedRoute>
           }
         />
