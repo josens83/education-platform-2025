@@ -702,9 +702,17 @@ export class EducationApiClient {
   /**
    * 전체 사용자 목록 조회 (관리자 전용)
    */
-  async getAllUsers(params?: { page?: number; limit?: number; role?: string }): Promise<any> {
+  async getAllUsers(params?: { page?: number; limit?: number; role?: string; search?: string; sort?: string; order?: string }): Promise<any> {
     const response = await this._client.get('/api/users', { params });
     return response.data.data || [];
+  }
+
+  /**
+   * 사용자 상세 정보 조회 (관리자 전용)
+   */
+  async getUserDetails(userId: number): Promise<any> {
+    const response = await this._client.get(`/api/users/${userId}`);
+    return response.data.data;
   }
 
   /**
