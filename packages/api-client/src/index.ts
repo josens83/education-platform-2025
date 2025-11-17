@@ -126,7 +126,7 @@ export class EducationApiClient {
    */
   async updateProfile(data: Partial<Types.UserProfile>): Promise<Types.UserProfile> {
     const response = await this.client.put<Types.ApiResponse<Types.UserProfile>>(
-      '/api/users/profile',
+      '/api/users/me',
       data
     );
     return response.data.data!;
@@ -210,7 +210,7 @@ export class EducationApiClient {
    */
   async getMyProgress(bookId?: number): Promise<Types.LearningProgress[]> {
     const response = await this.client.get<Types.ApiResponse<Types.LearningProgress[]>>(
-      '/api/progress',
+      '/api/progress/my',
       {
         params: bookId ? { book_id: bookId } : undefined,
       }
