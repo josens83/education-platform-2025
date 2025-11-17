@@ -87,6 +87,7 @@ const chapterRoutes = require('./routes/chapters');
 const progressRoutes = require('./routes/progress');
 const quizRoutes = require('./routes/quizzes');
 const subscriptionRoutes = require('./routes/subscriptions');
+const audioRoutes = require('./routes/audio');
 
 // Use Routes
 app.use('/api/auth', authRoutes);
@@ -96,6 +97,7 @@ app.use('/api/chapters', chapterRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/quizzes', quizRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/audio', audioRoutes);
 
 // ============================================
 // ERROR HANDLING

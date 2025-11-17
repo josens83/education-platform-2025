@@ -256,3 +256,16 @@ export interface LearningStats {
   total_time_minutes: number;
   words_learned: number;
 }
+
+// 오디오 파일
+export interface AudioFile {
+  id: number;
+  chapter_id: number;
+  file_url: string;
+  duration_seconds: number;
+  file_size_bytes?: number;
+  audio_type: 'professional' | 'ai_tts';
+  transcript?: string;
+  sync_data?: any;
+  created_at: string;
+}

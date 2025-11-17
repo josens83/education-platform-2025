@@ -469,3 +469,33 @@ export class EducationApiClient {
 export function createApiClient(config: ApiClientConfig): EducationApiClient {
   return new EducationApiClient(config);
 }
+
+  // ==================== 오디오 API ====================
+
+  /**
+   * 챕터의 오디오 파일 조회
+   */
+  async getChapterAudio(chapterId: number): Promise<Types.AudioFile | null> {
+    const response = await this.client.get<Types.ApiResponse<Types.AudioFile>>(
+      `/api/audio/chapters/${chapterId}/audio`
+    );
+    return response.data.data || null;
+  }
+
+  /**
+   * 오디오 재생 위치 저장
+   */
+  async saveAudioProgress(chapterId: number, position: number): Promise<void> {
+    await this.client.post('/api/audio/audio/progress', {
+      chapter_id: chapterId,
+      audio_position_seconds: position,
+    });
+  }
+}
+
+/**
+ * 기본 API 클라이언트 생성 함수
+ */
+export function createApiClient(config: ApiClientConfig): EducationApiClient {
+  return new EducationApiClient(config);
+}
