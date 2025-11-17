@@ -1,7 +1,24 @@
-# robots.txt for English Education Platform
+# robots.txt for 영어 학습 플랫폼
+
+# Allow all crawlers
 User-agent: *
 Allow: /
-Disallow: /api/
-Disallow: /admin/
 
+# Disallow private pages
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /profile/
+Disallow: /reader/
+Disallow: /quiz/
+Disallow: /vocabulary/
+Disallow: /flashcards/
+Disallow: /subscription/success/
+Disallow: /subscription/cancel/
+Disallow: /reset-password/
+Disallow: /verify-email/
+
+# Sitemap location
 Sitemap: https://yourdomain.com/sitemap.xml
+
+# Crawl delay (optional - helps with server load)
+Crawl-delay: 1
