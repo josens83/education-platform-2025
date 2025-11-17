@@ -14,11 +14,11 @@ interface ApiClientConfig {
 }
 
 export class EducationApiClient {
-  private client: AxiosInstance;
+  private _client: AxiosInstance;
   private token: string | null = null;
 
   constructor(config: ApiClientConfig) {
-    this.client = axios.create({
+    this._client = axios.create({
       baseURL: config.baseURL,
       timeout: config.timeout || 30000,
       headers: {
@@ -27,7 +27,7 @@ export class EducationApiClient {
     });
 
     // 요청 인터셉터: 토큰 자동 추가
-    this.client.interceptors.request.use(
+    this._client.interceptors.request.use(
       (config) => {
         if (this.token) {
           config.headers.Authorization = `Bearer ${this.token}`;
@@ -38,7 +38,7 @@ export class EducationApiClient {
     );
 
     // 응답 인터셉터: 에러 처리
-    this.client.interceptors.response.use(
+    this._client.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
@@ -64,13 +64,20 @@ export class EducationApiClient {
     return this.token;
   }
 
+  /**
+   * Axios 클라이언트 인스턴스 가져오기 (직접 호출용)
+   */
+  get client(): AxiosInstance {
+    return this._client;
+  }
+
   // ==================== 인증 API ====================
 
   /**
    * 회원가입
    */
   async register(data: Types.RegisterRequest): Promise<Types.AuthResponse> {
-    const response = await this.client.post<Types.ApiResponse<Types.AuthResponse>>(
+    const response = await this._client.post<Types.ApiResponse<Types.AuthResponse>>(
       '/api/auth/register',
       data
     );
@@ -83,7 +90,7 @@ export class EducationApiClient {
    * 로그인
    */
   async login(data: Types.LoginRequest): Promise<Types.AuthResponse> {
-    const response = await this.client.post<Types.ApiResponse<Types.AuthResponse>>(
+    const response = await this._client.post<Types.ApiResponse<Types.AuthResponse>>(
       '/api/auth/login',
       data
     );
@@ -103,7 +110,7 @@ export class EducationApiClient {
    * 토큰 갱신
    */
   async refreshToken(): Promise<string> {
-    const response = await this.client.post<Types.ApiResponse<{ token: string }>>(
+    const response = await this._client.post<Types.ApiResponse<{ token: string }>>(
       '/api/auth/refresh'
     );
     const token = response.data.data!.token;
@@ -117,7 +124,7 @@ export class EducationApiClient {
    * 내 프로필 조회
    */
   async getMyProfile(): Promise<Types.User> {
-    const response = await this.client.get<Types.ApiResponse<Types.User>>('/api/users/me');
+    const response = await this._client.get<Types.ApiResponse<Types.User>>('/api/users/me');
     return response.data.data!;
   }
 
@@ -125,7 +132,7 @@ export class EducationApiClient {
    * 프로필 업데이트
    */
   async updateProfile(data: Partial<Types.UserProfile>): Promise<Types.UserProfile> {
-    const response = await this.client.put<Types.ApiResponse<Types.UserProfile>>(
+    const response = await this._client.put<Types.ApiResponse<Types.UserProfile>>(
       '/api/users/me',
       data
     );
@@ -138,7 +145,7 @@ export class EducationApiClient {
    * 모든 카테고리 조회
    */
   async getCategories(): Promise<Types.Category[]> {
-    const response = await this.client.get<Types.ApiResponse<Types.Category[]>>(
+    const response = await this._client.get<Types.ApiResponse<Types.Category[]>>(
       '/api/categories'
     );
     return response.data.data || [];
@@ -156,7 +163,7 @@ export class EducationApiClient {
     page?: number;
     limit?: number;
   }): Promise<Types.Book[]> {
-    const response = await this.client.get<Types.ApiResponse<Types.Book[]>>('/api/books', {
+    const response = await this._client.get<Types.ApiResponse<Types.Book[]>>('/api/books', {
       params,
     });
     return response.data.data || [];
@@ -166,7 +173,7 @@ export class EducationApiClient {
    * 책 상세 조회
    */
   async getBook(id: number): Promise<Types.Book> {
-    const response = await this.client.get<Types.ApiResponse<Types.Book>>(`/api/books/${id}`);
+    const response = await this._client.get<Types.ApiResponse<Types.Book>>(`/api/books/${id}`);
     return response.data.data!;
   }
 
@@ -174,7 +181,7 @@ export class EducationApiClient {
    * 책의 챕터 목록 조회
    */
   async getBookChapters(bookId: number): Promise<Types.Chapter[]> {
-    const response = await this.client.get<Types.ApiResponse<Types.Chapter[]>>(
+    const response = await this._client.get<Types.ApiResponse<Types.Chapter[]>>(
       `/api/books/${bookId}/chapters`
     );
     return response.data.data || [];
@@ -186,7 +193,7 @@ export class EducationApiClient {
    * 챕터 상세 조회
    */
   async getChapter(id: number): Promise<{ chapter: Types.Chapter; audio: any | null }> {
-    const response = await this.client.get<Types.ApiResponse<{ chapter: Types.Chapter; audio: any | null }>>(
+    const response = await this._client.get<Types.ApiResponse<{ chapter: Types.Chapter; audio: any | null }>>(
       `/api/chapters/${id}`
     );
     return response.data.data!;
@@ -198,7 +205,7 @@ export class EducationApiClient {
    * 학습 진도 저장/업데이트
    */
   async updateProgress(data: Types.UpdateProgressRequest): Promise<Types.LearningProgress> {
-    const response = await this.client.post<Types.ApiResponse<Types.LearningProgress>>(
+    const response = await this._client.post<Types.ApiResponse<Types.LearningProgress>>(
       '/api/progress',
       data
     );
@@ -209,7 +216,7 @@ export class EducationApiClient {
    * 내 학습 진도 조회
    */
   async getMyProgress(bookId?: number): Promise<Types.LearningProgress[]> {
-    const response = await this.client.get<Types.ApiResponse<Types.LearningProgress[]>>(
+    const response = await this._client.get<Types.ApiResponse<Types.LearningProgress[]>>(
       '/api/progress/my',
       {
         params: bookId ? { book_id: bookId } : undefined,
@@ -222,7 +229,7 @@ export class EducationApiClient {
    * 특정 챕터의 진도 조회
    */
   async getChapterProgress(chapterId: number): Promise<Types.LearningProgress | null> {
-    const response = await this.client.get<Types.ApiResponse<Types.LearningProgress>>(
+    const response = await this._client.get<Types.ApiResponse<Types.LearningProgress>>(
       `/api/progress/chapter/${chapterId}`
     );
     return response.data.data || null;
@@ -234,7 +241,7 @@ export class EducationApiClient {
    * 챕터의 퀴즈 조회
    */
   async getChapterQuizzes(chapterId: number): Promise<Types.Quiz[]> {
-    const response = await this.client.get<Types.ApiResponse<Types.Quiz[]>>(
+    const response = await this._client.get<Types.ApiResponse<Types.Quiz[]>>(
       `/api/chapters/${chapterId}/quizzes`
     );
     return response.data.data || [];
@@ -247,7 +254,7 @@ export class EducationApiClient {
     quiz: Types.Quiz;
     questions: Types.QuizQuestion[];
   }> {
-    const response = await this.client.get<
+    const response = await this._client.get<
       Types.ApiResponse<{ quiz: Types.Quiz; questions: Types.QuizQuestion[] }>
     >(`/api/quizzes/${id}`);
     return response.data.data!;
@@ -257,7 +264,7 @@ export class EducationApiClient {
    * 퀴즈 제출 및 채점
    */
   async submitQuiz(id: number, data: Types.SubmitQuizRequest): Promise<Types.QuizResult> {
-    const response = await this.client.post<Types.ApiResponse<Types.QuizResult>>(
+    const response = await this._client.post<Types.ApiResponse<Types.QuizResult>>(
       `/api/quizzes/${id}/submit`,
       data
     );
@@ -268,7 +275,7 @@ export class EducationApiClient {
    * 내 퀴즈 시도 내역
    */
   async getMyQuizAttempts(quizId?: number): Promise<Types.QuizAttempt[]> {
-    const response = await this.client.get<Types.ApiResponse<Types.QuizAttempt[]>>(
+    const response = await this._client.get<Types.ApiResponse<Types.QuizAttempt[]>>(
       '/api/quizzes/attempts',
       {
         params: quizId ? { quiz_id: quizId } : undefined,
@@ -283,7 +290,7 @@ export class EducationApiClient {
    * 구독 플랜 목록 조회
    */
   async getSubscriptionPlans(): Promise<Types.SubscriptionPlan[]> {
-    const response = await this.client.get<Types.ApiResponse<Types.SubscriptionPlan[]>>(
+    const response = await this._client.get<Types.ApiResponse<Types.SubscriptionPlan[]>>(
       '/api/subscriptions/plans'
     );
     return response.data.data || [];
@@ -293,7 +300,7 @@ export class EducationApiClient {
    * 내 구독 정보 조회
    */
   async getMySubscription(): Promise<Types.Subscription | null> {
-    const response = await this.client.get<Types.ApiResponse<Types.Subscription>>(
+    const response = await this._client.get<Types.ApiResponse<Types.Subscription>>(
       '/api/subscriptions/me'
     );
     return response.data.data || null;
@@ -303,7 +310,7 @@ export class EducationApiClient {
    * 구독 생성
    */
   async createSubscription(planId: number): Promise<Types.Subscription> {
-    const response = await this.client.post<Types.ApiResponse<Types.Subscription>>(
+    const response = await this._client.post<Types.ApiResponse<Types.Subscription>>(
       '/api/subscriptions',
       { plan_id: planId }
     );
@@ -314,7 +321,7 @@ export class EducationApiClient {
    * 구독 취소
    */
   async cancelSubscription(): Promise<void> {
-    await this.client.delete('/api/subscriptions/me');
+    await this._client.delete('/api/subscriptions/me');
   }
 
   // ==================== 북마크 API ====================
@@ -328,7 +335,7 @@ export class EducationApiClient {
     highlighted_text?: string;
     color?: string;
   }): Promise<Types.Bookmark> {
-    const response = await this.client.post<Types.ApiResponse<Types.Bookmark>>(
+    const response = await this._client.post<Types.ApiResponse<Types.Bookmark>>(
       '/api/bookmarks',
       data
     );
@@ -339,7 +346,7 @@ export class EducationApiClient {
    * 내 북마크 조회
    */
   async getMyBookmarks(chapterId?: number): Promise<Types.Bookmark[]> {
-    const response = await this.client.get<Types.ApiResponse<Types.Bookmark[]>>('/api/bookmarks', {
+    const response = await this._client.get<Types.ApiResponse<Types.Bookmark[]>>('/api/bookmarks', {
       params: chapterId ? { chapter_id: chapterId } : undefined,
     });
     return response.data.data || [];
@@ -349,7 +356,7 @@ export class EducationApiClient {
    * 북마크 삭제
    */
   async deleteBookmark(id: number): Promise<void> {
-    await this.client.delete(`/api/bookmarks/${id}`);
+    await this._client.delete(`/api/bookmarks/${id}`);
   }
 
   // ==================== 노트 API ====================
@@ -363,7 +370,7 @@ export class EducationApiClient {
     content: string;
     tags?: string;
   }): Promise<Types.Note> {
-    const response = await this.client.post<Types.ApiResponse<Types.Note>>('/api/notes', data);
+    const response = await this._client.post<Types.ApiResponse<Types.Note>>('/api/notes', data);
     return response.data.data!;
   }
 
@@ -371,7 +378,7 @@ export class EducationApiClient {
    * 내 노트 조회
    */
   async getMyNotes(chapterId?: number): Promise<Types.Note[]> {
-    const response = await this.client.get<Types.ApiResponse<Types.Note[]>>('/api/notes', {
+    const response = await this._client.get<Types.ApiResponse<Types.Note[]>>('/api/notes', {
       params: chapterId ? { chapter_id: chapterId } : undefined,
     });
     return response.data.data || [];
@@ -381,7 +388,7 @@ export class EducationApiClient {
    * 노트 업데이트
    */
   async updateNote(id: number, data: { content?: string; tags?: string }): Promise<Types.Note> {
-    const response = await this.client.put<Types.ApiResponse<Types.Note>>(
+    const response = await this._client.put<Types.ApiResponse<Types.Note>>(
       `/api/notes/${id}`,
       data
     );
@@ -392,7 +399,7 @@ export class EducationApiClient {
    * 노트 삭제
    */
   async deleteNote(id: number): Promise<void> {
-    await this.client.delete(`/api/notes/${id}`);
+    await this._client.delete(`/api/notes/${id}`);
   }
 
   // ==================== 단어장 API ====================
@@ -406,7 +413,7 @@ export class EducationApiClient {
     example_sentence?: string;
     chapter_id?: number;
   }): Promise<Types.VocabularyItem> {
-    const response = await this.client.post<Types.ApiResponse<Types.VocabularyItem>>(
+    const response = await this._client.post<Types.ApiResponse<Types.VocabularyItem>>(
       '/api/vocabulary',
       data
     );
@@ -420,7 +427,7 @@ export class EducationApiClient {
     is_mastered?: boolean;
     search?: string;
   }): Promise<Types.VocabularyItem[]> {
-    const response = await this.client.get<Types.ApiResponse<Types.VocabularyItem[]>>(
+    const response = await this._client.get<Types.ApiResponse<Types.VocabularyItem[]>>(
       '/api/vocabulary',
       { params }
     );
@@ -431,7 +438,7 @@ export class EducationApiClient {
    * 단어 마스터 상태 업데이트
    */
   async updateVocabularyMastery(id: number, isMastered: boolean): Promise<Types.VocabularyItem> {
-    const response = await this.client.patch<Types.ApiResponse<Types.VocabularyItem>>(
+    const response = await this._client.patch<Types.ApiResponse<Types.VocabularyItem>>(
       `/api/vocabulary/${id}`,
       { is_mastered: isMastered }
     );
@@ -449,7 +456,7 @@ export class EducationApiClient {
       example_sentence?: string;
     }
   ): Promise<Types.VocabularyItem> {
-    const response = await this.client.put<Types.ApiResponse<Types.VocabularyItem>>(
+    const response = await this._client.put<Types.ApiResponse<Types.VocabularyItem>>(
       `/api/vocabulary/${id}`,
       data
     );
@@ -460,7 +467,7 @@ export class EducationApiClient {
    * 단어 삭제
    */
   async deleteVocabulary(id: number): Promise<void> {
-    await this.client.delete(`/api/vocabulary/${id}`);
+    await this._client.delete(`/api/vocabulary/${id}`);
   }
 
   /**
@@ -471,7 +478,7 @@ export class EducationApiClient {
     mastered_words: number;
     learning_words: number;
   }> {
-    const response = await this.client.get<
+    const response = await this._client.get<
       Types.ApiResponse<{
         total_words: number;
         mastered_words: number;
@@ -493,7 +500,7 @@ export class EducationApiClient {
     last_activity: string | null;
     is_today_complete: boolean;
   }> {
-    const response = await this.client.get('/api/stats/streak');
+    const response = await this._client.get('/api/stats/streak');
     return response.data.data;
   }
 
@@ -501,7 +508,7 @@ export class EducationApiClient {
    * 주간/월간 학습 통계 조회
    */
   async getStatsOverview(period: 'week' | 'month' | 'year' = 'week'): Promise<any> {
-    const response = await this.client.get('/api/stats/overview', {
+    const response = await this._client.get('/api/stats/overview', {
       params: { period }
     });
     return response.data.data;
@@ -511,7 +518,7 @@ export class EducationApiClient {
    * 성취 및 마일스톤 조회
    */
   async getAchievements(): Promise<any> {
-    const response = await this.client.get('/api/stats/achievements');
+    const response = await this._client.get('/api/stats/achievements');
     return response.data.data;
   }
 
@@ -524,7 +531,7 @@ export class EducationApiClient {
     start_date?: string;
     end_date?: string;
   }): Promise<Types.LearningStats[]> {
-    const response = await this.client.get<Types.ApiResponse<Types.LearningStats[]>>(
+    const response = await this._client.get<Types.ApiResponse<Types.LearningStats[]>>(
       '/api/stats',
       { params }
     );
@@ -537,7 +544,7 @@ export class EducationApiClient {
    * 챕터의 오디오 파일 조회
    */
   async getChapterAudio(chapterId: number): Promise<Types.AudioFile | null> {
-    const response = await this.client.get<Types.ApiResponse<Types.AudioFile>>(
+    const response = await this._client.get<Types.ApiResponse<Types.AudioFile>>(
       `/api/audio/chapters/${chapterId}/audio`
     );
     return response.data.data || null;
@@ -547,7 +554,7 @@ export class EducationApiClient {
    * 오디오 재생 위치 저장
    */
   async saveAudioProgress(chapterId: number, position: number): Promise<void> {
-    await this.client.post('/api/audio/progress', {
+    await this._client.post('/api/audio/progress', {
       chapter_id: chapterId,
       audio_position_seconds: position,
     });
@@ -559,7 +566,7 @@ export class EducationApiClient {
    * 책 생성 (관리자 전용)
    */
   async createBook(data: any): Promise<Types.Book> {
-    const response = await this.client.post<Types.ApiResponse<Types.Book>>(
+    const response = await this._client.post<Types.ApiResponse<Types.Book>>(
       '/api/books',
       data
     );
@@ -570,7 +577,7 @@ export class EducationApiClient {
    * 책 수정 (관리자 전용)
    */
   async updateBook(id: number, data: any): Promise<Types.Book> {
-    const response = await this.client.put<Types.ApiResponse<Types.Book>>(
+    const response = await this._client.put<Types.ApiResponse<Types.Book>>(
       `/api/books/${id}`,
       data
     );
@@ -581,14 +588,14 @@ export class EducationApiClient {
    * 책 삭제 (관리자 전용)
    */
   async deleteBook(id: number): Promise<void> {
-    await this.client.delete(`/api/books/${id}`);
+    await this._client.delete(`/api/books/${id}`);
   }
 
   /**
    * 챕터 생성 (관리자 전용)
    */
   async createChapter(bookId: number, data: any): Promise<Types.Chapter> {
-    const response = await this.client.post<Types.ApiResponse<Types.Chapter>>(
+    const response = await this._client.post<Types.ApiResponse<Types.Chapter>>(
       `/api/books/${bookId}/chapters`,
       data
     );
@@ -599,7 +606,7 @@ export class EducationApiClient {
    * 챕터 수정 (관리자 전용)
    */
   async updateChapter(id: number, data: any): Promise<Types.Chapter> {
-    const response = await this.client.put<Types.ApiResponse<Types.Chapter>>(
+    const response = await this._client.put<Types.ApiResponse<Types.Chapter>>(
       `/api/chapters/${id}`,
       data
     );
@@ -610,14 +617,14 @@ export class EducationApiClient {
    * 챕터 삭제 (관리자 전용)
    */
   async deleteChapter(id: number): Promise<void> {
-    await this.client.delete(`/api/chapters/${id}`);
+    await this._client.delete(`/api/chapters/${id}`);
   }
 
   /**
    * 퀴즈 생성 (관리자 전용)
    */
   async createQuiz(chapterId: number, data: any): Promise<Types.Quiz> {
-    const response = await this.client.post<Types.ApiResponse<Types.Quiz>>(
+    const response = await this._client.post<Types.ApiResponse<Types.Quiz>>(
       `/api/chapters/${chapterId}/quizzes`,
       data
     );
@@ -628,7 +635,7 @@ export class EducationApiClient {
    * 퀴즈 수정 (관리자 전용)
    */
   async updateQuiz(id: number, data: any): Promise<Types.Quiz> {
-    const response = await this.client.put<Types.ApiResponse<Types.Quiz>>(
+    const response = await this._client.put<Types.ApiResponse<Types.Quiz>>(
       `/api/quizzes/${id}`,
       data
     );
@@ -639,7 +646,7 @@ export class EducationApiClient {
    * 퀴즈 삭제 (관리자 전용)
    */
   async deleteQuiz(id: number): Promise<void> {
-    await this.client.delete(`/api/quizzes/${id}`);
+    await this._client.delete(`/api/quizzes/${id}`);
   }
 
   /**
@@ -651,7 +658,7 @@ export class EducationApiClient {
     formData.append('chapter_id', chapterId.toString());
     formData.append('audio_type', audioType);
 
-    const response = await this.client.post<Types.ApiResponse<any>>(
+    const response = await this._client.post<Types.ApiResponse<any>>(
       '/api/audio/upload',
       formData,
       {
@@ -667,7 +674,7 @@ export class EducationApiClient {
    * 전체 사용자 목록 조회 (관리자 전용)
    */
   async getAllUsers(params?: { page?: number; limit?: number; role?: string }): Promise<any> {
-    const response = await this.client.get('/api/users', { params });
+    const response = await this._client.get('/api/users', { params });
     return response.data.data || [];
   }
 
@@ -675,14 +682,14 @@ export class EducationApiClient {
    * 사용자 권한 변경 (관리자 전용)
    */
   async updateUserRole(userId: number, role: string): Promise<void> {
-    await this.client.put(`/api/users/${userId}/role`, { role });
+    await this._client.put(`/api/users/${userId}/role`, { role });
   }
 
   /**
    * 관리자 통계 조회 (관리자 전용)
    */
   async getAdminStats(): Promise<any> {
-    const response = await this.client.get('/api/admin/stats');
+    const response = await this._client.get('/api/admin/stats');
     return response.data.data;
   }
 }
