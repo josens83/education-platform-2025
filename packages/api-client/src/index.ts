@@ -357,6 +357,52 @@ export class EducationApiClient {
     return response.data.data!;
   }
 
+  // ==================== 쿠폰 API ====================
+
+  /**
+   * 쿠폰 검증
+   */
+  async validateCoupon(code: string, planId?: number): Promise<{
+    valid: boolean;
+    coupon: any;
+    discount_amount: number;
+    message: string;
+  }> {
+    const response = await this._client.post<Types.ApiResponse<{
+      valid: boolean;
+      coupon: any;
+      discount_amount: number;
+      message: string;
+    }>>('/api/coupons/validate', { code, plan_id: planId });
+    return response.data.data!;
+  }
+
+  /**
+   * 쿠폰 적용
+   */
+  async applyCoupon(code: string, planId: number, subscriptionId?: number): Promise<{
+    original_amount: number;
+    discount_amount: number;
+    final_amount: number;
+    coupon_code: string;
+  }> {
+    const response = await this._client.post<Types.ApiResponse<{
+      original_amount: number;
+      discount_amount: number;
+      final_amount: number;
+      coupon_code: string;
+    }>>('/api/coupons/apply', { code, plan_id: planId, subscription_id: subscriptionId });
+    return response.data.data!;
+  }
+
+  /**
+   * 내 쿠폰 사용 내역
+   */
+  async getMyCouponUsage(): Promise<any[]> {
+    const response = await this._client.get<Types.ApiResponse<any[]>>('/api/coupons/my-usage');
+    return response.data.data || [];
+  }
+
   // ==================== 북마크 API ====================
 
   /**

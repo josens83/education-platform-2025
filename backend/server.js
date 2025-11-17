@@ -114,6 +114,7 @@ app.get('/api', (req, res) => {
       quizzes: '/api/quizzes/*',
       subscriptions: '/api/subscriptions/*',
       payments: '/api/payments/*',
+      coupons: '/api/coupons/*',
       audio: '/api/audio/*',
       bookmarks: '/api/bookmarks/*',
       notes: '/api/notes/*',
@@ -137,6 +138,7 @@ const noteRoutes = require('./routes/notes');
 const vocabularyRoutes = require('./routes/vocabulary');
 const statsRoutes = require('./routes/stats');
 const adminRoutes = require('./routes/admin');
+const couponRoutes = require('./routes/coupons');
 
 // Use Routes with specific rate limiters and caching
 
@@ -161,6 +163,9 @@ app.use('/api/subscriptions', mutationLimiter, subscriptionRoutes);
 
 // Payments - moderate rate limiting (webhooks handled separately)
 app.use('/api/payments', mutationLimiter, paymentsRoutes);
+
+// Coupons - moderate rate limiting
+app.use('/api/coupons', mutationLimiter, couponRoutes);
 
 // Audio - upload limiter for uploads, read limiter for downloads
 app.use('/api/audio', cacheMiddleware(CACHE_DURATIONS.VERY_LONG), audioRoutes);
