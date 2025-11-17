@@ -21,6 +21,11 @@ const QuizResultPage = lazy(() => import('./pages/QuizResultPage'));
 const VocabularyPage = lazy(() => import('./pages/VocabularyPage'));
 const FlashcardsPage = lazy(() => import('./pages/FlashcardsPage'));
 
+// Admin pages
+const AdminLayout = lazy(() => import('./components/AdminLayout'));
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
+const BookManagementPage = lazy(() => import('./pages/admin/BookManagementPage'));
+
 /**
  * Loading fallback component
  */
@@ -144,6 +149,20 @@ function App() {
             </ProtectedRoute>
           }
         />
+      </Route>
+
+      {/* 관리자 라우트 - 관리자 전용 레이아웃 */}
+      <Route
+        path="admin"
+        element={
+          <ProtectedRoute>
+            <AdminLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<AdminDashboardPage />} />
+        <Route path="books" element={<BookManagementPage />} />
+        {/* 추가 관리자 페이지들은 나중에 구현 */}
       </Route>
     </Routes>
     </Suspense>

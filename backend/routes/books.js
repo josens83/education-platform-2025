@@ -155,6 +155,9 @@ router.post('/', authenticateToken, authorizeRoles('admin', 'teacher'), async (r
       metadata
     } = req.body;
 
+    // Generate slug from title if not provided
+    const bookSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
     const result = await query(
       `INSERT INTO books (
         title, slug, subtitle, description, category_id, cover_image_url,
@@ -162,7 +165,7 @@ router.post('/', authenticateToken, authorizeRoles('admin', 'teacher'), async (r
         is_published, metadata
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *`,
-      [title, slug, subtitle, description, category_id, cover_image_url,
+      [title, bookSlug, subtitle, description, category_id, cover_image_url,
        author, difficulty_level, target_grade, target_exam, estimated_hours,
        is_published || false, metadata]
     );
@@ -177,6 +180,102 @@ router.post('/', authenticateToken, authorizeRoles('admin', 'teacher'), async (r
     res.status(500).json({
       status: 'error',
       message: '책 생성 중 오류가 발생했습니다'
+    });
+  }
+});
+
+// ============================================
+// 책 수정 (관리자 전용)
+// ============================================
+router.put('/:id', authenticateToken, authorizeRoles('admin', 'teacher'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      subtitle,
+      description,
+      category_id,
+      cover_image_url,
+      author,
+      difficulty_level,
+      target_grade,
+      target_exam,
+      estimated_hours,
+      is_published,
+      is_featured,
+      metadata
+    } = req.body;
+
+    const result = await query(
+      `UPDATE books SET
+        title = COALESCE($1, title),
+        subtitle = COALESCE($2, subtitle),
+        description = COALESCE($3, description),
+        category_id = COALESCE($4, category_id),
+        cover_image_url = COALESCE($5, cover_image_url),
+        author = COALESCE($6, author),
+        difficulty_level = COALESCE($7, difficulty_level),
+        target_grade = COALESCE($8, target_grade),
+        target_exam = COALESCE($9, target_exam),
+        estimated_hours = COALESCE($10, estimated_hours),
+        is_published = COALESCE($11, is_published),
+        is_featured = COALESCE($12, is_featured),
+        metadata = COALESCE($13, metadata),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $14
+      RETURNING *`,
+      [title, subtitle, description, category_id, cover_image_url, author,
+       difficulty_level, target_grade, target_exam, estimated_hours,
+       is_published, is_featured, metadata, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        status: 'error',
+        message: '책을 찾을 수 없습니다'
+      });
+    }
+
+    res.json({
+      status: 'success',
+      message: '책이 수정되었습니다',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('책 수정 오류:', error);
+    res.status(500).json({
+      status: 'error',
+      message: '책 수정 중 오류가 발생했습니다'
+    });
+  }
+});
+
+// ============================================
+// 책 삭제 (관리자 전용)
+// ============================================
+router.delete('/:id', authenticateToken, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 책과 관련된 모든 데이터는 ON DELETE CASCADE로 자동 삭제됨
+    const result = await query('DELETE FROM books WHERE id = $1 RETURNING id', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        status: 'error',
+        message: '책을 찾을 수 없습니다'
+      });
+    }
+
+    res.json({
+      status: 'success',
+      message: '책이 삭제되었습니다'
+    });
+  } catch (error) {
+    console.error('책 삭제 오류:', error);
+    res.status(500).json({
+      status: 'error',
+      message: '책 삭제 중 오류가 발생했습니다'
     });
   }
 });
