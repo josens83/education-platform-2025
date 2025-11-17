@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const { query } = require('../database');
 const { sendWelcomeEmail, sendPasswordResetEmail } = require('../lib/email');
+const { passwordResetLimiter } = require('../middleware/rateLimiter');
 
 // ============================================
 // 회원가입
@@ -217,6 +218,7 @@ router.post('/refresh', async (req, res) => {
 // 비밀번호 재설정 요청
 // ============================================
 router.post('/forgot-password',
+  passwordResetLimiter, // Rate limiting to prevent abuse
   [
     body('email').isEmail().withMessage('유효한 이메일을 입력해주세요')
   ],
@@ -293,6 +295,7 @@ router.post('/forgot-password',
 // 비밀번호 재설정 (토큰으로)
 // ============================================
 router.post('/reset-password',
+  passwordResetLimiter, // Rate limiting to prevent abuse
   [
     body('token').notEmpty().withMessage('재설정 토큰이 필요합니다'),
     body('password').isLength({ min: 6 }).withMessage('비밀번호는 최소 6자 이상이어야 합니다')

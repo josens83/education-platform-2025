@@ -3,11 +3,12 @@ const router = express.Router();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { query } = require('../database');
 const { authenticateToken } = require('../middleware/auth');
+const { paymentLimiter } = require('../middleware/rateLimiter');
 
 // ============================================
 // Stripe Checkout Session 생성
 // ============================================
-router.post('/create-checkout-session', authenticateToken, async (req, res) => {
+router.post('/create-checkout-session', paymentLimiter, authenticateToken, async (req, res) => {
   try {
     const { plan_id } = req.body;
 

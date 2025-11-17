@@ -4,6 +4,7 @@ const cors = require('cors');
 const compression = require('compression');
 const helmet = require('helmet');
 const { pool, initializeDatabase } = require('./database');
+const logger = require('./lib/logger');
 
 // Import enhanced middleware
 const {
@@ -69,7 +70,7 @@ app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
-    console.log(`📨 ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+    logger.request(req, res, duration);
   });
   next();
 });
@@ -191,10 +192,19 @@ app.use((req, res) => {
 
 // Error Handler
 app.use((err, req, res, next) => {
-  console.error('❌ 에러 발생:', err);
-
   const statusCode = err.statusCode || 500;
   const message = err.message || '서버 내부 오류가 발생했습니다';
+
+  // Log error with full details
+  logger.error('Server Error', {
+    statusCode,
+    message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+    ip: req.ip,
+    userId: req.user?.id
+  });
 
   res.status(statusCode).json({
     status: 'error',
@@ -211,7 +221,7 @@ const startServer = async () => {
   try {
     // 데이터베이스 연결 테스트
     await pool.query('SELECT NOW()');
-    console.log('✅ 데이터베이스 연결 성공');
+    logger.system('데이터베이스 연결 성공');
 
     // 개발 모드에서는 자동으로 스키마 초기화 (선택사항)
     // if (process.env.NODE_ENV === 'development') {
@@ -220,6 +230,14 @@ const startServer = async () => {
 
     // 서버 시작
     app.listen(PORT, () => {
+      logger.system('교육 플랫폼 API 서버 시작', {
+        port: PORT,
+        environment: process.env.NODE_ENV || 'development',
+        apiUrl: `http://localhost:${PORT}/api`,
+        healthCheck: `http://localhost:${PORT}/api/health`
+      });
+
+      // Console output for visibility
       console.log('\n🚀 교육 플랫폼 API 서버 시작');
       console.log(`📍 서버 주소: http://localhost:${PORT}`);
       console.log(`📍 API 문서: http://localhost:${PORT}/api`);
@@ -227,6 +245,7 @@ const startServer = async () => {
       console.log(`🌍 환경: ${process.env.NODE_ENV || 'development'}\n`);
     });
   } catch (error) {
+    logger.error('서버 시작 실패', { error: error.message, stack: error.stack });
     console.error('❌ 서버 시작 실패:', error);
     process.exit(1);
   }
@@ -234,16 +253,20 @@ const startServer = async () => {
 
 // Graceful Shutdown
 process.on('SIGTERM', () => {
+  logger.system('SIGTERM 신호 수신 - 서버 종료 중');
   console.log('\n⏸️  SIGTERM 신호 수신. 서버 종료 중...');
   pool.end(() => {
+    logger.system('데이터베이스 연결 종료');
     console.log('✅ 데이터베이스 연결 종료');
     process.exit(0);
   });
 });
 
 process.on('SIGINT', () => {
+  logger.system('SIGINT 신호 수신 - 서버 종료 중');
   console.log('\n⏸️  SIGINT 신호 수신. 서버 종료 중...');
   pool.end(() => {
+    logger.system('데이터베이스 연결 종료');
     console.log('✅ 데이터베이스 연결 종료');
     process.exit(0);
   });

@@ -37,6 +37,7 @@ const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 
 // Error pages
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const ServerErrorPage = lazy(() => import('./pages/ServerErrorPage'));
 
 // Admin pages
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
@@ -204,6 +205,9 @@ function App() {
         <Route path="users" element={<UserManagementPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
       </Route>
+
+      {/* 에러 페이지 */}
+      <Route path="/error" element={<ServerErrorPage />} />
 
       {/* 404 페이지 - 모든 매칭되지 않는 경로 */}
       <Route path="*" element={<NotFoundPage />} />
