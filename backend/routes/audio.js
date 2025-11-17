@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../database');
 const { authenticateToken } = require('../middleware/auth');
+const { upload, deleteFile, getAudioDuration } = require('../middleware/upload');
+const path = require('path');
 
 // ============================================
 // 챕터의 오디오 파일 조회
@@ -151,6 +153,153 @@ router.post('/audio/progress', authenticateToken, async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: '오디오 재생 위치 저장 중 오류가 발생했습니다'
+    });
+  }
+});
+
+// ============================================
+// 오디오 파일 업로드 (관리자 전용)
+// ============================================
+router.post('/upload', authenticateToken, upload.single('audio'), async (req, res) => {
+  try {
+    // 관리자 권한 체크
+    if (req.user.role !== 'admin' && req.user.role !== 'teacher') {
+      // 업로드된 파일 삭제
+      if (req.file) {
+        deleteFile(req.file.path);
+      }
+      return res.status(403).json({
+        status: 'error',
+        message: '권한이 없습니다'
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        status: 'error',
+        message: '오디오 파일이 업로드되지 않았습니다'
+      });
+    }
+
+    const { chapter_id, audio_type = 'professional', transcript } = req.body;
+
+    if (!chapter_id) {
+      deleteFile(req.file.path);
+      return res.status(400).json({
+        status: 'error',
+        message: 'chapter_id가 필요합니다'
+      });
+    }
+
+    // 챕터 존재 확인
+    const chapterResult = await query(
+      'SELECT id FROM chapters WHERE id = $1',
+      [chapter_id]
+    );
+
+    if (chapterResult.rows.length === 0) {
+      deleteFile(req.file.path);
+      return res.status(404).json({
+        status: 'error',
+        message: '챕터를 찾을 수 없습니다'
+      });
+    }
+
+    // 오디오 파일 정보 추출
+    const audioInfo = await getAudioDuration(req.file.path);
+
+    // 파일 URL 생성 (실제 환경에서는 CDN URL 또는 정적 파일 서버 URL)
+    const fileUrl = `/uploads/audio/${req.file.filename}`;
+
+    // 데이터베이스에 저장
+    const result = await query(
+      `INSERT INTO audio_files (
+        chapter_id, file_url, duration_seconds, file_size_bytes,
+        audio_type, transcript
+      ) VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *`,
+      [
+        chapter_id,
+        fileUrl,
+        audioInfo.duration,
+        req.file.size,
+        audio_type,
+        transcript || null
+      ]
+    );
+
+    res.status(201).json({
+      status: 'success',
+      message: '오디오 파일이 업로드되었습니다',
+      data: {
+        ...result.rows[0],
+        filename: req.file.filename,
+        original_name: req.file.originalname
+      }
+    });
+  } catch (error) {
+    console.error('오디오 파일 업로드 오류:', error);
+
+    // 오류 발생 시 업로드된 파일 삭제
+    if (req.file) {
+      deleteFile(req.file.path);
+    }
+
+    res.status(500).json({
+      status: 'error',
+      message: '오디오 파일 업로드 중 오류가 발생했습니다'
+    });
+  }
+});
+
+// ============================================
+// 오디오 파일 삭제 (관리자 전용)
+// ============================================
+router.delete('/chapters/:chapterId/audio/:audioId', authenticateToken, async (req, res) => {
+  try {
+    // 관리자 권한 체크
+    if (req.user.role !== 'admin' && req.user.role !== 'teacher') {
+      return res.status(403).json({
+        status: 'error',
+        message: '권한이 없습니다'
+      });
+    }
+
+    const { chapterId, audioId } = req.params;
+
+    // 오디오 파일 정보 조회
+    const audioResult = await query(
+      'SELECT * FROM audio_files WHERE id = $1 AND chapter_id = $2',
+      [audioId, chapterId]
+    );
+
+    if (audioResult.rows.length === 0) {
+      return res.status(404).json({
+        status: 'error',
+        message: '오디오 파일을 찾을 수 없습니다'
+      });
+    }
+
+    const audioFile = audioResult.rows[0];
+
+    // 데이터베이스에서 삭제
+    await query('DELETE FROM audio_files WHERE id = $1', [audioId]);
+
+    // 실제 파일 삭제 (로컬 파일인 경우)
+    if (audioFile.file_url && audioFile.file_url.startsWith('/uploads/')) {
+      const filePath = path.join(__dirname, '..', audioFile.file_url);
+      deleteFile(filePath);
+    }
+
+    res.json({
+      status: 'success',
+      message: '오디오 파일이 삭제되었습니다'
+    });
+  } catch (error) {
+    console.error('오디오 파일 삭제 오류:', error);
+    res.status(500).json({
+      status: 'error',
+      message: '오디오 파일 삭제 중 오류가 발생했습니다'
     });
   }
 });

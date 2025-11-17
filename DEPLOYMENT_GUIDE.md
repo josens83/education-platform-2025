@@ -1,439 +1,310 @@
-# 배포 및 실행 가이드
-
-Phase 2 완료 후 애플리케이션을 빌드하고 실행하는 가이드입니다.
+# 🚀 Education Platform - 배포 가이드
 
 ## 목차
-1. [사전 요구사항](#사전-요구사항)
-2. [로컬 개발 환경 실행](#로컬-개발-환경-실행)
-3. [Docker를 사용한 배포](#docker를-사용한-배포)
-4. [프로덕션 빌드](#프로덕션-빌드)
-5. [환경 변수 설정](#환경-변수-설정)
+1. [프로덕션 배포](#프로덕션-배포)
+2. [환경 변수 설정](#환경-변수-설정)
+3. [Docker로 실행](#docker로-실행)
+4. [테스트 방법](#테스트-방법)
+5. [오디오 파일 업로드](#오디오-파일-업로드)
 6. [문제 해결](#문제-해결)
 
-## 사전 요구사항
+---
 
-### 필수 설치 항목
-- Node.js >= 18.0.0
-- npm >= 9.0.0
-- PostgreSQL >= 14.0
-- Docker & Docker Compose (Docker 배포 시)
+## 📦 프로덕션 배포
 
-### 의존성 설치
+### 1. 환경 변수 설정
+
+`.env.example` 파일을 복사하여 `.env` 파일을 생성하고 값을 설정합니다:
 
 ```bash
-# 루트 디렉토리에서 모든 패키지 설치
-npm install
-
-# 각 패키지 개별 설치 (필요시)
-cd packages/api-client && npm install
-cd packages/shared && npm install
-cd apps/web && npm install
-cd backend && npm install
+cp .env.example .env
 ```
 
-## 로컬 개발 환경 실행
+필수 환경 변수:
+```env
+# 데이터베이스 (강력한 비밀번호 설정!)
+DB_PASSWORD=your_strong_password_here
 
-### 1. 데이터베이스 설정
+# JWT (최소 32자 랜덤 문자열)
+JWT_SECRET=your_jwt_secret_minimum_32_characters_here
 
-```bash
-# PostgreSQL 시작 (로컬 설치된 경우)
-sudo service postgresql start
-
-# 데이터베이스 생성
-createdb education_platform
-
-# 스키마 및 샘플 데이터 로드
-psql education_platform < database/schema.sql
-psql education_platform < database/sample-data.sql
-```
-
-### 2. 환경 변수 설정
-
-루트 디렉토리에 `.env` 파일 생성:
-
-```bash
-# Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=education_platform
-
-# Backend
-NODE_ENV=development
-PORT=3001
-JWT_SECRET=your-secret-key-change-this
-JWT_EXPIRES_IN=7d
-CORS_ORIGIN=http://localhost:5173
-
-# Frontend
-VITE_API_URL=http://localhost:3001
-```
-
-### 3. Backend 실행
-
-```bash
-cd backend
-npm run dev
-# Backend API가 http://localhost:3001 에서 실행됩니다
-```
-
-### 4. Frontend 실행
-
-```bash
-cd apps/web
-npm run dev
-# Frontend가 http://localhost:5173 에서 실행됩니다
-```
-
-### 5. 개발 서버 접속
-
-브라우저에서 http://localhost:5173 접속
-
-## Docker를 사용한 배포
-
-### 1. 기존 컨테이너 정리 (선택사항)
-
-```bash
-# 실행 중인 컨테이너 중지 및 제거
-docker compose down
-
-# 볼륨까지 완전히 제거 (데이터 초기화)
-docker compose down -v
-```
-
-### 2. Docker 이미지 빌드
-
-```bash
-# 모든 서비스 빌드 (캐시 사용 안 함)
-docker compose build --no-cache
-
-# 특정 서비스만 빌드
-docker compose build backend
-docker compose build web
-```
-
-### 3. 서비스 실행
-
-```bash
-# 모든 서비스 시작 (백그라운드)
-docker compose up -d
-
-# 로그 확인
-docker compose logs -f
-
-# 특정 서비스 로그만 확인
-docker compose logs -f backend
-docker compose logs -f web
-```
-
-### 4. 서비스 상태 확인
-
-```bash
-# 실행 중인 컨테이너 확인
-docker compose ps
-
-# 서비스 헬스 체크
-docker compose exec postgres pg_isready -U postgres
-```
-
-### 5. 접속
-
-- Frontend: http://localhost:80 (또는 설정한 WEB_PORT)
-- Backend API: http://localhost:3001
-- PostgreSQL: localhost:5432
-
-### 6. 서비스 중지
-
-```bash
-# 서비스 중지 (컨테이너는 유지)
-docker compose stop
-
-# 서비스 중지 및 컨테이너 제거
-docker compose down
-```
-
-## 프로덕션 빌드
-
-### Backend 빌드
-
-```bash
-cd backend
-npm run build
-# dist/ 디렉토리에 빌드 결과물 생성
-
-# 프로덕션 실행
-npm start
-```
-
-### Frontend 빌드
-
-```bash
-cd apps/web
-npm run build
-# dist/ 디렉토리에 빌드 결과물 생성
-
-# 빌드 결과물 미리보기
-npm run preview
-```
-
-### 빌드 산출물
-
-빌드 완료 후 생성되는 파일들:
-
-**Backend**
-- `backend/dist/` - 컴파일된 TypeScript 코드
-- 의존성: `backend/node_modules/`
-
-**Frontend**
-- `apps/web/dist/` - 정적 파일 (HTML, CSS, JS)
-  - `index.html` - 진입점
-  - `assets/` - CSS, JavaScript 번들
-
-## 환경 변수 설정
-
-### Backend 환경 변수
-
-| 변수명 | 설명 | 기본값 | 필수 |
-|--------|------|--------|------|
-| `NODE_ENV` | 실행 환경 | `development` | ✓ |
-| `PORT` | 서버 포트 | `3001` | ✓ |
-| `DATABASE_URL` | PostgreSQL 연결 URL | - | ✓ |
-| `JWT_SECRET` | JWT 서명 키 | - | ✓ |
-| `JWT_EXPIRES_IN` | JWT 만료 시간 | `7d` | ✓ |
-| `CORS_ORIGIN` | CORS 허용 origin | `http://localhost` | ✓ |
-
-### Frontend 환경 변수
-
-| 변수명 | 설명 | 기본값 | 필수 |
-|--------|------|--------|------|
-| `VITE_API_URL` | Backend API URL | `http://localhost:3001` | ✓ |
-
-### 프로덕션 환경 변수 예시
-
-```bash
-# .env.production
-NODE_ENV=production
-PORT=3001
-DATABASE_URL=postgres://user:password@db-host:5432/education_platform
-JWT_SECRET=very-secure-secret-key-please-change
-JWT_EXPIRES_IN=7d
+# CORS (실제 도메인으로 변경)
 CORS_ORIGIN=https://yourdomain.com
 
+# API URL (실제 도메인으로 변경)
 VITE_API_URL=https://api.yourdomain.com
 ```
 
-## Docker Compose 환경 변수
-
-루트 디렉토리에 `.env` 파일 생성:
+### 2. 프로덕션 Docker로 실행
 
 ```bash
-# Database
-DB_USER=postgres
-DB_PASSWORD=secure-password
-DB_NAME=education_platform
-DB_PORT=5432
+# 프로덕션 모드로 빌드 및 실행
+docker-compose -f docker-compose.prod.yml up -d --build
 
-# Backend
-NODE_ENV=production
-JWT_SECRET=your-production-secret-key
-JWT_EXPIRES_IN=7d
-CORS_ORIGIN=http://localhost
+# 로그 확인
+docker-compose -f docker-compose.prod.yml logs -f
 
-# Frontend
-WEB_PORT=80
+# 서비스 상태 확인
+docker-compose -f docker-compose.prod.yml ps
 ```
 
-## 문제 해결
+### 3. SSL/HTTPS 설정 (Nginx 사용)
 
-### 1. 데이터베이스 연결 실패
+Nginx를 사용하여 SSL을 적용하려면:
 
-**증상**: Backend가 시작되지 않고 "ECONNREFUSED" 에러 발생
-
-**해결방법**:
 ```bash
-# PostgreSQL이 실행 중인지 확인
-sudo service postgresql status
+# Nginx 프로파일과 함께 실행
+docker-compose -f docker-compose.prod.yml --profile with-nginx up -d
+```
 
-# Docker를 사용하는 경우
-docker compose logs postgres
+Let's Encrypt로 SSL 인증서 발급:
+```bash
+# Certbot 설치 및 인증서 발급
+docker run -it --rm \
+  -v ./nginx/ssl:/etc/letsencrypt \
+  certbot/certbot certonly --standalone \
+  -d yourdomain.com \
+  -d www.yourdomain.com
+```
+
+---
+
+## 🧪 테스트 방법
+
+### 로컬 개발 환경
+
+```bash
+# 개발 모드로 실행
+docker-compose up -d
+
+# 백엔드 헬스 체크
+curl http://localhost:3001/api/health
+
+# 프론트엔드 접속
+open http://localhost
+```
+
+### API 테스트 시나리오
+
+#### 1. 회원가입 & 로그인
+```bash
+# 회원가입
+curl -X POST http://localhost:3001/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "password123",
+    "username": "testuser"
+  }'
+
+# 로그인
+curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "password123"
+  }'
+```
+
+#### 2. 책 목록 조회
+```bash
+curl http://localhost:3001/api/books
+```
+
+#### 3. 오디오 파일 업로드 (관리자)
+```bash
+# JWT 토큰을 받은 후
+curl -X POST http://localhost:3001/api/audio/upload \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "audio=@./path/to/audio.mp3" \
+  -F "chapter_id=1" \
+  -F "audio_type=professional"
+```
+
+### 프론트엔드 테스트
+
+웹 브라우저에서 다음 기능들을 확인:
+
+**필수 테스트 항목:**
+- [ ] 회원가입 (http://localhost/register)
+- [ ] 로그인 (http://localhost/login)
+- [ ] 프로필 수정 (http://localhost/profile)
+- [ ] 책 목록 조회 (http://localhost/books)
+- [ ] 챕터 읽기 (http://localhost/reader/:chapterId)
+- [ ] 북마크/하이라이트 저장 및 표시
+- [ ] 노트 작성
+- [ ] 단어장 추가 (http://localhost/vocabulary)
+- [ ] 플래시카드 학습 (http://localhost/flashcards)
+- [ ] 오디오 플레이어
+- [ ] 퀴즈 풀기
+- [ ] 구독 관리
+
+---
+
+## 🎵 오디오 파일 업로드
+
+### 지원 형식
+- MP3 (.mp3)
+- WAV (.wav)
+- OGG (.ogg)
+- M4A (.m4a)
+- AAC (.aac)
+
+### 업로드 제한
+- 최대 파일 크기: 10MB (기본값)
+- 관리자/교사 권한 필요
+
+### API 사용 예제
+
+#### Postman 또는 Insomnia 사용
+```
+POST http://localhost:3001/api/audio/upload
+Headers:
+  Authorization: Bearer {your_jwt_token}
+Body (form-data):
+  audio: (file)
+  chapter_id: 1
+  audio_type: professional
+  transcript: (optional) "Full transcript text..."
+```
+
+#### cURL 사용
+```bash
+curl -X POST http://localhost:3001/api/audio/upload \
+  -H "Authorization: Bearer eyJhbGc..." \
+  -F "audio=@/path/to/chapter1.mp3" \
+  -F "chapter_id=1" \
+  -F "audio_type=professional" \
+  -F "transcript=Once upon a time..."
+```
+
+#### JavaScript (프론트엔드)
+```javascript
+const formData = new FormData();
+formData.append('audio', audioFile);
+formData.append('chapter_id', chapterId);
+formData.append('audio_type', 'professional');
+
+const response = await fetch('http://localhost:3001/api/audio/upload', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`
+  },
+  body: formData
+});
+```
+
+---
+
+## 🔍 문제 해결
+
+### 데이터베이스 연결 오류
+```bash
+# 데이터베이스 로그 확인
+docker-compose logs postgres
+
+# 데이터베이스 재시작
+docker-compose restart postgres
+```
+
+### 백엔드 오류
+```bash
+# 백엔드 로그 확인
+docker-compose logs backend
+
+# 컨테이너 재빌드
+docker-compose down
+docker-compose build --no-cache backend
+docker-compose up -d
+```
+
+### 프론트엔드 빌드 오류
+```bash
+# 웹 앱 로그 확인
+docker-compose logs web
+
+# 로컬에서 빌드 테스트
+cd apps/web
+npm install
+npm run build
+```
+
+### bcrypt 오류 (Windows에서 Docker 사용 시)
+```bash
+# 모든 컨테이너 정지 및 삭제
+docker-compose down -v
+
+# node_modules 삭제
+rm -rf backend/node_modules
+
+# 완전히 새로 빌드
+docker-compose build --no-cache
+docker-compose up -d
+```
+
+### 오디오 파일이 재생되지 않음
+1. 파일이 올바르게 업로드되었는지 확인
+2. 브라우저 콘솔에서 CORS 오류 확인
+3. `/uploads/audio` 경로 권한 확인
+
+---
+
+## 📊 성능 모니터링
+
+### 로그 위치
+- 백엔드 로그: `./logs/app.log`
+- Nginx 로그: `./nginx/logs/`
+- PostgreSQL 로그: Docker 로그
+
+### 헬스 체크
+```bash
+# API 헬스 체크
+curl http://localhost:3001/api/health
 
 # 데이터베이스 연결 테스트
-psql -h localhost -U postgres -d education_platform
+docker exec education-platform-db-prod psql -U postgres -c "SELECT version();"
 ```
 
-### 2. 포트 충돌
+### 백업
 
-**증상**: "Port already in use" 에러
-
-**해결방법**:
+#### 데이터베이스 백업
 ```bash
-# 포트 사용 중인 프로세스 확인
-lsof -i :3001
-lsof -i :5173
+# 백업 생성
+docker exec education-platform-db-prod pg_dump -U postgres education_platform > backup_$(date +%Y%m%d).sql
 
-# 프로세스 종료
-kill -9 <PID>
-
-# Docker의 경우 포트 변경
-# .env 파일에서 WEB_PORT 변경
+# 백업 복원
+docker exec -i education-platform-db-prod psql -U postgres education_platform < backup_20250101.sql
 ```
 
-### 3. 빌드 실패
-
-**증상**: TypeScript 컴파일 에러
-
-**해결방법**:
+#### 업로드 파일 백업
 ```bash
-# node_modules 삭제 후 재설치
-rm -rf node_modules package-lock.json
-npm install
-
-# 캐시 정리
-npm cache clean --force
-
-# TypeScript 버전 확인
-npx tsc --version
+# uploads 폴더 백업
+tar -czf uploads_backup_$(date +%Y%m%d).tar.gz ./uploads
 ```
 
-### 4. API 요청 실패 (CORS 에러)
+---
 
-**증상**: 브라우저 콘솔에 CORS 에러 표시
+## 🔒 보안 체크리스트
 
-**해결방법**:
-```bash
-# Backend .env에서 CORS_ORIGIN 확인
-CORS_ORIGIN=http://localhost:5173
+배포 전 반드시 확인:
 
-# 또는 개발 시 모든 origin 허용 (비권장)
-CORS_ORIGIN=*
-```
+- [ ] `.env` 파일에 강력한 비밀번호 설정
+- [ ] JWT_SECRET을 랜덤 문자열로 변경
+- [ ] CORS_ORIGIN을 실제 도메인으로 설정
+- [ ] Rate Limiting 활성화 확인
+- [ ] SSL/HTTPS 적용
+- [ ] 데이터베이스 백업 자동화 설정
+- [ ] 관리자 계정 비밀번호 변경
+- [ ] `.env` 파일을 `.gitignore`에 추가
+- [ ] 프로덕션 환경에서 샘플 데이터 제거
 
-### 5. Docker 빌드 느림
+---
 
-**해결방법**:
-```bash
-# Docker 빌드 캐시 활용
-docker compose build
+## 📞 지원
 
-# 캐시 없이 완전히 새로 빌드 (문제 해결 시)
-docker compose build --no-cache
+문제가 발생하면:
+1. 로그 파일 확인
+2. GitHub Issues에 보고
+3. 문서 재검토
 
-# 미사용 이미지 정리
-docker image prune -a
-```
-
-### 6. 데이터베이스 마이그레이션 필요
-
-**해결방법**:
-```bash
-# 스키마 재적용
-psql education_platform < database/schema.sql
-
-# Docker 볼륨 초기화 (데이터 손실 주의!)
-docker compose down -v
-docker compose up -d
-```
-
-## 성능 최적화
-
-### 프로덕션 빌드 최적화
-
-```bash
-# Frontend 빌드 최적화 확인
-cd apps/web
-npm run build
-# dist/ 크기 확인
-
-# Backend 빌드 최적화
-cd backend
-npm run build
-# dist/ 크기 확인
-```
-
-### Docker 이미지 크기 최적화
-
-현재 Dockerfile은 multi-stage build를 사용하여 최적화되어 있습니다:
-- Builder stage: 빌드 의존성 포함
-- Production stage: 실행 파일만 포함
-
-## CI/CD 파이프라인 (향후 계획)
-
-```yaml
-# .github/workflows/deploy.yml 예시
-name: Deploy
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Build Docker images
-        run: docker compose build
-      - name: Run tests
-        run: npm test
-      - name: Deploy to production
-        run: |
-          # 배포 스크립트 실행
-```
-
-## 모니터링 및 로깅
-
-### Docker 로그 확인
-
-```bash
-# 모든 서비스 로그
-docker compose logs -f
-
-# 마지막 100줄만 확인
-docker compose logs --tail=100
-
-# 특정 시간 이후 로그
-docker compose logs --since 30m
-```
-
-### 애플리케이션 로그
-
-- Backend: Console.log 출력 (stdout)
-- Frontend: 브라우저 개발자 도구 콘솔
-
-## 백업 및 복구
-
-### 데이터베이스 백업
-
-```bash
-# 로컬 PostgreSQL 백업
-pg_dump education_platform > backup.sql
-
-# Docker PostgreSQL 백업
-docker compose exec postgres pg_dump -U postgres education_platform > backup.sql
-```
-
-### 데이터베이스 복구
-
-```bash
-# 로컬 PostgreSQL 복구
-psql education_platform < backup.sql
-
-# Docker PostgreSQL 복구
-docker compose exec -T postgres psql -U postgres education_platform < backup.sql
-```
-
-## 보안 고려사항
-
-1. **JWT Secret**: 프로덕션에서는 강력한 랜덤 문자열 사용
-2. **Database Password**: 기본 비밀번호 변경 필수
-3. **CORS Origin**: 프로덕션에서는 특정 도메인만 허용
-4. **HTTPS**: 프로덕션에서는 반드시 HTTPS 사용
-5. **환경 변수**: `.env` 파일을 Git에 커밋하지 않기 (.gitignore 확인)
-
-## 추가 리소스
-
-- [Docker Compose 문서](https://docs.docker.com/compose/)
-- [PostgreSQL 문서](https://www.postgresql.org/docs/)
-- [Vite 배포 가이드](https://vitejs.dev/guide/static-deploy.html)
-- [Express.js 프로덕션 Best Practices](https://expressjs.com/en/advanced/best-practice-performance.html)
+Happy Deploying! 🎉
