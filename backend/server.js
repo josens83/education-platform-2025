@@ -132,6 +132,7 @@ const bookmarkRoutes = require('./routes/bookmarks');
 const noteRoutes = require('./routes/notes');
 const vocabularyRoutes = require('./routes/vocabulary');
 const statsRoutes = require('./routes/stats');
+const adminRoutes = require('./routes/admin');
 
 // Use Routes with specific rate limiters and caching
 
@@ -166,6 +167,9 @@ app.use('/api/vocabulary', mutationLimiter, cacheMiddleware(CACHE_DURATIONS.MEDI
 
 // Stats - read-heavy with medium cache
 app.use('/api/stats', readLimiter, cacheMiddleware(CACHE_DURATIONS.MEDIUM), statsRoutes);
+
+// Admin - read-heavy with short cache (admin data should be relatively fresh)
+app.use('/api/admin', readLimiter, cacheMiddleware(CACHE_DURATIONS.SHORT), adminRoutes);
 
 // ============================================
 // ERROR HANDLING
