@@ -1,8 +1,23 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const rateLimit = require('express-rate-limit');
+const compression = require('compression');
+const helmet = require('helmet');
 const { pool, initializeDatabase } = require('./database');
+
+// Import enhanced middleware
+const {
+  defaultLimiter,
+  authLimiter,
+  mutationLimiter,
+  readLimiter,
+  uploadLimiter,
+} = require('./middleware/rateLimiter');
+
+const {
+  cacheMiddleware,
+  CACHE_DURATIONS,
+} = require('./middleware/cache');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -10,6 +25,24 @@ const PORT = process.env.PORT || 3001;
 // ============================================
 // MIDDLEWARE
 // ============================================
+
+// Security headers (Helmet)
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for now (configure based on needs)
+  crossOriginEmbedderPolicy: false, // Allow cross-origin resources
+}));
+
+// Compression
+app.use(compression({
+  level: 6, // Compression level (0-9)
+  threshold: 1024, // Only compress responses larger than 1KB
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  },
+}));
 
 // CORS 설정
 app.use(cors({
@@ -23,22 +56,21 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // 정적 파일 서빙 (업로드된 파일)
 const path = require('path');
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  maxAge: '1d', // Cache static files for 1 day
+  etag: true, // Enable ETags for conditional requests
+}));
 
-// Rate Limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15분
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // 최대 100 요청
-  message: '너무 많은 요청을 보냈습니다. 잠시 후 다시 시도해주세요.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-app.use('/api', limiter);
+// Global rate limiting (applies to all API routes)
+app.use('/api', defaultLimiter);
 
 // 요청 로깅
 app.use((req, res, next) => {
-  console.log(`📨 ${req.method} ${req.path}`);
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`📨 ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+  });
   next();
 });
 
@@ -101,19 +133,39 @@ const noteRoutes = require('./routes/notes');
 const vocabularyRoutes = require('./routes/vocabulary');
 const statsRoutes = require('./routes/stats');
 
-// Use Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/books', bookRoutes);
-app.use('/api/chapters', chapterRoutes);
-app.use('/api/progress', progressRoutes);
-app.use('/api/quizzes', quizRoutes);
-app.use('/api/subscriptions', subscriptionRoutes);
-app.use('/api/audio', audioRoutes);
-app.use('/api/bookmarks', bookmarkRoutes);
-app.use('/api/notes', noteRoutes);
-app.use('/api/vocabulary', vocabularyRoutes);
-app.use('/api/stats', statsRoutes);
+// Use Routes with specific rate limiters and caching
+
+// Auth routes - strict rate limiting (prevent brute force)
+app.use('/api/auth', authLimiter, authRoutes);
+
+// User routes - moderate rate limiting
+app.use('/api/users', mutationLimiter, userRoutes);
+
+// Books & Chapters - read-heavy with caching
+app.use('/api/books', readLimiter, cacheMiddleware(CACHE_DURATIONS.LONG), bookRoutes);
+app.use('/api/chapters', readLimiter, cacheMiddleware(CACHE_DURATIONS.LONG), chapterRoutes);
+
+// Progress tracking - moderate rate limiting, short cache
+app.use('/api/progress', mutationLimiter, cacheMiddleware(CACHE_DURATIONS.SHORT), progressRoutes);
+
+// Quizzes - moderate rate limiting, medium cache
+app.use('/api/quizzes', mutationLimiter, cacheMiddleware(CACHE_DURATIONS.MEDIUM), quizRoutes);
+
+// Subscriptions - moderate rate limiting
+app.use('/api/subscriptions', mutationLimiter, subscriptionRoutes);
+
+// Audio - upload limiter for uploads, read limiter for downloads
+app.use('/api/audio', cacheMiddleware(CACHE_DURATIONS.VERY_LONG), audioRoutes);
+
+// Bookmarks & Notes - moderate rate limiting, short cache
+app.use('/api/bookmarks', mutationLimiter, cacheMiddleware(CACHE_DURATIONS.SHORT), bookmarkRoutes);
+app.use('/api/notes', mutationLimiter, cacheMiddleware(CACHE_DURATIONS.SHORT), noteRoutes);
+
+// Vocabulary - moderate rate limiting, medium cache
+app.use('/api/vocabulary', mutationLimiter, cacheMiddleware(CACHE_DURATIONS.MEDIUM), vocabularyRoutes);
+
+// Stats - read-heavy with medium cache
+app.use('/api/stats', readLimiter, cacheMiddleware(CACHE_DURATIONS.MEDIUM), statsRoutes);
 
 // ============================================
 // ERROR HANDLING

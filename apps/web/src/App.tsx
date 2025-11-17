@@ -1,25 +1,39 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { initializeApi } from './lib/api';
 import { useAuthStore } from './store/authStore';
 
-// Pages (추후 생성 예정)
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import DashboardPage from './pages/DashboardPage';
-import ProfilePage from './pages/ProfilePage';
-import SubscriptionPage from './pages/SubscriptionPage';
-import BooksPage from './pages/BooksPage';
-import BookDetailPage from './pages/BookDetailPage';
-import ReaderPage from './pages/ReaderPage';
-import QuizPage from './pages/QuizPage';
-import QuizResultPage from './pages/QuizResultPage';
-import VocabularyPage from './pages/VocabularyPage';
-import FlashcardsPage from './pages/FlashcardsPage';
-
-// Layout
+// Layout (eager load as it's always needed)
 import Layout from './components/Layout';
+
+// Lazy-loaded pages for code splitting
+const HomePage = lazy(() => import('./pages/HomePage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const SubscriptionPage = lazy(() => import('./pages/SubscriptionPage'));
+const BooksPage = lazy(() => import('./pages/BooksPage'));
+const BookDetailPage = lazy(() => import('./pages/BookDetailPage'));
+const ReaderPage = lazy(() => import('./pages/ReaderPage'));
+const QuizPage = lazy(() => import('./pages/QuizPage'));
+const QuizResultPage = lazy(() => import('./pages/QuizResultPage'));
+const VocabularyPage = lazy(() => import('./pages/VocabularyPage'));
+const FlashcardsPage = lazy(() => import('./pages/FlashcardsPage'));
+
+/**
+ * Loading fallback component
+ */
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">로딩 중...</p>
+      </div>
+    </div>
+  );
+}
 
 /**
  * 보호된 라우트 컴포넌트
@@ -45,7 +59,8 @@ function App() {
   }, []);
 
   return (
-    <Routes>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
       <Route path="/" element={<Layout />}>
         {/* 공개 라우트 */}
         <Route index element={<HomePage />} />
@@ -131,6 +146,7 @@ function App() {
         />
       </Route>
     </Routes>
+    </Suspense>
   );
 }
 
