@@ -71,8 +71,8 @@ education-platform-2025/
 │   │   ├── app.json              # Expo 설정
 │   │   └── package.json
 │   │
-│   └── admin/                    # 관리자 대시보드 (예정)
-│       └── (콘텐츠 관리 시스템)
+│   └── admin/                    # 관리자 대시보드
+│       └── (웹 앱 내부에 통합 구현됨 - /admin 라우트)
 │
 ├── database/                     # 데이터베이스
 │   ├── schema.sql                # 전체 스키마
@@ -384,6 +384,34 @@ VITE_API_URL=http://localhost:3001
 - `POST /api/subscriptions` - 구독 시작
 - `DELETE /api/subscriptions/my` - 구독 취소
 
+### 관리자 (Admin) - 관리자 전용
+
+**통계 & 분석**
+- `GET /api/admin/stats` - 플랫폼 전체 통계
+- `GET /api/admin/stats/users-by-role` - 역할별 사용자 통계
+- `GET /api/admin/stats/quiz-performance` - 퀴즈 성과 분석
+- `GET /api/admin/stats/monthly-signups` - 월별 가입자 추이
+
+**콘텐츠 관리**
+- `POST /api/books` - 책 생성
+- `PUT /api/books/:id` - 책 수정
+- `DELETE /api/books/:id` - 책 삭제
+- `POST /api/books/:id/chapters` - 챕터 생성
+- `PUT /api/chapters/:id` - 챕터 수정
+- `DELETE /api/chapters/:id` - 챕터 삭제
+- `POST /api/chapters/:id/quizzes` - 퀴즈 생성
+- `PUT /api/quizzes/:id` - 퀴즈 수정
+- `DELETE /api/quizzes/:id` - 퀴즈 삭제
+- `POST /api/quizzes/:id/questions` - 퀴즈 문제 생성
+- `PUT /api/quizzes/questions/:id` - 문제 수정
+- `DELETE /api/quizzes/questions/:id` - 문제 삭제
+- `POST /api/audio/upload` - 오디오 파일 업로드
+
+**사용자 관리**
+- `GET /api/users` - 전체 사용자 목록 (검색, 필터, 페이지네이션)
+- `GET /api/users/:id` - 사용자 상세 정보
+- `PUT /api/users/:id/role` - 사용자 역할 변경
+
 ## 🔐 인증 시스템
 
 - **JWT (JSON Web Token)** 기반 인증
@@ -470,40 +498,106 @@ Authorization: Bearer <your-jwt-token>
 - [x] Nginx 웹 서버 설정
 - [x] 멀티스테이지 빌드 최적화
 
-### 🚧 Phase 2 계획 - Authentication & User Features
+### ✅ Phase 2-6 완료 - Core Features
 
 **Backend**
-- [x] 인증 시스템 (회원가입/로그인) - API만 구현됨
-- [x] 사용자 프로필 관리 - API만 구현됨
-- [x] 학습 진도 추적 - API만 구현됨
-- [x] 퀴즈 시스템 (자동 채점) - API만 구현됨
-- [x] 구독 관리 - API만 구현됨
+- [x] 인증 시스템 (JWT 기반 회원가입/로그인)
+- [x] 사용자 프로필 관리
+- [x] 학습 진도 추적
+- [x] 퀴즈 시스템 (자동 채점, 오답 노트)
+- [x] 구독 관리 (플랜, 결제, 취소)
+- [x] 북마크 & 노트 시스템
+- [x] 단어장 시스템
+- [x] 오디오 파일 관리
+- [x] 학습 스트릭 & 통계
+- [x] 성취 시스템
 
-**웹 앱 - 구현 예정**
-- [ ] 로그인/회원가입 페이지 UI
-- [ ] 사용자 프로필 페이지
-- [ ] 대시보드 (학습 통계)
-- [ ] 학습 진도 저장 기능
-- [ ] 퀴즈 페이지
-- [ ] 구독 관리 페이지
+**웹 앱**
+- [x] 로그인/회원가입 페이지
+- [x] 사용자 대시보드 (학습 통계)
+- [x] 프로필 관리 페이지
+- [x] 퀴즈 응시 & 결과 페이지
+- [x] 구독 관리 페이지
+- [x] 단어장 & 플래시카드
+- [x] 성능 최적화 (캐싱, 코드 스플리팅, 이미지 최적화)
 
-### 📝 Phase 3 계획 - Advanced Features
+### ✅ Phase 7.6 완료 - Admin Tools
 
-- [ ] 오디오 플레이어 (텍스트-오디오 싱크)
-- [ ] 북마크 및 노트 기능 UI
-- [ ] 단어장 기능 UI
-- [ ] 모바일 앱 UI 완성
-- [ ] 결제 시스템 통합
-- [ ] 콘텐츠 관리 시스템 (CMS)
+**관리자 전용 도구 (웹 UI)**
+- [x] 관리자 레이아웃 & 네비게이션
+- [x] **대시보드**
+  - [x] 실시간 플랫폼 통계 (사용자, 책, 챕터, 퀴즈, 구독)
+  - [x] 최근 가입 사용자
+  - [x] 인기 책 Top 5
+  - [x] 최근 7일 활동 통계
+  - [x] 빠른 작업 바로가기
+- [x] **책 관리** (`/admin/books`)
+  - [x] 책 목록 조회
+  - [x] 책 추가/수정/삭제 (모달 폼)
+  - [x] 자동 슬러그 생성
+- [x] **챕터 관리** (`/admin/chapters`)
+  - [x] 책 선택 드롭다운
+  - [x] 챕터 목록 조회
+  - [x] 챕터 추가/수정/삭제
+  - [x] 콘텐츠 에디터 (HTML/Markdown 지원)
+- [x] **오디오 관리** (`/admin/audio`)
+  - [x] 드래그앤드롭 파일 업로드
+  - [x] 파일 유효성 검사 (형식, 크기)
+  - [x] 오디오 타입 선택 (Professional TTS / AI TTS)
+  - [x] 오디오 목록 & 삭제
+- [x] **퀴즈 관리** (`/admin/quizzes`)
+  - [x] 책/챕터별 퀴즈 목록
+  - [x] 퀴즈 추가/수정/삭제
+  - [x] 문제 관리 (사이드 패널)
+  - [x] 문제 CRUD (객관식, 참/거짓, 주관식, 빈칸 채우기)
+  - [x] 동적 선택지 관리
+- [x] **사용자 관리** (`/admin/users`)
+  - [x] 전체 사용자 목록 (페이지네이션)
+  - [x] 실시간 검색 (이름, 이메일, 사용자명)
+  - [x] 역할 필터 (student, teacher, admin)
+  - [x] 인라인 역할 변경
+  - [x] 사용자 상세 정보 모달 (학습 통계, 최근 활동)
+- [x] **분석 페이지** (`/admin/analytics`)
+  - [x] 역할별 사용자 분포 (막대 그래프)
+  - [x] 퀴즈 성과 분석 (합격률, 평균 점수)
+  - [x] 월별 가입자 추이 (최근 6개월)
+
+**관리자 API**
+- [x] `GET /api/admin/stats` - 통합 통계
+- [x] `GET /api/admin/stats/users-by-role` - 역할별 통계
+- [x] `GET /api/admin/stats/quiz-performance` - 퀴즈 성과
+- [x] `GET /api/admin/stats/monthly-signups` - 월별 가입자
+- [x] 모든 콘텐츠 CRUD 엔드포인트
+- [x] 사용자 관리 엔드포인트
+
+**보안 & 권한**
+- [x] 관리자 전용 미들웨어 (`authorizeRoles`)
+- [x] 역할 기반 접근 제어 (admin, teacher)
+- [x] API Rate Limiting (관리자 API는 낮은 제한)
 
 ### 📝 향후 계획
 
+**Phase 8: Mobile App**
+- [ ] React Native + Expo 기반 모바일 앱 완성
+- [ ] 크로스 플랫폼 API 클라이언트 활용
+- [ ] 오프라인 읽기 모드
+- [ ] 푸시 알림 시스템
+- [ ] App Store / Play Store 배포
+
+**Phase 9: Advanced Features**
 - [ ] 오프라인 모드 (PWA)
 - [ ] AI 튜터 통합
 - [ ] 소셜 학습 (스터디 그룹)
 - [ ] 성과 인증서 발급
 - [ ] 실시간 채팅 지원
-- [ ] 알림 시스템 (Push Notifications)
+- [ ] 결제 시스템 고도화 (PG사 통합)
+
+**DevOps & Monitoring**
+- [ ] CI/CD 파이프라인 구축
+- [ ] 성능 모니터링 (Sentry, Datadog 등)
+- [ ] 자동화된 테스트 커버리지 확대
+- [ ] 로그 수집 및 분석 시스템
+- [ ] 백업 및 재해 복구 계획
 
 ## 🛠️ 기술 스택
 
