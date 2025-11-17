@@ -575,22 +575,78 @@ Authorization: Bearer <your-jwt-token>
 - [x] 역할 기반 접근 제어 (admin, teacher)
 - [x] API Rate Limiting (관리자 API는 낮은 제한)
 
+### ✅ Phase 8 완료 - Production Ready (실제 서비스 준비)
+
+**결제 시스템 통합 (Stripe)**
+- [x] Stripe Checkout Session 생성 API
+- [x] Stripe Webhook 처리 (결제 성공/실패/갱신)
+- [x] 자동 구독 갱신 시스템
+- [x] 결제 내역 조회 API
+- [x] payments 라우트 추가 (`/api/payments/*`)
+
+**이메일 시스템 (Nodemailer)**
+- [x] 이메일 발송 라이브러리 구축 (`backend/lib/email.js`)
+- [x] 환영 이메일 (회원가입 시 자동 발송)
+- [x] 비밀번호 재설정 이메일
+- [x] 구독 관련 이메일 (시작, 만료 알림, 결제 실패)
+- [x] HTML 템플릿 기반 이메일 디자인
+
+**비밀번호 재설정 기능**
+- [x] 비밀번호 재설정 요청 API (`POST /api/auth/forgot-password`)
+- [x] 비밀번호 재설정 API (`POST /api/auth/reset-password`)
+- [x] 토큰 기반 보안 재설정 (SHA-256 해싱)
+- [x] 토큰 만료 시간 관리 (1시간)
+- [x] 데이터베이스 마이그레이션 (password_reset_token, password_reset_expires 컬럼)
+
+**법적 문서 페이지**
+- [x] 이용약관 페이지 (`/terms`)
+- [x] 개인정보처리방침 페이지 (`/privacy`)
+- [x] 법적 문서 내용 작성 (한국 법령 준수)
+
+**고객 지원 시스템**
+- [x] FAQ 페이지 (`/faq`)
+  - [x] 카테고리별 필터링
+  - [x] 아코디언 UI
+  - [x] 13개 자주 묻는 질문 작성
+- [x] 문의하기 페이지 (`/contact`)
+  - [x] 문의 양식 (이름, 이메일, 유형, 내용)
+  - [x] 연락처 정보 표시
+  - [x] 운영 시간 안내
+
+**UX 개선**
+- [x] Footer 업데이트 (4열 레이아웃)
+  - [x] 서비스 링크
+  - [x] 고객 지원 링크
+  - [x] 법적 문서 링크
+  - [x] 회사 정보
+- [x] 모든 페이지 라우팅 연결
+
+**환경 변수 설정**
+- [x] `.env.example` 업데이트
+  - [x] Stripe 키 (SECRET_KEY, PUBLISHABLE_KEY, WEBHOOK_SECRET)
+  - [x] 이메일 설정 (HOST, PORT, USER, PASSWORD)
+  - [x] 프론트엔드 URL 설정
+
 ### 📝 향후 계획
 
-**Phase 8: Mobile App**
+**Phase 9: Mobile App**
 - [ ] React Native + Expo 기반 모바일 앱 완성
 - [ ] 크로스 플랫폼 API 클라이언트 활용
 - [ ] 오프라인 읽기 모드
 - [ ] 푸시 알림 시스템
 - [ ] App Store / Play Store 배포
 
-**Phase 9: Advanced Features**
+**Phase 10: Advanced Features**
+- [ ] 소셜 로그인 (Google OAuth, Kakao)
 - [ ] 오프라인 모드 (PWA)
 - [ ] AI 튜터 통합
 - [ ] 소셜 학습 (스터디 그룹)
 - [ ] 성과 인증서 발급
 - [ ] 실시간 채팅 지원
-- [ ] 결제 시스템 고도화 (PG사 통합)
+- [ ] 한국 PG사 통합 (토스페이먼츠, 카카오페이)
+- [ ] 에러 페이지 개선 (404, 500 등)
+- [ ] CSRF 토큰 구현
+- [ ] XSS 방어 강화
 
 **DevOps & Monitoring**
 - [ ] CI/CD 파이프라인 구축

@@ -21,6 +21,12 @@ const QuizResultPage = lazy(() => import('./pages/QuizResultPage'));
 const VocabularyPage = lazy(() => import('./pages/VocabularyPage'));
 const FlashcardsPage = lazy(() => import('./pages/FlashcardsPage'));
 
+// Legal and support pages
+const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
+const FAQPage = lazy(() => import('./pages/FAQPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+
 // Admin pages
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
@@ -80,6 +86,12 @@ function App() {
         {/* 책 목록 및 상세는 공개 (프리미엄 모델) */}
         <Route path="books" element={<BooksPage />} />
         <Route path="books/:id" element={<BookDetailPage />} />
+
+        {/* 법적 문서 및 고객 지원 - 공개 */}
+        <Route path="terms" element={<TermsOfServicePage />} />
+        <Route path="privacy" element={<PrivacyPolicyPage />} />
+        <Route path="faq" element={<FAQPage />} />
+        <Route path="contact" element={<ContactPage />} />
 
         {/* 보호된 라우트 - 인증 필요 */}
         <Route

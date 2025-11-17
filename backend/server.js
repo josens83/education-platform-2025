@@ -111,6 +111,7 @@ app.get('/api', (req, res) => {
       progress: '/api/progress/*',
       quizzes: '/api/quizzes/*',
       subscriptions: '/api/subscriptions/*',
+      payments: '/api/payments/*',
       audio: '/api/audio/*',
       bookmarks: '/api/bookmarks/*',
       notes: '/api/notes/*',
@@ -127,6 +128,7 @@ const chapterRoutes = require('./routes/chapters');
 const progressRoutes = require('./routes/progress');
 const quizRoutes = require('./routes/quizzes');
 const subscriptionRoutes = require('./routes/subscriptions');
+const paymentsRoutes = require('./routes/payments');
 const audioRoutes = require('./routes/audio');
 const bookmarkRoutes = require('./routes/bookmarks');
 const noteRoutes = require('./routes/notes');
@@ -154,6 +156,9 @@ app.use('/api/quizzes', mutationLimiter, cacheMiddleware(CACHE_DURATIONS.MEDIUM)
 
 // Subscriptions - moderate rate limiting
 app.use('/api/subscriptions', mutationLimiter, subscriptionRoutes);
+
+// Payments - moderate rate limiting (webhooks handled separately)
+app.use('/api/payments', mutationLimiter, paymentsRoutes);
 
 // Audio - upload limiter for uploads, read limiter for downloads
 app.use('/api/audio', cacheMiddleware(CACHE_DURATIONS.VERY_LONG), audioRoutes);
