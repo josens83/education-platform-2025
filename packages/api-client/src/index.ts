@@ -324,6 +324,39 @@ export class EducationApiClient {
     await this._client.delete('/api/subscriptions/me');
   }
 
+  // ==================== 결제 API ====================
+
+  /**
+   * Stripe Checkout Session 생성
+   */
+  async createCheckoutSession(planId: number): Promise<{ sessionId: string; url: string; isFree?: boolean }> {
+    const response = await this._client.post<Types.ApiResponse<{ sessionId: string; url: string; isFree?: boolean }>>(
+      '/api/payments/create-checkout-session',
+      { plan_id: planId }
+    );
+    return response.data.data!;
+  }
+
+  /**
+   * 결제 세션 상태 조회
+   */
+  async getCheckoutSession(sessionId: string): Promise<any> {
+    const response = await this._client.get<Types.ApiResponse<any>>(
+      `/api/payments/session/${sessionId}`
+    );
+    return response.data.data!;
+  }
+
+  /**
+   * 결제 내역 조회
+   */
+  async getPaymentHistory(): Promise<any[]> {
+    const response = await this._client.get<Types.ApiResponse<any[]>>(
+      '/api/payments/history'
+    );
+    return response.data.data!;
+  }
+
   // ==================== 북마크 API ====================
 
   /**

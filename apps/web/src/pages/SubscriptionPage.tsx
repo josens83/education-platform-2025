@@ -53,9 +53,31 @@ export default function SubscriptionPage() {
     }
   );
 
-  const handleSubscribe = (planId: number, planName: string) => {
-    if (confirm(`${planName} 플랜을 구독하시겠습니까?`)) {
+  const handleSubscribe = async (planId: number, planName: string, price: number) => {
+    if (!confirm(`${planName} 플랜을 구독하시겠습니까?`)) {
+      return;
+    }
+
+    // 무료 체험은 바로 구독 생성
+    if (price === 0) {
       createSubscriptionMutation.mutate(planId);
+      return;
+    }
+
+    // 유료 플랜은 Stripe Checkout으로 리다이렉트
+    try {
+      const { url, isFree } = await api.createCheckoutSession(planId);
+
+      if (isFree) {
+        // 무료 체험
+        createSubscriptionMutation.mutate(planId);
+      } else if (url) {
+        // Stripe Checkout 페이지로 리다이렉트
+        toast.loading('결제 페이지로 이동 중...');
+        window.location.href = url;
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || '결제 페이지를 불러오는데 실패했습니다.');
     }
   };
 
@@ -257,7 +279,7 @@ export default function SubscriptionPage() {
                         </div>
                       ) : (
                         <button
-                          onClick={() => handleSubscribe(plan.id, plan.name)}
+                          onClick={() => handleSubscribe(plan.id, plan.name, plan.price)}
                           disabled={createSubscriptionMutation.isLoading || (isSubscribed && !isCurrentPlan)}
                           className="w-full px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -265,7 +287,9 @@ export default function SubscriptionPage() {
                             ? '처리 중...'
                             : isSubscribed
                             ? '플랜 변경하기'
-                            : '구독하기'}
+                            : plan.price === 0
+                            ? '무료 체험 시작하기'
+                            : '결제하기'}
                         </button>
                       )}
                     </div>

@@ -27,6 +27,17 @@ const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const FAQPage = lazy(() => import('./pages/FAQPage'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
 
+// Payment pages
+const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'));
+const PaymentCancelPage = lazy(() => import('./pages/PaymentCancelPage'));
+
+// Auth pages
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+
+// Error pages
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+
 // Admin pages
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
@@ -92,6 +103,14 @@ function App() {
         <Route path="privacy" element={<PrivacyPolicyPage />} />
         <Route path="faq" element={<FAQPage />} />
         <Route path="contact" element={<ContactPage />} />
+
+        {/* 결제 관련 페이지 - 공개 */}
+        <Route path="subscription/success" element={<PaymentSuccessPage />} />
+        <Route path="subscription/cancel" element={<PaymentCancelPage />} />
+
+        {/* 비밀번호 재설정 - 공개 */}
+        <Route path="forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="reset-password" element={<ResetPasswordPage />} />
 
         {/* 보호된 라우트 - 인증 필요 */}
         <Route
@@ -185,6 +204,9 @@ function App() {
         <Route path="users" element={<UserManagementPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
       </Route>
+
+      {/* 404 페이지 - 모든 매칭되지 않는 경로 */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
     </Suspense>
   );
