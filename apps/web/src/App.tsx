@@ -2,6 +2,8 @@ import { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { initializeApi } from './lib/api';
 import { useAuthStore } from './store/authStore';
+import ErrorBoundary from './components/ErrorBoundary';
+import OfflineDetector from './components/OfflineDetector';
 
 // Layout (eager load as it's always needed)
 import Layout from './components/Layout';
@@ -87,8 +89,10 @@ function App() {
   }, []);
 
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <Routes>
+    <ErrorBoundary>
+      <OfflineDetector />
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
       <Route path="/" element={<Layout />}>
         {/* 공개 라우트 */}
         <Route index element={<HomePage />} />
@@ -212,7 +216,8 @@ function App() {
       {/* 404 페이지 - 모든 매칭되지 않는 경로 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
-    </Suspense>
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 

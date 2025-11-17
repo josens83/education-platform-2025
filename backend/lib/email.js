@@ -478,10 +478,118 @@ async function sendPaymentFailedEmail(to, username, planName) {
   }
 }
 
+// ============================================
+// 이메일 인증
+// ============================================
+async function sendEmailVerificationEmail(to, username, verificationToken) {
+  const transporter = getTransporter();
+  const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+
+  const mailOptions = {
+    from: process.env.EMAIL_FROM,
+    to,
+    subject: '이메일 주소를 인증해주세요 ✉️',
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 30px;
+              text-align: center;
+              border-radius: 10px 10px 0 0;
+            }
+            .content {
+              background: #f9fafb;
+              padding: 30px;
+              border-radius: 0 0 10px 10px;
+            }
+            .button {
+              display: inline-block;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              text-decoration: none;
+              padding: 12px 30px;
+              border-radius: 5px;
+              font-weight: bold;
+              margin: 20px 0;
+            }
+            .footer {
+              text-align: center;
+              padding: 20px;
+              color: #6b7280;
+              font-size: 14px;
+            }
+            .verification-code {
+              background: #fff;
+              border: 2px dashed #667eea;
+              padding: 15px;
+              text-align: center;
+              font-size: 18px;
+              font-weight: bold;
+              color: #667eea;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>✉️ 이메일 주소 인증</h1>
+          </div>
+          <div class="content">
+            <p>안녕하세요, <strong>${username}</strong>님!</p>
+            <p>회원가입을 완료하려면 이메일 주소를 인증해주세요.</p>
+            <p>아래 버튼을 클릭하여 이메일을 인증하실 수 있습니다:</p>
+            <p style="text-align: center;">
+              <a href="${verificationUrl}" class="button">
+                이메일 인증하기
+              </a>
+            </p>
+            <p>버튼이 작동하지 않으면 아래 링크를 복사하여 브라우저에 붙여넣으세요:</p>
+            <div class="verification-code">
+              ${verificationUrl}
+            </div>
+            <p style="color: #ef4444; font-weight: bold;">
+              ⏰ 이 링크는 24시간 동안만 유효합니다.
+            </p>
+            <p style="color: #6b7280; font-size: 14px;">
+              이 이메일을 요청하지 않으셨다면 무시하셔도 됩니다.
+            </p>
+          </div>
+          <div class="footer">
+            <p>&copy; 2025 영어 학습 플랫폼. All rights reserved.</p>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log('이메일 인증 메일 발송 성공:', to);
+  } catch (error) {
+    console.error('이메일 인증 메일 발송 실패:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendPasswordResetEmail,
   sendSubscriptionStartEmail,
   sendSubscriptionExpiringEmail,
   sendPaymentFailedEmail,
+  sendEmailVerificationEmail,
 };
