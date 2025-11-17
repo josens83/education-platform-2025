@@ -133,4 +133,71 @@ router.delete('/:id', authenticateToken, authorizeRoles('admin'), async (req, re
   }
 });
 
+// ============================================
+// 챕터의 퀴즈 목록 조회
+// ============================================
+router.get('/:id/quizzes', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await query(
+      `SELECT * FROM quizzes
+       WHERE chapter_id = $1 AND is_active = true
+       ORDER BY display_order, id`,
+      [id]
+    );
+
+    res.json({
+      status: 'success',
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('퀴즈 목록 조회 오류:', error);
+    res.status(500).json({
+      status: 'error',
+      message: '퀴즈 조회 중 오류가 발생했습니다'
+    });
+  }
+});
+
+// ============================================
+// 챕터에 퀴즈 추가 (관리자 전용)
+// ============================================
+router.post('/:id/quizzes', authenticateToken, authorizeRoles('admin', 'teacher'), async (req, res) => {
+  try {
+    const { id: chapterId } = req.params;
+    const {
+      title,
+      description,
+      quiz_type,
+      passing_score,
+      time_limit_minutes,
+      is_active,
+      display_order,
+    } = req.body;
+
+    const result = await query(
+      `INSERT INTO quizzes (
+        chapter_id, title, description, quiz_type, passing_score,
+        time_limit_minutes, is_active, display_order
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *`,
+      [chapterId, title, description, quiz_type, passing_score || 70,
+       time_limit_minutes || 0, is_active !== undefined ? is_active : true, display_order || 0]
+    );
+
+    res.status(201).json({
+      status: 'success',
+      message: '퀴즈가 생성되었습니다',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('퀴즈 생성 오류:', error);
+    res.status(500).json({
+      status: 'error',
+      message: '퀴즈 생성 중 오류가 발생했습니다'
+    });
+  }
+});
+
 module.exports = router;

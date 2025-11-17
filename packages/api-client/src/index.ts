@@ -650,6 +650,35 @@ export class EducationApiClient {
   }
 
   /**
+   * 퀴즈 문제 생성 (관리자 전용)
+   */
+  async createQuizQuestion(quizId: number, data: any): Promise<any> {
+    const response = await this._client.post<Types.ApiResponse<any>>(
+      `/api/quizzes/${quizId}/questions`,
+      data
+    );
+    return response.data.data!;
+  }
+
+  /**
+   * 퀴즈 문제 수정 (관리자 전용)
+   */
+  async updateQuizQuestion(questionId: number, data: any): Promise<any> {
+    const response = await this._client.put<Types.ApiResponse<any>>(
+      `/api/quizzes/questions/${questionId}`,
+      data
+    );
+    return response.data.data!;
+  }
+
+  /**
+   * 퀴즈 문제 삭제 (관리자 전용)
+   */
+  async deleteQuizQuestion(questionId: number): Promise<void> {
+    await this._client.delete(`/api/quizzes/questions/${questionId}`);
+  }
+
+  /**
    * 오디오 파일 업로드 (관리자 전용)
    */
   async uploadAudio(chapterId: number, file: File, audioType: string = 'professional'): Promise<any> {

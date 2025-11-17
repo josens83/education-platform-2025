@@ -27,6 +27,7 @@ const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage')
 const BookManagementPage = lazy(() => import('./pages/admin/BookManagementPage'));
 const ChapterManagementPage = lazy(() => import('./pages/admin/ChapterManagementPage'));
 const AudioManagementPage = lazy(() => import('./pages/admin/AudioManagementPage'));
+const QuizManagementPage = lazy(() => import('./pages/admin/QuizManagementPage'));
 
 /**
  * Loading fallback component
@@ -166,6 +167,7 @@ function App() {
         <Route path="books" element={<BookManagementPage />} />
         <Route path="chapters" element={<ChapterManagementPage />} />
         <Route path="audio" element={<AudioManagementPage />} />
+        <Route path="quizzes" element={<QuizManagementPage />} />
         {/* 추가 관리자 페이지들은 나중에 구현 */}
       </Route>
     </Routes>
