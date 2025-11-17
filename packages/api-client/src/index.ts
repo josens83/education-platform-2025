@@ -481,6 +481,40 @@ export class EducationApiClient {
     return response.data.data!;
   }
 
+  // ==================== 학습 스트릭 & 통계 API ====================
+
+  /**
+   * 학습 스트릭 조회
+   */
+  async getLearningStreak(): Promise<{
+    current_streak: number;
+    longest_streak: number;
+    total_days: number;
+    last_activity: string | null;
+    is_today_complete: boolean;
+  }> {
+    const response = await this.client.get('/api/stats/streak');
+    return response.data.data;
+  }
+
+  /**
+   * 주간/월간 학습 통계 조회
+   */
+  async getStatsOverview(period: 'week' | 'month' | 'year' = 'week'): Promise<any> {
+    const response = await this.client.get('/api/stats/overview', {
+      params: { period }
+    });
+    return response.data.data;
+  }
+
+  /**
+   * 성취 및 마일스톤 조회
+   */
+  async getAchievements(): Promise<any> {
+    const response = await this.client.get('/api/stats/achievements');
+    return response.data.data;
+  }
+
   // ==================== 학습 통계 API ====================
 
   /**
