@@ -481,6 +481,40 @@ export class EducationApiClient {
     return response.data.data!;
   }
 
+  // ==================== 학습 스트릭 & 통계 API ====================
+
+  /**
+   * 학습 스트릭 조회
+   */
+  async getLearningStreak(): Promise<{
+    current_streak: number;
+    longest_streak: number;
+    total_days: number;
+    last_activity: string | null;
+    is_today_complete: boolean;
+  }> {
+    const response = await this.client.get('/api/stats/streak');
+    return response.data.data;
+  }
+
+  /**
+   * 주간/월간 학습 통계 조회
+   */
+  async getStatsOverview(period: 'week' | 'month' | 'year' = 'week'): Promise<any> {
+    const response = await this.client.get('/api/stats/overview', {
+      params: { period }
+    });
+    return response.data.data;
+  }
+
+  /**
+   * 성취 및 마일스톤 조회
+   */
+  async getAchievements(): Promise<any> {
+    const response = await this.client.get('/api/stats/achievements');
+    return response.data.data;
+  }
+
   // ==================== 학습 통계 API ====================
 
   /**
@@ -517,6 +551,139 @@ export class EducationApiClient {
       chapter_id: chapterId,
       audio_position_seconds: position,
     });
+  }
+
+  // ==================== 관리자 API ====================
+
+  /**
+   * 책 생성 (관리자 전용)
+   */
+  async createBook(data: any): Promise<Types.Book> {
+    const response = await this.client.post<Types.ApiResponse<Types.Book>>(
+      '/api/books',
+      data
+    );
+    return response.data.data!;
+  }
+
+  /**
+   * 책 수정 (관리자 전용)
+   */
+  async updateBook(id: number, data: any): Promise<Types.Book> {
+    const response = await this.client.put<Types.ApiResponse<Types.Book>>(
+      `/api/books/${id}`,
+      data
+    );
+    return response.data.data!;
+  }
+
+  /**
+   * 책 삭제 (관리자 전용)
+   */
+  async deleteBook(id: number): Promise<void> {
+    await this.client.delete(`/api/books/${id}`);
+  }
+
+  /**
+   * 챕터 생성 (관리자 전용)
+   */
+  async createChapter(bookId: number, data: any): Promise<Types.Chapter> {
+    const response = await this.client.post<Types.ApiResponse<Types.Chapter>>(
+      `/api/books/${bookId}/chapters`,
+      data
+    );
+    return response.data.data!;
+  }
+
+  /**
+   * 챕터 수정 (관리자 전용)
+   */
+  async updateChapter(id: number, data: any): Promise<Types.Chapter> {
+    const response = await this.client.put<Types.ApiResponse<Types.Chapter>>(
+      `/api/chapters/${id}`,
+      data
+    );
+    return response.data.data!;
+  }
+
+  /**
+   * 챕터 삭제 (관리자 전용)
+   */
+  async deleteChapter(id: number): Promise<void> {
+    await this.client.delete(`/api/chapters/${id}`);
+  }
+
+  /**
+   * 퀴즈 생성 (관리자 전용)
+   */
+  async createQuiz(chapterId: number, data: any): Promise<Types.Quiz> {
+    const response = await this.client.post<Types.ApiResponse<Types.Quiz>>(
+      `/api/chapters/${chapterId}/quizzes`,
+      data
+    );
+    return response.data.data!;
+  }
+
+  /**
+   * 퀴즈 수정 (관리자 전용)
+   */
+  async updateQuiz(id: number, data: any): Promise<Types.Quiz> {
+    const response = await this.client.put<Types.ApiResponse<Types.Quiz>>(
+      `/api/quizzes/${id}`,
+      data
+    );
+    return response.data.data!;
+  }
+
+  /**
+   * 퀴즈 삭제 (관리자 전용)
+   */
+  async deleteQuiz(id: number): Promise<void> {
+    await this.client.delete(`/api/quizzes/${id}`);
+  }
+
+  /**
+   * 오디오 파일 업로드 (관리자 전용)
+   */
+  async uploadAudio(chapterId: number, file: File, audioType: string = 'professional'): Promise<any> {
+    const formData = new FormData();
+    formData.append('audio', file);
+    formData.append('chapter_id', chapterId.toString());
+    formData.append('audio_type', audioType);
+
+    const response = await this.client.post<Types.ApiResponse<any>>(
+      '/api/audio/upload',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data.data!;
+  }
+
+  /**
+   * 전체 사용자 목록 조회 (관리자 전용)
+   */
+  async getAllUsers(params?: { page?: number; limit?: number; role?: string }): Promise<any> {
+    const response = await this.client.get('/api/users', { params });
+    return response.data.data || [];
+  }
+
+  /**
+   * 사용자 권한 변경 (관리자 전용)
+   */
+  async updateUserRole(userId: number, role: string): Promise<void> {
+    await this.client.put(`/api/users/${userId}/role`, { role });
+  }
+
+  /**
+   * 관리자 통계 조회 (관리자 전용)
+   */
+  async getAdminStats(): Promise<any> {
+    const response = await this.client.get('/api/admin/stats');
+    return response.data.data;
   }
 }
 
