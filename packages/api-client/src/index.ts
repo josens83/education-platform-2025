@@ -461,14 +461,6 @@ export class EducationApiClient {
     );
     return response.data.data || [];
   }
-}
-
-/**
- * 기본 API 클라이언트 생성 함수
- */
-export function createApiClient(config: ApiClientConfig): EducationApiClient {
-  return new EducationApiClient(config);
-}
 
   // ==================== 오디오 API ====================
 
@@ -486,7 +478,7 @@ export function createApiClient(config: ApiClientConfig): EducationApiClient {
    * 오디오 재생 위치 저장
    */
   async saveAudioProgress(chapterId: number, position: number): Promise<void> {
-    await this.client.post('/api/audio/audio/progress', {
+    await this.client.post('/api/audio/progress', {
       chapter_id: chapterId,
       audio_position_seconds: position,
     });

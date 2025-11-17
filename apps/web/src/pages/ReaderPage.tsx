@@ -3,12 +3,13 @@ import { useQuery, useMutation } from 'react-query';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
+import AudioPlayer from '../components/AudioPlayer';
 
 /**
  * 챕터 읽기 페이지
  * - 챕터 내용 표시
  * - 학습 진도 자동 저장
- * - 오디오 재생 (추후 구현)
+ * - 오디오 플레이어
  */
 export default function ReaderPage() {
   const { chapterId } = useParams<{ chapterId: string }>();
@@ -23,6 +24,13 @@ export default function ReaderPage() {
   );
 
   const chapter = data?.chapter;
+
+  // 챕터의 오디오 파일 조회
+  const { data: audio } = useQuery(
+    ['chapterAudio', id],
+    () => api.getChapterAudio(id),
+    { enabled: !!id }
+  );
 
   // 챕터의 퀴즈 목록 조회
   const { data: quizzes } = useQuery(
@@ -214,13 +222,19 @@ export default function ReaderPage() {
           </div>
         )}
 
-        {/* 오디오 플레이어 (추후 구현) */}
-        {data?.audio && (
-          <div className="mt-6 bg-white rounded-xl shadow-lg p-6">
-            <h3 className="font-semibold mb-4">🎧 오디오</h3>
-            <p className="text-sm text-gray-500">
-              오디오 재생 기능은 추후 구현 예정입니다.
-            </p>
+        {/* 오디오 플레이어 */}
+        {audio && (
+          <div className="mt-6">
+            <AudioPlayer
+              audio={audio}
+              chapterId={id}
+              onProgressSave={(position) => {
+                api.saveAudioProgress(id, position).catch((err) => {
+                  console.error('Failed to save audio progress:', err);
+                });
+              }}
+              initialPosition={0}
+            />
           </div>
         )}
       </div>
