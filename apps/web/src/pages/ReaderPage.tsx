@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
+import { sanitizeHtml } from '../lib/sanitize';
 import AudioPlayer from '../components/AudioPlayer';
 import HighlightMenu from '../components/HighlightMenu';
 import BookmarksPanel from '../components/BookmarksPanel';
@@ -38,6 +39,12 @@ export default function ReaderPage() {
   );
 
   const chapter = data?.chapter;
+
+  // Sanitize chapter content to prevent XSS
+  const sanitizedContent = useMemo(() => {
+    if (!chapter?.content) return '';
+    return sanitizeHtml(chapter.content);
+  }, [chapter?.content]);
 
   // 챕터의 오디오 파일 조회
   const { data: audio } = useQuery(
@@ -355,7 +362,7 @@ export default function ReaderPage() {
                 prose-li:text-gray-700 prose-li:mb-2
                 prose-strong:text-gray-900 prose-strong:font-semibold
                 prose-em:italic"
-              dangerouslySetInnerHTML={{ __html: chapter.content }}
+              dangerouslySetInnerHTML={{ __html: sanitizedContent }}
             />
           )}
 

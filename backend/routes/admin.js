@@ -153,15 +153,18 @@ router.get('/stats/monthly-signups', async (req, res) => {
   try {
     const { months = 6 } = req.query;
 
+    // Validate and sanitize input
+    const monthsNum = Math.min(Math.max(parseInt(months) || 6, 1), 24); // Limit between 1-24 months
+
     const result = await query(`
       SELECT
         TO_CHAR(created_at, 'YYYY-MM') as month,
         COUNT(*) as signups
       FROM users
-      WHERE created_at >= CURRENT_DATE - INTERVAL '${parseInt(months)} months'
+      WHERE created_at >= CURRENT_DATE - make_interval(months => $1)
       GROUP BY TO_CHAR(created_at, 'YYYY-MM')
       ORDER BY month DESC
-    `);
+    `, [monthsNum]);
 
     res.json({
       status: 'success',

@@ -133,6 +133,9 @@ router.get('/me/stats', async (req, res) => {
   try {
     const { period = '7' } = req.query; // 기본 7일
 
+    // Validate and sanitize input
+    const periodDays = Math.min(Math.max(parseInt(period) || 7, 1), 365); // Limit between 1-365 days
+
     const result = await query(
       `SELECT
          stat_date,
@@ -143,9 +146,9 @@ router.get('/me/stats', async (req, res) => {
          words_learned
        FROM learning_stats
        WHERE user_id = $1
-       AND stat_date >= CURRENT_DATE - INTERVAL '${parseInt(period)} days'
+       AND stat_date >= CURRENT_DATE - make_interval(days => $2)
        ORDER BY stat_date DESC`,
-      [req.user.id]
+      [req.user.id, periodDays]
     );
 
     res.json({
