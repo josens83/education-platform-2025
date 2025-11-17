@@ -99,6 +99,7 @@ const audioRoutes = require('./routes/audio');
 const bookmarkRoutes = require('./routes/bookmarks');
 const noteRoutes = require('./routes/notes');
 const vocabularyRoutes = require('./routes/vocabulary');
+const statsRoutes = require('./routes/stats');
 
 // Use Routes
 app.use('/api/auth', authRoutes);
@@ -112,6 +113,7 @@ app.use('/api/audio', audioRoutes);
 app.use('/api/bookmarks', bookmarkRoutes);
 app.use('/api/notes', noteRoutes);
 app.use('/api/vocabulary', vocabularyRoutes);
+app.use('/api/stats', statsRoutes);
 
 // ============================================
 // ERROR HANDLING
