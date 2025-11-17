@@ -74,7 +74,11 @@ app.get('/api', (req, res) => {
       chapters: '/api/chapters/*',
       progress: '/api/progress/*',
       quizzes: '/api/quizzes/*',
-      subscriptions: '/api/subscriptions/*'
+      subscriptions: '/api/subscriptions/*',
+      audio: '/api/audio/*',
+      bookmarks: '/api/bookmarks/*',
+      notes: '/api/notes/*',
+      vocabulary: '/api/vocabulary/*'
     }
   });
 });
@@ -88,6 +92,9 @@ const progressRoutes = require('./routes/progress');
 const quizRoutes = require('./routes/quizzes');
 const subscriptionRoutes = require('./routes/subscriptions');
 const audioRoutes = require('./routes/audio');
+const bookmarkRoutes = require('./routes/bookmarks');
+const noteRoutes = require('./routes/notes');
+const vocabularyRoutes = require('./routes/vocabulary');
 
 // Use Routes
 app.use('/api/auth', authRoutes);
@@ -98,6 +105,9 @@ app.use('/api/progress', progressRoutes);
 app.use('/api/quizzes', quizRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/audio', audioRoutes);
+app.use('/api/bookmarks', bookmarkRoutes);
+app.use('/api/notes', noteRoutes);
+app.use('/api/vocabulary', vocabularyRoutes);
 
 // ============================================
 // ERROR HANDLING
