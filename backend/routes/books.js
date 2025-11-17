@@ -113,13 +113,20 @@ router.get('/:id/chapters', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const chaptersResult = await query(
-      `SELECT id, chapter_number, title, slug, estimated_minutes, is_published, display_order
+    // 관리자는 모든 챕터를, 일반 사용자는 출판된 챕터만 조회
+    const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'teacher');
+
+    let queryText = `SELECT id, book_id, chapter_number, title, slug, content, content_type, estimated_minutes, is_published, display_order
        FROM chapters
-       WHERE book_id = $1 AND is_published = true
-       ORDER BY display_order, chapter_number`,
-      [id]
-    );
+       WHERE book_id = $1`;
+
+    if (!isAdmin) {
+      queryText += ` AND is_published = true`;
+    }
+
+    queryText += ` ORDER BY display_order, chapter_number`;
+
+    const chaptersResult = await query(queryText, [id]);
 
     res.json({
       status: 'success',
@@ -130,6 +137,49 @@ router.get('/:id/chapters', async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: '챕터 조회 중 오류가 발생했습니다'
+    });
+  }
+});
+
+// ============================================
+// 책에 챕터 추가 (관리자 전용)
+// ============================================
+router.post('/:id/chapters', authenticateToken, authorizeRoles('admin', 'teacher'), async (req, res) => {
+  try {
+    const { id: bookId } = req.params;
+    const {
+      chapter_number,
+      title,
+      content,
+      content_type,
+      estimated_minutes,
+      is_published,
+      display_order,
+    } = req.body;
+
+    // Generate slug from title
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+    const result = await query(
+      `INSERT INTO chapters (
+        book_id, chapter_number, title, slug, content, content_type,
+        estimated_minutes, is_published, display_order
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *`,
+      [bookId, chapter_number, title, slug, content, content_type || 'html',
+       estimated_minutes, is_published || false, display_order || 0]
+    );
+
+    res.status(201).json({
+      status: 'success',
+      message: '챕터가 생성되었습니다',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('챕터 생성 오류:', error);
+    res.status(500).json({
+      status: 'error',
+      message: '챕터 생성 중 오류가 발생했습니다'
     });
   }
 });
