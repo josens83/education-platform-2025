@@ -21,6 +21,10 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// 정적 파일 서빙 (업로드된 파일)
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15분
@@ -74,7 +78,11 @@ app.get('/api', (req, res) => {
       chapters: '/api/chapters/*',
       progress: '/api/progress/*',
       quizzes: '/api/quizzes/*',
-      subscriptions: '/api/subscriptions/*'
+      subscriptions: '/api/subscriptions/*',
+      audio: '/api/audio/*',
+      bookmarks: '/api/bookmarks/*',
+      notes: '/api/notes/*',
+      vocabulary: '/api/vocabulary/*'
     }
   });
 });
@@ -87,6 +95,11 @@ const chapterRoutes = require('./routes/chapters');
 const progressRoutes = require('./routes/progress');
 const quizRoutes = require('./routes/quizzes');
 const subscriptionRoutes = require('./routes/subscriptions');
+const audioRoutes = require('./routes/audio');
+const bookmarkRoutes = require('./routes/bookmarks');
+const noteRoutes = require('./routes/notes');
+const vocabularyRoutes = require('./routes/vocabulary');
+const statsRoutes = require('./routes/stats');
 
 // Use Routes
 app.use('/api/auth', authRoutes);
@@ -96,6 +109,11 @@ app.use('/api/chapters', chapterRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/quizzes', quizRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/audio', audioRoutes);
+app.use('/api/bookmarks', bookmarkRoutes);
+app.use('/api/notes', noteRoutes);
+app.use('/api/vocabulary', vocabularyRoutes);
+app.use('/api/stats', statsRoutes);
 
 // ============================================
 // ERROR HANDLING

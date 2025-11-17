@@ -1,20 +1,35 @@
-import { useEffect, useState } from 'react';
-import { useQuery, useMutation } from 'react-query';
+import { useEffect, useState, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
+import AudioPlayer from '../components/AudioPlayer';
+import HighlightMenu from '../components/HighlightMenu';
+import BookmarksPanel from '../components/BookmarksPanel';
+import NoteModal from '../components/NoteModal';
+import VocabularyModal from '../components/VocabularyModal';
 
 /**
  * 챕터 읽기 페이지
  * - 챕터 내용 표시
  * - 학습 진도 자동 저장
- * - 오디오 재생 (추후 구현)
+ * - 오디오 플레이어
  */
 export default function ReaderPage() {
   const { chapterId } = useParams<{ chapterId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const id = parseInt(chapterId || '0');
   const [hasStarted, setHasStarted] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // 북마크 & 노트 상태
+  const [showBookmarksPanel, setShowBookmarksPanel] = useState(false);
+  const [selectedText, setSelectedText] = useState('');
+  const [selectionRange, setSelectionRange] = useState<Range | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [showVocabularyModal, setShowVocabularyModal] = useState(false);
 
   const { data, isLoading, error } = useQuery(
     ['chapter', id],
@@ -24,10 +39,24 @@ export default function ReaderPage() {
 
   const chapter = data?.chapter;
 
+  // 챕터의 오디오 파일 조회
+  const { data: audio } = useQuery(
+    ['chapterAudio', id],
+    () => api.getChapterAudio(id),
+    { enabled: !!id }
+  );
+
   // 챕터의 퀴즈 목록 조회
   const { data: quizzes } = useQuery(
     ['chapterQuizzes', id],
     () => api.getChapterQuizzes(id),
+    { enabled: !!id }
+  );
+
+  // 챕터의 북마크 조회
+  const { data: bookmarks = [] } = useQuery(
+    ['bookmarks', id],
+    () => api.getMyBookmarks(id),
     { enabled: !!id }
   );
 
@@ -73,6 +102,185 @@ export default function ReaderPage() {
     }
   };
 
+  // 텍스트 선택 처리
+  useEffect(() => {
+    const handleSelection = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) {
+        setMenuPosition(null);
+        setSelectedText('');
+        setSelectionRange(null);
+        return;
+      }
+
+      const text = selection.toString().trim();
+      if (text && contentRef.current?.contains(selection.anchorNode)) {
+        setSelectedText(text);
+        const range = selection.getRangeAt(0);
+        setSelectionRange(range);
+
+        // 선택 영역의 위치 계산
+        const rect = range.getBoundingClientRect();
+        setMenuPosition({
+          x: rect.left + rect.width / 2 - 100, // 메뉴 중앙 정렬
+          y: rect.top - 50, // 선택 영역 위에 표시
+        });
+      }
+    };
+
+    document.addEventListener('mouseup', handleSelection);
+    document.addEventListener('touchend', handleSelection);
+
+    return () => {
+      document.removeEventListener('mouseup', handleSelection);
+      document.removeEventListener('touchend', handleSelection);
+    };
+  }, []);
+
+  // 북마크 생성 mutation
+  const createBookmarkMutation = useMutation(
+    (data: { chapter_id: number; position: string; highlighted_text?: string; color?: string }) =>
+      api.createBookmark(data),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['bookmarks', id]);
+        toast.success('하이라이트가 추가되었습니다!');
+        clearSelection();
+      },
+      onError: () => {
+        toast.error('하이라이트 추가에 실패했습니다');
+      },
+    }
+  );
+
+  // 노트 생성 mutation
+  const createNoteMutation = useMutation(
+    (data: { chapter_id: number; position?: string; content: string; tags?: string }) =>
+      api.createNote(data),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['notes', id]);
+        toast.success('노트가 추가되었습니다!');
+        setShowNoteModal(false);
+        clearSelection();
+      },
+      onError: () => {
+        toast.error('노트 추가에 실패했습니다');
+      },
+    }
+  );
+
+  const clearSelection = () => {
+    window.getSelection()?.removeAllRanges();
+    setMenuPosition(null);
+    setSelectedText('');
+    setSelectionRange(null);
+  };
+
+  const handleHighlight = (color: string) => {
+    if (!chapter || !selectedText) return;
+
+    createBookmarkMutation.mutate({
+      chapter_id: chapter.id,
+      position: `${Date.now()}`, // 간단한 위치 ID (실제로는 더 정교한 방법 필요)
+      highlighted_text: selectedText,
+      color,
+    });
+  };
+
+  const handleAddNote = () => {
+    setShowNoteModal(true);
+    setMenuPosition(null);
+  };
+
+  const handleSaveNote = (content: string, tags?: string) => {
+    if (!chapter) return;
+
+    createNoteMutation.mutate({
+      chapter_id: chapter.id,
+      position: `${Date.now()}`,
+      content,
+      tags,
+    });
+  };
+
+  const handleAddToVocabulary = () => {
+    setShowVocabularyModal(true);
+    setMenuPosition(null);
+  };
+
+  // 북마크 하이라이트 적용
+  useEffect(() => {
+    if (!contentRef.current || !bookmarks || bookmarks.length === 0) return;
+
+    const applyHighlights = () => {
+      const content = contentRef.current;
+      if (!content) return;
+
+      // 모든 기존 하이라이트 제거
+      const existingMarks = content.querySelectorAll('mark.bookmark-highlight');
+      existingMarks.forEach((mark) => {
+        const parent = mark.parentNode;
+        if (parent) {
+          parent.replaceChild(document.createTextNode(mark.textContent || ''), mark);
+          parent.normalize(); // 텍스트 노드 병합
+        }
+      });
+
+      // 새로운 하이라이트 적용
+      bookmarks.forEach((bookmark) => {
+        if (!bookmark.highlighted_text) return;
+
+        const walker = document.createTreeWalker(
+          content,
+          NodeFilter.SHOW_TEXT,
+          null
+        );
+
+        const nodesToHighlight: { node: Text; start: number; end: number }[] = [];
+        let currentNode: Text | null;
+
+        while ((currentNode = walker.nextNode() as Text)) {
+          const text = currentNode.textContent || '';
+          const index = text.indexOf(bookmark.highlighted_text);
+
+          if (index !== -1) {
+            nodesToHighlight.push({
+              node: currentNode,
+              start: index,
+              end: index + bookmark.highlighted_text.length,
+            });
+            break; // 첫 번째 매칭만 하이라이트
+          }
+        }
+
+        nodesToHighlight.forEach(({ node, start, end }) => {
+          const text = node.textContent || '';
+          const before = text.substring(0, start);
+          const highlighted = text.substring(start, end);
+          const after = text.substring(end);
+
+          const mark = document.createElement('mark');
+          mark.className = `bookmark-highlight bookmark-${bookmark.color || 'yellow'}`;
+          mark.textContent = highlighted;
+          mark.style.cursor = 'pointer';
+          mark.title = '북마크됨';
+
+          const fragment = document.createDocumentFragment();
+          if (before) fragment.appendChild(document.createTextNode(before));
+          fragment.appendChild(mark);
+          if (after) fragment.appendChild(document.createTextNode(after));
+
+          node.parentNode?.replaceChild(fragment, node);
+        });
+      });
+    };
+
+    // DOM이 안정화된 후 실행
+    const timeoutId = setTimeout(applyHighlights, 100);
+    return () => clearTimeout(timeoutId);
+  }, [bookmarks, chapter?.content]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -116,11 +324,19 @@ export default function ReaderPage() {
               </h1>
             </div>
           </div>
-          {chapter.estimated_minutes && (
-            <span className="text-sm text-gray-500">
-              ⏱️ {chapter.estimated_minutes}분
-            </span>
-          )}
+          <div className="flex items-center gap-4">
+            {chapter.estimated_minutes && (
+              <span className="text-sm text-gray-500">
+                ⏱️ {chapter.estimated_minutes}분
+              </span>
+            )}
+            <button
+              onClick={() => setShowBookmarksPanel(!showBookmarksPanel)}
+              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            >
+              📑 북마크 & 노트
+            </button>
+          </div>
         </div>
       </div>
 
@@ -130,6 +346,7 @@ export default function ReaderPage() {
           {/* HTML 콘텐츠 렌더링 */}
           {chapter.content && (
             <div
+              ref={contentRef}
               className="prose prose-lg max-w-none
                 prose-headings:font-bold prose-headings:text-gray-900
                 prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-6
@@ -214,16 +431,66 @@ export default function ReaderPage() {
           </div>
         )}
 
-        {/* 오디오 플레이어 (추후 구현) */}
-        {data?.audio && (
-          <div className="mt-6 bg-white rounded-xl shadow-lg p-6">
-            <h3 className="font-semibold mb-4">🎧 오디오</h3>
-            <p className="text-sm text-gray-500">
-              오디오 재생 기능은 추후 구현 예정입니다.
-            </p>
+        {/* 오디오 플레이어 */}
+        {audio && (
+          <div className="mt-6">
+            <AudioPlayer
+              audio={audio}
+              chapterId={id}
+              onProgressSave={(position) => {
+                api.saveAudioProgress(id, position).catch((err) => {
+                  console.error('Failed to save audio progress:', err);
+                });
+              }}
+              initialPosition={0}
+            />
           </div>
         )}
       </div>
+
+      {/* 하이라이트 메뉴 */}
+      {menuPosition && (
+        <HighlightMenu
+          position={menuPosition}
+          onHighlight={handleHighlight}
+          onNote={handleAddNote}
+          onAddToVocabulary={handleAddToVocabulary}
+        />
+      )}
+
+      {/* 북마크 & 노트 패널 */}
+      {showBookmarksPanel && (
+        <BookmarksPanel chapterId={id} onClose={() => setShowBookmarksPanel(false)} />
+      )}
+
+      {/* 노트 작성 모달 */}
+      {showNoteModal && (
+        <NoteModal
+          selectedText={selectedText}
+          onSave={handleSaveNote}
+          onCancel={() => {
+            setShowNoteModal(false);
+            clearSelection();
+          }}
+        />
+      )}
+
+      {/* 단어장 추가 모달 */}
+      {showVocabularyModal && (
+        <VocabularyModal
+          initialWord={selectedText}
+          chapterId={id}
+          onClose={() => {
+            setShowVocabularyModal(false);
+            clearSelection();
+          }}
+          onSuccess={() => {
+            queryClient.invalidateQueries('vocabulary');
+            setShowVocabularyModal(false);
+            clearSelection();
+          }}
+        />
+      )}
     </div>
   );
 }

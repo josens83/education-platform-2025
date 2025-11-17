@@ -214,21 +214,26 @@ export interface Bookmark {
   user_id: number;
   chapter_id: number;
   position: string;
-  note?: string;
+  highlighted_text?: string;
+  color?: string;
   created_at: string;
+  // JOIN fields
+  chapter_title?: string;
+  book_title?: string;
 }
 
 export interface Note {
   id: number;
   user_id: number;
   chapter_id: number;
-  position_start: string;
-  position_end?: string;
-  highlighted_text?: string;
-  note_text?: string;
-  color?: string;
+  position?: string;
+  content: string;
+  tags?: string;
   created_at: string;
   updated_at: string;
+  // JOIN fields
+  chapter_title?: string;
+  book_title?: string;
 }
 
 export interface VocabularyItem {
@@ -241,6 +246,9 @@ export interface VocabularyItem {
   is_mastered: boolean;
   created_at: string;
   updated_at: string;
+  // JOIN fields
+  chapter_title?: string;
+  book_title?: string;
 }
 
 // 통계
@@ -255,4 +263,17 @@ export interface LearningStats {
   quizzes_passed: number;
   total_time_minutes: number;
   words_learned: number;
+}
+
+// 오디오 파일
+export interface AudioFile {
+  id: number;
+  chapter_id: number;
+  file_url: string;
+  duration_seconds: number;
+  file_size_bytes?: number;
+  audio_type: 'professional' | 'ai_tts';
+  transcript?: string;
+  sync_data?: any;
+  created_at: string;
 }

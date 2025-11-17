@@ -15,6 +15,8 @@ import BookDetailPage from './pages/BookDetailPage';
 import ReaderPage from './pages/ReaderPage';
 import QuizPage from './pages/QuizPage';
 import QuizResultPage from './pages/QuizResultPage';
+import VocabularyPage from './pages/VocabularyPage';
+import FlashcardsPage from './pages/FlashcardsPage';
 
 // Layout
 import Layout from './components/Layout';
@@ -104,6 +106,26 @@ function App() {
           element={
             <ProtectedRoute>
               <QuizResultPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 단어장은 로그인 필수 */}
+        <Route
+          path="vocabulary"
+          element={
+            <ProtectedRoute>
+              <VocabularyPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 플래시카드는 로그인 필수 */}
+        <Route
+          path="flashcards"
+          element={
+            <ProtectedRoute>
+              <FlashcardsPage />
             </ProtectedRoute>
           }
         />

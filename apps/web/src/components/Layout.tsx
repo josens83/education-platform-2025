@@ -43,6 +43,12 @@ export default function Layout() {
                     책 목록
                   </Link>
                   <Link
+                    to="/vocabulary"
+                    className="text-gray-700 hover:text-primary-600 transition"
+                  >
+                    단어장
+                  </Link>
+                  <Link
                     to="/subscription"
                     className="text-gray-700 hover:text-primary-600 transition"
                   >

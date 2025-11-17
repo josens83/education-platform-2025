@@ -325,7 +325,8 @@ export class EducationApiClient {
   async createBookmark(data: {
     chapter_id: number;
     position: string;
-    note?: string;
+    highlighted_text?: string;
+    color?: string;
   }): Promise<Types.Bookmark> {
     const response = await this.client.post<Types.ApiResponse<Types.Bookmark>>(
       '/api/bookmarks',
@@ -358,11 +359,9 @@ export class EducationApiClient {
    */
   async createNote(data: {
     chapter_id: number;
-    position_start: string;
-    position_end?: string;
-    highlighted_text?: string;
-    note_text?: string;
-    color?: string;
+    position?: string;
+    content: string;
+    tags?: string;
   }): Promise<Types.Note> {
     const response = await this.client.post<Types.ApiResponse<Types.Note>>('/api/notes', data);
     return response.data.data!;
@@ -381,7 +380,7 @@ export class EducationApiClient {
   /**
    * 노트 업데이트
    */
-  async updateNote(id: number, data: Partial<Types.Note>): Promise<Types.Note> {
+  async updateNote(id: number, data: { content?: string; tags?: string }): Promise<Types.Note> {
     const response = await this.client.put<Types.ApiResponse<Types.Note>>(
       `/api/notes/${id}`,
       data
@@ -440,10 +439,46 @@ export class EducationApiClient {
   }
 
   /**
+   * 단어 수정
+   */
+  async updateVocabulary(
+    id: number,
+    data: {
+      word?: string;
+      definition?: string;
+      example_sentence?: string;
+    }
+  ): Promise<Types.VocabularyItem> {
+    const response = await this.client.put<Types.ApiResponse<Types.VocabularyItem>>(
+      `/api/vocabulary/${id}`,
+      data
+    );
+    return response.data.data!;
+  }
+
+  /**
    * 단어 삭제
    */
   async deleteVocabulary(id: number): Promise<void> {
     await this.client.delete(`/api/vocabulary/${id}`);
+  }
+
+  /**
+   * 단어장 통계 조회
+   */
+  async getVocabularyStats(): Promise<{
+    total_words: number;
+    mastered_words: number;
+    learning_words: number;
+  }> {
+    const response = await this.client.get<
+      Types.ApiResponse<{
+        total_words: number;
+        mastered_words: number;
+        learning_words: number;
+      }>
+    >('/api/vocabulary/stats/summary');
+    return response.data.data!;
   }
 
   // ==================== 학습 통계 API ====================
@@ -460,6 +495,28 @@ export class EducationApiClient {
       { params }
     );
     return response.data.data || [];
+  }
+
+  // ==================== 오디오 API ====================
+
+  /**
+   * 챕터의 오디오 파일 조회
+   */
+  async getChapterAudio(chapterId: number): Promise<Types.AudioFile | null> {
+    const response = await this.client.get<Types.ApiResponse<Types.AudioFile>>(
+      `/api/audio/chapters/${chapterId}/audio`
+    );
+    return response.data.data || null;
+  }
+
+  /**
+   * 오디오 재생 위치 저장
+   */
+  async saveAudioProgress(chapterId: number, position: number): Promise<void> {
+    await this.client.post('/api/audio/progress', {
+      chapter_id: chapterId,
+      audio_position_seconds: position,
+    });
   }
 }
 

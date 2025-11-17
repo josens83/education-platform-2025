@@ -316,3 +316,39 @@ VALUES (
   true,
   2
 );
+
+-- ============================================
+-- 샘플 오디오 파일 (데모용 placeholder)
+-- ============================================
+
+-- Charlie and the Chocolate Factory 오디오
+INSERT INTO audio_files (chapter_id, file_url, duration_seconds, file_size_bytes, audio_type, transcript)
+VALUES (
+  1,
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+  600,
+  9600000,
+  'professional',
+  'Charlie Bucket lived with his parents and four grandparents in a small wooden house...'
+);
+
+INSERT INTO audio_files (chapter_id, file_url, duration_seconds, file_size_bytes, audio_type, transcript)
+VALUES (
+  2,
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+  720,
+  11520000,
+  'professional',
+  'One day, Mr. Willy Wonka made an announcement...'
+);
+
+-- The Little Prince 오디오
+INSERT INTO audio_files (chapter_id, file_url, duration_seconds, file_size_bytes, audio_type, transcript)
+VALUES (
+  4,
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+  720,
+  11520000,
+  'professional',
+  'Six years ago, I had an accident with my plane in the Sahara Desert...'
+);
