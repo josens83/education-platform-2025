@@ -4,6 +4,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { query } = require('../database');
 const { authenticateToken } = require('../middleware/auth');
 const { paymentLimiter } = require('../middleware/rateLimiter');
+const { alertNewSubscription, alertPaymentFailure } = require('../lib/adminAlerts');
 
 // ============================================
 // Stripe Checkout Session 생성
@@ -209,6 +210,35 @@ async function handleCheckoutSessionCompleted(session) {
   );
 
   console.log('구독 활성화 완료:', userId);
+
+  // 관리자에게 새 구독 알림
+  try {
+    const userResult = await query(
+      'SELECT username, email FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length > 0) {
+      const user = userResult.rows[0];
+      const planResult = await query(
+        'SELECT name FROM subscription_plans WHERE id = $1',
+        [planId]
+      );
+
+      const planName = planResult.rows.length > 0 ? planResult.rows[0].name : 'Unknown Plan';
+
+      await alertNewSubscription(
+        userId,
+        user.username,
+        user.email,
+        planName,
+        session.amount_total / 100 // Stripe는 센트 단위이므로 100으로 나눔
+      );
+    }
+  } catch (alertError) {
+    console.error('Admin alert failed:', alertError);
+    // 알림 실패는 결제 프로세스에 영향을 주지 않음
+  }
 }
 
 // ============================================
@@ -325,13 +355,15 @@ async function handleInvoicePaymentFailed(invoice) {
   );
 
   if (result.rows.length > 0) {
+    const subscription = result.rows[0];
+
     await query(
       `INSERT INTO payments (
         user_id, amount, currency, status,
         payment_method, stripe_payment_intent_id
       ) VALUES ($1, $2, $3, $4, $5, $6)`,
       [
-        result.rows[0].user_id,
+        subscription.user_id,
         invoice.amount_due,
         invoice.currency,
         'failed',
@@ -339,6 +371,36 @@ async function handleInvoicePaymentFailed(invoice) {
         invoice.payment_intent
       ]
     );
+
+    // 관리자에게 결제 실패 알림
+    try {
+      const userResult = await query(
+        'SELECT username, email FROM users WHERE id = $1',
+        [subscription.user_id]
+      );
+
+      if (userResult.rows.length > 0) {
+        const user = userResult.rows[0];
+        const planResult = await query(
+          'SELECT name FROM subscription_plans WHERE id = $1',
+          [subscription.plan_id]
+        );
+
+        const planName = planResult.rows.length > 0 ? planResult.rows[0].name : 'Unknown Plan';
+
+        await alertPaymentFailure(
+          subscription.user_id,
+          user.username,
+          user.email,
+          planName,
+          invoice.amount_due / 100, // Stripe는 센트 단위이므로 100으로 나눔
+          invoice.last_payment_error?.message || 'Unknown error'
+        );
+      }
+    } catch (alertError) {
+      console.error('Admin alert failed:', alertError);
+      // 알림 실패는 결제 프로세스에 영향을 주지 않음
+    }
   }
 }
 

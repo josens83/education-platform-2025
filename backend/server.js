@@ -5,6 +5,7 @@ const compression = require('compression');
 const helmet = require('helmet');
 const { pool, initializeDatabase } = require('./database');
 const logger = require('./lib/logger');
+const { alertSystemError } = require('./lib/adminAlerts');
 
 // Import enhanced middleware
 const {
@@ -205,6 +206,23 @@ app.use((err, req, res, next) => {
     ip: req.ip,
     userId: req.user?.id
   });
+
+  // Send admin alert for server errors (500+)
+  if (statusCode >= 500) {
+    alertSystemError(
+      message,
+      err.stack,
+      {
+        path: req.path,
+        method: req.method,
+        statusCode,
+        userId: req.user?.id,
+        ip: req.ip
+      }
+    ).catch(alertError => {
+      logger.error('Failed to send admin alert', { error: alertError.message });
+    });
+  }
 
   res.status(statusCode).json({
     status: 'error',
