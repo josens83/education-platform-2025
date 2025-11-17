@@ -19,7 +19,7 @@ CREATE TABLE users (
 -- 사용자 프로필 (어린이/성인 모드 설정)
 CREATE TABLE user_profiles (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     full_name VARCHAR(200),
     birth_date DATE,
     grade_level VARCHAR(50), -- elementary_5, middle_2, high_3, adult 등

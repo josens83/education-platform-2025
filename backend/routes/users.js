@@ -48,27 +48,49 @@ router.put('/me', async (req, res) => {
   try {
     const {
       full_name,
+      date_of_birth,
       birth_date,
+      phone_number,
+      bio,
       grade_level,
       target_exam,
       is_kids_mode,
       avatar_url,
+      preferred_difficulty,
+      learning_goals,
       preferences
     } = req.body;
 
+    // date_of_birth와 birth_date 둘 다 지원
+    const birthDate = date_of_birth || birth_date;
+
+    // learning_goals를 preferences에 병합
+    const updatedPreferences = {
+      ...(preferences || {}),
+      ...(learning_goals ? { learning_goals } : {}),
+      ...(preferred_difficulty ? { preferred_difficulty } : {}),
+      ...(phone_number ? { phone_number } : {}),
+      ...(bio ? { bio } : {})
+    };
+
+    // UPSERT: 프로필이 없으면 생성, 있으면 업데이트
     const result = await query(
-      `UPDATE user_profiles
-       SET full_name = COALESCE($1, full_name),
-           birth_date = COALESCE($2, birth_date),
-           grade_level = COALESCE($3, grade_level),
-           target_exam = COALESCE($4, target_exam),
-           is_kids_mode = COALESCE($5, is_kids_mode),
-           avatar_url = COALESCE($6, avatar_url),
-           preferences = COALESCE($7, preferences),
-           updated_at = CURRENT_TIMESTAMP
-       WHERE user_id = $8
-       RETURNING *`,
-      [full_name, birth_date, grade_level, target_exam, is_kids_mode, avatar_url, preferences, req.user.id]
+      `INSERT INTO user_profiles (
+        user_id, full_name, birth_date, grade_level, target_exam,
+        is_kids_mode, avatar_url, preferences, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        full_name = COALESCE(EXCLUDED.full_name, user_profiles.full_name),
+        birth_date = COALESCE(EXCLUDED.birth_date, user_profiles.birth_date),
+        grade_level = COALESCE(EXCLUDED.grade_level, user_profiles.grade_level),
+        target_exam = COALESCE(EXCLUDED.target_exam, user_profiles.target_exam),
+        is_kids_mode = COALESCE(EXCLUDED.is_kids_mode, user_profiles.is_kids_mode),
+        avatar_url = COALESCE(EXCLUDED.avatar_url, user_profiles.avatar_url),
+        preferences = COALESCE(EXCLUDED.preferences, user_profiles.preferences),
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *`,
+      [req.user.id, full_name, birthDate, grade_level, target_exam, is_kids_mode, avatar_url, updatedPreferences]
     );
 
     res.json({
