@@ -53,6 +53,13 @@ export default function ReaderPage() {
     { enabled: !!id }
   );
 
+  // 챕터의 북마크 조회
+  const { data: bookmarks = [] } = useQuery(
+    ['bookmarks', id],
+    () => api.getMyBookmarks(id),
+    { enabled: !!id }
+  );
+
   // 진도 저장 mutation
   const saveProgressMutation = useMutation(
     (progressData: { chapter_id: number; progress_percentage: number; time_spent_seconds?: number }) =>
@@ -201,6 +208,78 @@ export default function ReaderPage() {
     setShowVocabularyModal(true);
     setMenuPosition(null);
   };
+
+  // 북마크 하이라이트 적용
+  useEffect(() => {
+    if (!contentRef.current || !bookmarks || bookmarks.length === 0) return;
+
+    const applyHighlights = () => {
+      const content = contentRef.current;
+      if (!content) return;
+
+      // 모든 기존 하이라이트 제거
+      const existingMarks = content.querySelectorAll('mark.bookmark-highlight');
+      existingMarks.forEach((mark) => {
+        const parent = mark.parentNode;
+        if (parent) {
+          parent.replaceChild(document.createTextNode(mark.textContent || ''), mark);
+          parent.normalize(); // 텍스트 노드 병합
+        }
+      });
+
+      // 새로운 하이라이트 적용
+      bookmarks.forEach((bookmark) => {
+        if (!bookmark.highlighted_text) return;
+
+        const walker = document.createTreeWalker(
+          content,
+          NodeFilter.SHOW_TEXT,
+          null
+        );
+
+        const nodesToHighlight: { node: Text; start: number; end: number }[] = [];
+        let currentNode: Text | null;
+
+        while ((currentNode = walker.nextNode() as Text)) {
+          const text = currentNode.textContent || '';
+          const index = text.indexOf(bookmark.highlighted_text);
+
+          if (index !== -1) {
+            nodesToHighlight.push({
+              node: currentNode,
+              start: index,
+              end: index + bookmark.highlighted_text.length,
+            });
+            break; // 첫 번째 매칭만 하이라이트
+          }
+        }
+
+        nodesToHighlight.forEach(({ node, start, end }) => {
+          const text = node.textContent || '';
+          const before = text.substring(0, start);
+          const highlighted = text.substring(start, end);
+          const after = text.substring(end);
+
+          const mark = document.createElement('mark');
+          mark.className = `bookmark-highlight bookmark-${bookmark.color || 'yellow'}`;
+          mark.textContent = highlighted;
+          mark.style.cursor = 'pointer';
+          mark.title = '북마크됨';
+
+          const fragment = document.createDocumentFragment();
+          if (before) fragment.appendChild(document.createTextNode(before));
+          fragment.appendChild(mark);
+          if (after) fragment.appendChild(document.createTextNode(after));
+
+          node.parentNode?.replaceChild(fragment, node);
+        });
+      });
+    };
+
+    // DOM이 안정화된 후 실행
+    const timeoutId = setTimeout(applyHighlights, 100);
+    return () => clearTimeout(timeoutId);
+  }, [bookmarks, chapter?.content]);
 
   if (isLoading) {
     return (

@@ -95,3 +95,52 @@ body {
 .animate-slide-up {
   animation: slideUp 0.5s ease-out;
 }
+
+/* 북마크 하이라이트 스타일 */
+mark.bookmark-highlight {
+  padding: 2px 0;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+mark.bookmark-highlight:hover {
+  filter: brightness(0.9);
+}
+
+mark.bookmark-yellow {
+  background-color: #fef08a;
+  color: #713f12;
+}
+
+mark.bookmark-green {
+  background-color: #bbf7d0;
+  color: #14532d;
+}
+
+mark.bookmark-blue {
+  background-color: #bfdbfe;
+  color: #1e3a8a;
+}
+
+mark.bookmark-pink {
+  background-color: #fbcfe8;
+  color: #831843;
+}
+
+/* 플래시카드 3D 플립 효과 */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}

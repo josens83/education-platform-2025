@@ -16,6 +16,7 @@ import ReaderPage from './pages/ReaderPage';
 import QuizPage from './pages/QuizPage';
 import QuizResultPage from './pages/QuizResultPage';
 import VocabularyPage from './pages/VocabularyPage';
+import FlashcardsPage from './pages/FlashcardsPage';
 
 // Layout
 import Layout from './components/Layout';
@@ -115,6 +116,16 @@ function App() {
           element={
             <ProtectedRoute>
               <VocabularyPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 플래시카드는 로그인 필수 */}
+        <Route
+          path="flashcards"
+          element={
+            <ProtectedRoute>
+              <FlashcardsPage />
             </ProtectedRoute>
           }
         />

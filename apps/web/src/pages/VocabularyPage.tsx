@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { VocabularyItem } from '@education-platform/api-client';
@@ -85,12 +86,20 @@ export default function VocabularyPage() {
               <h1 className="text-3xl font-bold text-gray-900">📚 내 단어장</h1>
               <p className="text-gray-600 mt-1">학습한 단어들을 관리하고 복습하세요</p>
             </div>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium"
-            >
-              + 단어 추가
-            </button>
+            <div className="flex gap-3">
+              <Link
+                to="/flashcards"
+                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition font-medium"
+              >
+                🎴 플래시카드
+              </Link>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium"
+              >
+                + 단어 추가
+              </button>
+            </div>
           </div>
 
           {/* 통계 */}
