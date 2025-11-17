@@ -55,6 +55,7 @@
 - **bcrypt** (비밀번호 해싱)
 
 ### DevOps
+- **Docker** + **Docker Compose** (컨테이너화)
 - **PM2** (프로세스 관리)
 - **Nginx** (웹 서버)
 
@@ -106,7 +107,7 @@ createdb education_platform
 # 마이그레이션 실행
 cd database/migrations
 psql -U postgres -d education_platform -f 001_init_schema.sql
-psql -U postgres -d education_platform -f 002_add_features.sql
+psql -U postgres -d education_platform -f 002_performance_indexes.sql
 psql -U postgres -d education_platform -f 003_add_password_reset_fields.sql
 psql -U postgres -d education_platform -f 004_add_email_verification.sql
 ```
@@ -149,8 +150,93 @@ cd apps/web
 npm run dev
 ```
 
-Frontend: http://localhost:3000  
+Frontend: http://localhost:3000
 Backend: http://localhost:3001
+
+### 🐳 Docker로 시작하기 (대안)
+
+Docker Compose를 사용하면 간단하게 전체 스택을 실행할 수 있습니다.
+
+#### 사전 요구사항
+- Docker 20.10 이상
+- Docker Compose 2.0 이상
+
+#### 1. 환경 변수 설정
+```bash
+# Backend 환경 변수
+cp backend/.env.example backend/.env
+# backend/.env 파일을 편집하여 실제 값 입력
+
+# Frontend 환경 변수 (선택적)
+cp apps/web/.env.example apps/web/.env
+```
+
+#### 2. Docker Compose 실행
+```bash
+# 백그라운드에서 모든 서비스 시작
+docker-compose up -d
+
+# 로그 확인
+docker-compose logs -f
+
+# 특정 서비스 로그만 확인
+docker-compose logs -f backend
+docker-compose logs -f frontend
+```
+
+#### 3. 데이터베이스 마이그레이션
+```bash
+# DB 컨테이너에 접속하여 마이그레이션 실행
+docker-compose exec db psql -U postgres -d education_platform -f /docker-entrypoint-initdb.d/001_init_schema.sql
+docker-compose exec db psql -U postgres -d education_platform -f /docker-entrypoint-initdb.d/002_performance_indexes.sql
+docker-compose exec db psql -U postgres -d education_platform -f /docker-entrypoint-initdb.d/003_add_password_reset_fields.sql
+docker-compose exec db psql -U postgres -d education_platform -f /docker-entrypoint-initdb.d/004_add_email_verification.sql
+
+# 또는 한번에 실행
+for file in database/migrations/*.sql; do
+  docker-compose exec -T db psql -U postgres -d education_platform < "$file"
+done
+```
+
+#### 4. 데모 데이터 추가 (선택적)
+```bash
+docker-compose exec -T db psql -U postgres -d education_platform < database/seed.sql
+```
+
+#### 5. 서비스 접속
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:3001
+- PostgreSQL: localhost:5432
+
+#### Docker 유용한 명령어
+```bash
+# 모든 서비스 중지
+docker-compose down
+
+# 볼륨까지 삭제 (데이터베이스 초기화)
+docker-compose down -v
+
+# 서비스 재시작
+docker-compose restart backend
+
+# 컨테이너 내부 접속
+docker-compose exec backend sh
+docker-compose exec frontend sh
+docker-compose exec db psql -U postgres -d education_platform
+
+# 이미지 다시 빌드
+docker-compose build --no-cache
+
+# 특정 서비스만 시작
+docker-compose up -d db backend
+```
+
+#### Docker 구조
+- **db**: PostgreSQL 15 (Alpine)
+- **backend**: Node.js 20 (Alpine) + Express
+- **frontend**: Nginx (Alpine) + 빌드된 React 앱
+- **네트워크**: app-network (bridge)
+- **볼륨**: postgres_data (데이터 영속성)
 
 ## 🔧 환경 변수
 
