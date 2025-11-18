@@ -1,11 +1,14 @@
 require('dotenv').config();
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
 const compression = require('compression');
 const helmet = require('helmet');
 const { pool, initializeDatabase } = require('./database');
 const logger = require('./lib/logger');
 const { alertSystemError } = require('./lib/adminAlerts');
+const { initializeSocket } = require('./lib/socket');
+const passport = require('./config/passport');
 
 // Import enhanced middleware
 const {
@@ -22,7 +25,11 @@ const {
 } = require('./middleware/cache');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
+
+// Socket.IO 초기화
+const io = initializeSocket(server);
 
 // ============================================
 // MIDDLEWARE
@@ -55,6 +62,9 @@ app.use(cors({
 // JSON 파싱
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Passport 초기화 (OAuth 인증)
+app.use(passport.initialize());
 
 // 정적 파일 서빙 (업로드된 파일)
 const path = require('path');
@@ -92,7 +102,7 @@ app.get('/api', (req, res) => {
     description: '구독형 영어 교육 콘텐츠 플랫폼 API - Premium Design System',
     endpoints: {
       health: '/api/health/* (헬스체크)',
-      auth: '/api/auth/* (인증)',
+      auth: '/api/auth/* (인증, OAuth)',
       users: '/api/users/* (사용자)',
       books: '/api/books/* (책)',
       chapters: '/api/chapters/* (챕터)',
@@ -108,7 +118,8 @@ app.get('/api', (req, res) => {
       notes: '/api/notes/* (노트)',
       vocabulary: '/api/vocabulary/* (단어장)',
       stats: '/api/stats/* (통계)',
-      admin: '/api/admin/* (관리자)'
+      admin: '/api/admin/* (관리자)',
+      ai: '/api/ai/* (AI 추천 및 챗봇)'
     },
     features: {
       design_system: 'Linear/Stripe Premium Style',
@@ -116,7 +127,10 @@ app.get('/api', (req, res) => {
       animations: 'Framer Motion',
       accessibility: 'WCAG 2.1 AA',
       performance: 'Optimized with caching & rate limiting',
-      monitoring: 'Health checks & analytics'
+      monitoring: 'Health checks & analytics',
+      oauth: 'Google, Kakao OAuth 2.0',
+      ai: 'GPT-4 기반 AI 추천 및 챗봇',
+      realtime: 'Socket.IO WebSocket'
     }
   });
 });
@@ -139,6 +153,8 @@ const adminRoutes = require('./routes/admin');
 const couponRoutes = require('./routes/coupons');
 const analyticsRoutes = require('./routes/analytics');
 const reviewRoutes = require('./routes/reviews');
+const oauthRoutes = require('./routes/oauth');
+const aiRoutes = require('./routes/ai');
 
 // Use Routes with specific rate limiters and caching
 
@@ -188,6 +204,12 @@ app.use('/api/analytics', readLimiter, analyticsRoutes);
 
 // Reviews - moderate rate limiting
 app.use('/api', mutationLimiter, reviewRoutes);
+
+// OAuth - auth limiter (prevent abuse)
+app.use('/api/auth', authLimiter, oauthRoutes);
+
+// AI - moderate rate limiting (AI calls can be expensive)
+app.use('/api/ai', mutationLimiter, aiRoutes);
 
 // ============================================
 // ERROR HANDLING
@@ -257,13 +279,14 @@ const startServer = async () => {
     //   await initializeDatabase();
     // }
 
-    // 서버 시작
-    app.listen(PORT, () => {
+    // 서버 시작 (HTTP + Socket.IO)
+    server.listen(PORT, () => {
       logger.system('교육 플랫폼 API 서버 시작', {
         port: PORT,
         environment: process.env.NODE_ENV || 'development',
         apiUrl: `http://localhost:${PORT}/api`,
-        healthCheck: `http://localhost:${PORT}/api/health`
+        healthCheck: `http://localhost:${PORT}/api/health`,
+        socketIO: 'enabled'
       });
 
       // Console output for visibility
@@ -271,6 +294,8 @@ const startServer = async () => {
       console.log(`📍 서버 주소: http://localhost:${PORT}`);
       console.log(`📍 API 문서: http://localhost:${PORT}/api`);
       console.log(`📍 Health Check: http://localhost:${PORT}/api/health`);
+      console.log(`🔌 Socket.IO: 실시간 통신 활성화`);
+      console.log(`🤖 AI 기능: ${process.env.OPENAI_API_KEY ? '활성화' : '비활성화'}`);
       console.log(`🌍 환경: ${process.env.NODE_ENV || 'development'}\n`);
     });
   } catch (error) {

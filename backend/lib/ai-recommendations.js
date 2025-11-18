@@ -193,24 +193,134 @@ async function getHybridRecommendations(userId, limit = 10) {
 }
 
 /**
- * OpenAI 기반 추천 (선택적)
+ * OpenAI 기반 추천
  *
- * TODO: OpenAI API를 사용한 고급 추천
- *
- * 사용법:
- * 1. npm install openai
- * 2. .env에 OPENAI_API_KEY 설정
- * 3. 이 함수에서 OpenAI API 호출
+ * GPT-4를 사용하여 사용자의 학습 기록과 선호도를 분석하고
+ * 개인화된 책 추천 및 학습 조언을 제공합니다.
  */
 async function getAIRecommendations(userId, userPreferences) {
-  // TODO: OpenAI API 통합
-  // const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  // const response = await openai.chat.completions.create({ ... });
+  try {
+    // OpenAI API가 비활성화된 경우 기본 추천으로 대체
+    if (!process.env.OPENAI_API_KEY) {
+      console.warn('OpenAI API key not configured, falling back to hybrid recommendations');
+      return {
+        message: '하이브리드 추천 알고리즘을 사용하여 책을 추천합니다',
+        books: await getHybridRecommendations(userId, 5),
+        aiEnabled: false,
+      };
+    }
 
-  return {
-    message: 'OpenAI 추천은 향후 구현 예정입니다',
-    books: [],
-  };
+    const OpenAI = require('openai');
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    // 사용자의 학습 기록 가져오기
+    const userHistory = await pool.query(
+      `
+      SELECT b.title, b.category, b.level, b.description,
+             rp.progress, rp.completed_at
+      FROM reading_progress rp
+      JOIN books b ON rp.book_id = b.id
+      WHERE rp.user_id = $1
+      ORDER BY rp.updated_at DESC
+      LIMIT 10
+      `,
+      [userId]
+    );
+
+    // 사용 가능한 책 목록
+    const availableBooks = await pool.query(
+      `
+      SELECT id, title, category, level, description
+      FROM books
+      WHERE published = true
+        AND id NOT IN (
+          SELECT book_id FROM reading_progress WHERE user_id = $1
+        )
+      ORDER BY created_at DESC
+      LIMIT 50
+      `,
+      [userId]
+    );
+
+    // GPT-4에게 추천 요청
+    const prompt = `
+당신은 영어 교육 전문가입니다. 학생의 학습 기록을 분석하여 최적의 책을 추천해주세요.
+
+**학생의 학습 기록:**
+${userHistory.rows.map(r => `- ${r.title} (${r.category}, ${r.level}) - 진도: ${r.progress}%`).join('\n')}
+
+**학생 선호도:**
+${userPreferences ? JSON.stringify(userPreferences, null, 2) : '정보 없음'}
+
+**추천 가능한 책 목록:**
+${availableBooks.rows.map((b, i) => `${i + 1}. [ID: ${b.id}] ${b.title} - ${b.category}, ${b.level}\n   ${b.description}`).join('\n\n')}
+
+위 목록에서 학생에게 가장 적합한 3-5권의 책을 추천하고, 각 책에 대한 추천 이유를 설명해주세요.
+
+응답은 다음 JSON 형식으로만 작성하세요:
+{
+  "recommendations": [
+    {
+      "bookId": 책ID(숫자),
+      "reason": "추천 이유 (한글로 2-3문장)",
+      "priority": 우선순위(1-5)
+    }
+  ],
+  "learningAdvice": "전반적인 학습 조언 (한글로 3-4문장)"
+}
+`;
+
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: '당신은 영어 교육 전문가입니다. 학생의 레벨과 관심사를 고려하여 최적의 학습 자료를 추천합니다.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 1000,
+    });
+
+    const aiResponse = JSON.parse(response.choices[0].message.content);
+
+    // 추천된 책 정보 가져오기
+    const recommendedBookIds = aiResponse.recommendations.map(r => r.bookId);
+    const booksResult = await pool.query(
+      'SELECT * FROM books WHERE id = ANY($1)',
+      [recommendedBookIds]
+    );
+
+    // 책 정보와 AI 추천 이유 결합
+    const recommendations = booksResult.rows.map(book => {
+      const aiRec = aiResponse.recommendations.find(r => r.bookId === book.id);
+      return {
+        ...book,
+        aiReason: aiRec?.reason,
+        aiPriority: aiRec?.priority,
+      };
+    });
+
+    return {
+      message: aiResponse.learningAdvice,
+      books: recommendations,
+      aiEnabled: true,
+    };
+  } catch (error) {
+    console.error('Error in AI recommendations:', error);
+
+    // 오류 발생 시 기본 추천으로 대체
+    return {
+      message: '일시적으로 AI 추천을 사용할 수 없어 기본 추천을 제공합니다',
+      books: await getHybridRecommendations(userId, 5),
+      aiEnabled: false,
+      error: error.message,
+    };
+  }
 }
 
 module.exports = {
