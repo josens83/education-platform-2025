@@ -2,6 +2,10 @@
 import { initSentry } from './lib/sentry';
 initSentry();
 
+// Initialize CSRF protection
+import { initCsrf } from './lib/csrf';
+initCsrf();
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';

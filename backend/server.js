@@ -32,6 +32,13 @@ const {
   CACHE_DURATIONS,
 } = require('./middleware/cache');
 
+const {
+  cookieParser,
+  generateToken,
+  conditionalCsrfProtection,
+  csrfErrorHandler,
+} = require('./middleware/csrf');
+
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
@@ -80,6 +87,9 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Cookie parser (required for CSRF)
+app.use(cookieParser());
+
 // Passport 초기화 (OAuth 인증)
 app.use(passport.initialize());
 
@@ -92,6 +102,10 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 
 // Global rate limiting (applies to all API routes)
 app.use('/api', defaultLimiter);
+
+// CSRF Protection (applies to mutation routes: POST, PUT, PATCH, DELETE)
+// Automatically skips GET, HEAD, OPTIONS, webhooks, and API token authentication
+app.use('/api', conditionalCsrfProtection);
 
 // 요청 로깅
 app.use((req, res, next) => {
@@ -110,6 +124,14 @@ app.use((req, res, next) => {
 // Health Check Routes (Premium with detailed monitoring)
 const healthRoutes = require('./routes/health');
 app.use('/api/health', healthRoutes);
+
+// CSRF Token endpoint (must be before CSRF protection middleware)
+app.get('/api/csrf-token', generateToken, (req, res) => {
+  res.json({
+    status: 'success',
+    token: req.csrfToken(),
+  });
+});
 
 // API 정보
 app.get('/api', (req, res) => {
@@ -259,6 +281,9 @@ app.use('/api/2fa', authLimiter, twoFactorRoutes);
 
 // Sentry error handler (must be BEFORE other error handlers)
 app.use(sentryErrorHandler());
+
+// CSRF error handler (must be AFTER Sentry but BEFORE other error handlers)
+app.use(csrfErrorHandler);
 
 // 404 Handler
 app.use((req, res) => {
