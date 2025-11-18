@@ -1,70 +1,69 @@
+version: '3.8'
+
 services:
   # PostgreSQL 데이터베이스
-  postgres:
-    image: postgres:16-alpine
-    container_name: education-db
-    restart: unless-stopped
+  db:
+    image: postgres:15-alpine
+    container_name: education-platform-db
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-education_platform}
-    ports:
-      - "${DB_PORT:-5432}:5432"
+      POSTGRES_DB: education_platform
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
-      - ./database/sample-data.sql:/docker-entrypoint-initdb.d/02-sample-data.sql
+      - ./database/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - education-network
+      - app-network
 
   # Backend API
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: education-backend
-    restart: unless-stopped
+    container_name: education-platform-backend
     environment:
-      NODE_ENV: ${NODE_ENV:-development}
+      NODE_ENV: production
       PORT: 3001
-      DATABASE_URL: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-education_platform}?sslmode=disable
-      JWT_SECRET: ${JWT_SECRET:-change-this-secret-key}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-postgres}@db:5432/education_platform
+    env_file:
+      - ./backend/.env
     ports:
       - "3001:3001"
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
     volumes:
-      - ./backend:/app
-      - /app/node_modules
+      - ./backend/uploads:/app/uploads
+      - ./backend/logs:/app/logs
     networks:
-      - education-network
-
-  # Web Application
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    container_name: education-web
+      - app-network
     restart: unless-stopped
+
+  # Frontend (Nginx로 정적 파일 서빙)
+  frontend:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: education-platform-frontend
     ports:
-      - "${WEB_PORT:-80}:80"
+      - "3000:80"
     depends_on:
       - backend
     networks:
-      - education-network
+      - app-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
     driver: local
 
 networks:
-  education-network:
+  app-network:
     driver: bridge

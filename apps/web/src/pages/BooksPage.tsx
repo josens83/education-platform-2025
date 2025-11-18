@@ -1,6 +1,7 @@
 import { useQuery } from 'react-query';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
+import SEO from '../components/SEO';
 
 /**
  * 책 목록 페이지
@@ -12,12 +13,31 @@ export default function BooksPage() {
 
   if (isLoading) {
     return (
+      <>
+        <SEO
+          title="영어 원서 목록"
+          description="다양한 수준의 영어 원서를 읽어보세요. 초급부터 고급까지 엄선된 영어책과 오디오북을 제공합니다."
+          keywords="영어원서, 영어책 목록, 초급 영어책, 중급 영어책, 고급 영어책, 영어 오디오북"
+          url="/books"
+        />
       <div className="container-custom py-8">
         <div className="flex items-center justify-center min-h-[50vh]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
             <p className="text-gray-600">책 목록을 불러오는 중...</p>
           </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <SEO
+        title="영어 원서 목록"
+        description="다양한 수준의 영어 원서를 읽어보세요. 초급부터 고급까지 엄선된 영어책과 오디오북을 제공합니다."
+        keywords="영어원서, 영어책 목록, 초급 영어책, 중급 영어책, 고급 영어책, 영어 오디오북"
+        url="/books"
+      />
         </div>
       </div>
     );
@@ -25,16 +45,26 @@ export default function BooksPage() {
 
   if (error) {
     return (
-      <div className="container-custom py-8">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <p className="text-red-600">책 목록을 불러오는데 실패했습니다.</p>
-          <p className="text-sm text-red-500 mt-2">잠시 후 다시 시도해주세요.</p>
+      <>
+        <SEO title="오류 - 영어 원서 목록" noindex />
+        <div className="container-custom py-8">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <p className="text-red-600">책 목록을 불러오는데 실패했습니다.</p>
+            <p className="text-sm text-red-500 mt-2">잠시 후 다시 시도해주세요.</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
+    <>
+      <SEO
+        title="영어 원서 목록"
+        description="다양한 수준의 영어 원서를 읽어보세요. 초급부터 고급까지 엄선된 영어책과 오디오북을 제공합니다."
+        keywords="영어원서, 영어책 목록, 초급 영어책, 중급 영어책, 고급 영어책, 영어 오디오북"
+        url="/books"
+      />
     <div className="container-custom py-8">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">책 목록</h1>
@@ -112,5 +142,6 @@ export default function BooksPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

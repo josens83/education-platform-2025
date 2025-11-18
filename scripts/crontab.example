@@ -1,0 +1,132 @@
+# ============================================================
+# Education Platform Crontab Configuration
+# 프로덕션 환경에서 자동화 작업을 위한 cron 설정
+# ============================================================
+#
+# 이 파일을 사용하려면:
+# 1. 환경에 맞게 경로와 설정을 수정하세요
+# 2. crontab -e 로 편집기를 열고 내용을 붙여넣으세요
+# 3. 또는: crontab scripts/crontab.example
+#
+# ============================================================
+
+# 환경 변수 설정
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=admin@yourdomain.com
+
+# 프로젝트 경로
+PROJECT_ROOT=/path/to/education-platform-2025
+
+# 데이터베이스 설정
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=education_platform
+DB_USER=postgres
+DB_PASSWORD=your_password
+BACKUP_DIR=/var/backups/education-platform
+
+# S3 백업 (선택적)
+# S3_BUCKET=your-backup-bucket
+
+# ============================================================
+# 데이터베이스 백업
+# ============================================================
+
+# 매일 새벽 2시에 데이터베이스 백업
+0 2 * * * cd $PROJECT_ROOT && DB_HOST=$DB_HOST DB_PORT=$DB_PORT DB_NAME=$DB_NAME DB_USER=$DB_USER DB_PASSWORD=$DB_PASSWORD BACKUP_DIR=$BACKUP_DIR ./scripts/backup-database.sh >> $BACKUP_DIR/cron.log 2>&1
+
+# ============================================================
+# 로그 정리
+# ============================================================
+
+# 매주 일요일 새벽 3시에 오래된 로그 파일 정리 (30일 이상)
+0 3 * * 0 find $PROJECT_ROOT/backend/logs -name "*.log" -type f -mtime +30 -delete
+
+# 매주 일요일 새벽 3시 30분에 오래된 백업 로그 정리 (90일 이상)
+30 3 * * 0 find $BACKUP_DIR -name "*.log" -type f -mtime +90 -delete
+
+# ============================================================
+# 데이터베이스 유지보수
+# ============================================================
+
+# 매주 일요일 새벽 4시에 VACUUM ANALYZE 실행 (성능 최적화)
+0 4 * * 0 PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "VACUUM ANALYZE;" >> $BACKUP_DIR/maintenance.log 2>&1
+
+# 매월 1일 새벽 4시 30분에 VACUUM FULL 실행 (디스크 공간 회수)
+30 4 1 * * PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "VACUUM FULL;" >> $BACKUP_DIR/maintenance.log 2>&1
+
+# ============================================================
+# 구독 관리
+# ============================================================
+
+# 매일 새벽 1시에 만료된 구독 상태 업데이트
+0 1 * * * cd $PROJECT_ROOT/backend && node scripts/update-expired-subscriptions.js >> $PROJECT_ROOT/backend/logs/cron.log 2>&1
+
+# 구독 만료 3일 전 알림 (매일 오전 9시)
+0 9 * * * cd $PROJECT_ROOT/backend && node scripts/send-expiring-subscription-alerts.js >> $PROJECT_ROOT/backend/logs/cron.log 2>&1
+
+# ============================================================
+# 학습 통계 집계
+# ============================================================
+
+# 매일 자정에 일간 학습 통계 집계
+0 0 * * * cd $PROJECT_ROOT/backend && node scripts/aggregate-daily-stats.js >> $PROJECT_ROOT/backend/logs/cron.log 2>&1
+
+# 매주 월요일 자정에 주간 학습 통계 집계
+0 0 * * 1 cd $PROJECT_ROOT/backend && node scripts/aggregate-weekly-stats.js >> $PROJECT_ROOT/backend/logs/cron.log 2>&1
+
+# 매월 1일 자정에 월간 학습 통계 집계
+0 0 1 * * cd $PROJECT_ROOT/backend && node scripts/aggregate-monthly-stats.js >> $PROJECT_ROOT/backend/logs/cron.log 2>&1
+
+# ============================================================
+# 시스템 모니터링
+# ============================================================
+
+# 5분마다 서버 헬스 체크
+*/5 * * * * curl -f http://localhost:3001/api/health > /dev/null 2>&1 || echo "Health check failed at $(date)" >> $PROJECT_ROOT/backend/logs/health-check-failures.log
+
+# 매시간 디스크 사용량 체크 (80% 이상이면 경고)
+0 * * * * df -h / | awk 'NR==2 {if(substr($5,1,length($5)-1) > 80) print "Disk usage warning: "$5}' >> $PROJECT_ROOT/backend/logs/disk-usage.log
+
+# ============================================================
+# SSL 인증서 갱신 (Let's Encrypt)
+# ============================================================
+
+# 매일 새벽 3시에 SSL 인증서 갱신 시도
+0 3 * * * certbot renew --quiet --post-hook "systemctl reload nginx" >> /var/log/letsencrypt/renew.log 2>&1
+
+# ============================================================
+# 성능 모니터링
+# ============================================================
+
+# 매시간 느린 쿼리 로그 분석
+0 * * * * cd $PROJECT_ROOT && ./scripts/analyze-slow-queries.sh >> $PROJECT_ROOT/backend/logs/slow-queries.log 2>&1
+
+# ============================================================
+# 사용 팁
+# ============================================================
+#
+# Cron 시간 형식:
+# ┌───────────── 분 (0 - 59)
+# │ ┌───────────── 시간 (0 - 23)
+# │ │ ┌───────────── 일 (1 - 31)
+# │ │ │ ┌───────────── 월 (1 - 12)
+# │ │ │ │ ┌───────────── 요일 (0 - 7) (0과 7은 일요일)
+# │ │ │ │ │
+# * * * * * 실행할 명령
+#
+# 특수 문자:
+# * : 모든 값
+# , : 여러 값 (예: 1,15 - 1일과 15일)
+# - : 범위 (예: 1-5 - 1일부터 5일까지)
+# / : 간격 (예: */5 - 5분마다)
+#
+# 예제:
+# 0 2 * * * : 매일 새벽 2시
+# 0 2 * * 0 : 매주 일요일 새벽 2시
+# 0 2 1 * * : 매월 1일 새벽 2시
+# */30 * * * * : 30분마다
+# 0 9-18 * * 1-5 : 평일 오전 9시부터 오후 6시까지 매시간
+#
+# ============================================================

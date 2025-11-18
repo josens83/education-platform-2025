@@ -4,6 +4,8 @@ const cors = require('cors');
 const compression = require('compression');
 const helmet = require('helmet');
 const { pool, initializeDatabase } = require('./database');
+const logger = require('./lib/logger');
+const { alertSystemError } = require('./lib/adminAlerts');
 
 // Import enhanced middleware
 const {
@@ -69,7 +71,7 @@ app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
-    console.log(`📨 ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+    logger.request(req, res, duration);
   });
   next();
 });
@@ -111,6 +113,8 @@ app.get('/api', (req, res) => {
       progress: '/api/progress/*',
       quizzes: '/api/quizzes/*',
       subscriptions: '/api/subscriptions/*',
+      payments: '/api/payments/*',
+      coupons: '/api/coupons/*',
       audio: '/api/audio/*',
       bookmarks: '/api/bookmarks/*',
       notes: '/api/notes/*',
@@ -127,11 +131,16 @@ const chapterRoutes = require('./routes/chapters');
 const progressRoutes = require('./routes/progress');
 const quizRoutes = require('./routes/quizzes');
 const subscriptionRoutes = require('./routes/subscriptions');
+const paymentsRoutes = require('./routes/payments');
 const audioRoutes = require('./routes/audio');
 const bookmarkRoutes = require('./routes/bookmarks');
 const noteRoutes = require('./routes/notes');
 const vocabularyRoutes = require('./routes/vocabulary');
 const statsRoutes = require('./routes/stats');
+const adminRoutes = require('./routes/admin');
+const couponRoutes = require('./routes/coupons');
+const analyticsRoutes = require('./routes/analytics');
+const reviewRoutes = require('./routes/reviews');
 
 // Use Routes with specific rate limiters and caching
 
@@ -154,6 +163,12 @@ app.use('/api/quizzes', mutationLimiter, cacheMiddleware(CACHE_DURATIONS.MEDIUM)
 // Subscriptions - moderate rate limiting
 app.use('/api/subscriptions', mutationLimiter, subscriptionRoutes);
 
+// Payments - moderate rate limiting (webhooks handled separately)
+app.use('/api/payments', mutationLimiter, paymentsRoutes);
+
+// Coupons - moderate rate limiting
+app.use('/api/coupons', mutationLimiter, couponRoutes);
+
 // Audio - upload limiter for uploads, read limiter for downloads
 app.use('/api/audio', cacheMiddleware(CACHE_DURATIONS.VERY_LONG), audioRoutes);
 
@@ -166,6 +181,15 @@ app.use('/api/vocabulary', mutationLimiter, cacheMiddleware(CACHE_DURATIONS.MEDI
 
 // Stats - read-heavy with medium cache
 app.use('/api/stats', readLimiter, cacheMiddleware(CACHE_DURATIONS.MEDIUM), statsRoutes);
+
+// Admin - read-heavy with short cache (admin data should be relatively fresh)
+app.use('/api/admin', readLimiter, cacheMiddleware(CACHE_DURATIONS.SHORT), adminRoutes);
+
+// Analytics - admin only, no cache for fresh data
+app.use('/api/analytics', readLimiter, analyticsRoutes);
+
+// Reviews - moderate rate limiting
+app.use('/api', mutationLimiter, reviewRoutes);
 
 // ============================================
 // ERROR HANDLING
@@ -182,10 +206,36 @@ app.use((req, res) => {
 
 // Error Handler
 app.use((err, req, res, next) => {
-  console.error('❌ 에러 발생:', err);
-
   const statusCode = err.statusCode || 500;
   const message = err.message || '서버 내부 오류가 발생했습니다';
+
+  // Log error with full details
+  logger.error('Server Error', {
+    statusCode,
+    message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+    ip: req.ip,
+    userId: req.user?.id
+  });
+
+  // Send admin alert for server errors (500+)
+  if (statusCode >= 500) {
+    alertSystemError(
+      message,
+      err.stack,
+      {
+        path: req.path,
+        method: req.method,
+        statusCode,
+        userId: req.user?.id,
+        ip: req.ip
+      }
+    ).catch(alertError => {
+      logger.error('Failed to send admin alert', { error: alertError.message });
+    });
+  }
 
   res.status(statusCode).json({
     status: 'error',
@@ -202,7 +252,7 @@ const startServer = async () => {
   try {
     // 데이터베이스 연결 테스트
     await pool.query('SELECT NOW()');
-    console.log('✅ 데이터베이스 연결 성공');
+    logger.system('데이터베이스 연결 성공');
 
     // 개발 모드에서는 자동으로 스키마 초기화 (선택사항)
     // if (process.env.NODE_ENV === 'development') {
@@ -211,6 +261,14 @@ const startServer = async () => {
 
     // 서버 시작
     app.listen(PORT, () => {
+      logger.system('교육 플랫폼 API 서버 시작', {
+        port: PORT,
+        environment: process.env.NODE_ENV || 'development',
+        apiUrl: `http://localhost:${PORT}/api`,
+        healthCheck: `http://localhost:${PORT}/api/health`
+      });
+
+      // Console output for visibility
       console.log('\n🚀 교육 플랫폼 API 서버 시작');
       console.log(`📍 서버 주소: http://localhost:${PORT}`);
       console.log(`📍 API 문서: http://localhost:${PORT}/api`);
@@ -218,6 +276,7 @@ const startServer = async () => {
       console.log(`🌍 환경: ${process.env.NODE_ENV || 'development'}\n`);
     });
   } catch (error) {
+    logger.error('서버 시작 실패', { error: error.message, stack: error.stack });
     console.error('❌ 서버 시작 실패:', error);
     process.exit(1);
   }
@@ -225,16 +284,20 @@ const startServer = async () => {
 
 // Graceful Shutdown
 process.on('SIGTERM', () => {
+  logger.system('SIGTERM 신호 수신 - 서버 종료 중');
   console.log('\n⏸️  SIGTERM 신호 수신. 서버 종료 중...');
   pool.end(() => {
+    logger.system('데이터베이스 연결 종료');
     console.log('✅ 데이터베이스 연결 종료');
     process.exit(0);
   });
 });
 
 process.on('SIGINT', () => {
+  logger.system('SIGINT 신호 수신 - 서버 종료 중');
   console.log('\n⏸️  SIGINT 신호 수신. 서버 종료 중...');
   pool.end(() => {
+    logger.system('데이터베이스 연결 종료');
     console.log('✅ 데이터베이스 연결 종료');
     process.exit(0);
   });

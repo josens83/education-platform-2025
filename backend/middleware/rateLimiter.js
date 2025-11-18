@@ -1,146 +1,144 @@
-/**
- * Enhanced Rate Limiting Middleware
- * Different limits for different types of endpoints
- */
-
 const rateLimit = require('express-rate-limit');
-const RedisStore = require('rate-limit-redis');
-const { createClient } = require('redis');
-
-// Redis client for distributed rate limiting (optional)
-let redisClient = null;
-let redisStore = null;
-
-// Try to connect to Redis if available
-if (process.env.REDIS_URL) {
-  redisClient = createClient({
-    url: process.env.REDIS_URL,
-    legacyMode: false,
-  });
-
-  redisClient.connect().then(() => {
-    console.log('✅ Redis connected for rate limiting');
-    redisStore = new RedisStore({
-      client: redisClient,
-      prefix: 'rl:', // Rate limit prefix
-    });
-  }).catch((err) => {
-    console.warn('⚠️  Redis connection failed, using memory store:', err.message);
-  });
-}
 
 /**
- * Default rate limiter - applies to all routes
- * 100 requests per 15 minutes
+ * 일반 API 요청에 대한 Rate Limiter
+ * - 15분당 100개 요청
  */
-const defaultLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15분
+  max: 100, // 최대 요청 수
   message: {
     status: 'error',
-    message: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
+    message: '너무 많은 요청을 보냈습니다. 잠시 후 다시 시도해주세요.',
+    retryAfter: '15분'
   },
-  standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
-  legacyHeaders: false, // Disable `X-RateLimit-*` headers
-  store: redisStore, // Use Redis if available, otherwise memory store
-  skip: (req) => {
-    // Skip rate limiting for health checks
-    return req.path === '/api/health';
-  },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skipSuccessfulRequests: false,
 });
 
 /**
- * Strict rate limiter for authentication endpoints
- * 5 requests per 15 minutes to prevent brute force
+ * 인증 엔드포인트에 대한 Rate Limiter (더 엄격)
+ * - 15분당 5개 요청
+ * - 로그인, 회원가입 등 인증 관련 엔드포인트에 적용
  */
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per windowMs
+  windowMs: 15 * 60 * 1000, // 15분
+  max: 5, // 최대 요청 수
   message: {
     status: 'error',
-    message: '로그인 시도 횟수를 초과했습니다. 15분 후 다시 시도해주세요.',
+    message: '너무 많은 로그인 시도가 감지되었습니다. 15분 후 다시 시도해주세요.',
+    retryAfter: '15분'
   },
   standardHeaders: true,
   legacyHeaders: false,
-  store: redisStore,
-  skipSuccessfulRequests: false, // Count all requests
+  skipSuccessfulRequests: true, // 성공한 요청은 카운트하지 않음
 });
 
 /**
- * Moderate rate limiter for mutation operations
- * 30 requests per 15 minutes
+ * 비밀번호 재설정 엔드포인트에 대한 Rate Limiter (매우 엄격)
+ * - 1시간당 3개 요청
  */
-const mutationLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 30, // Limit each IP to 30 requests per windowMs
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1시간
+  max: 3, // 최대 요청 수
   message: {
     status: 'error',
-    message: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
+    message: '비밀번호 재설정 요청이 너무 많습니다. 1시간 후 다시 시도해주세요.',
+    retryAfter: '1시간'
   },
   standardHeaders: true,
   legacyHeaders: false,
-  store: redisStore,
-  skip: (req) => {
-    // Skip for read operations
-    return req.method === 'GET';
-  },
+  skipSuccessfulRequests: false,
 });
 
 /**
- * Generous rate limiter for read-only operations
- * 200 requests per 15 minutes
+ * 결제 엔드포인트에 대한 Rate Limiter
+ * - 15분당 10개 요청
  */
-const readLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // Limit each IP to 200 requests per windowMs
+const paymentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15분
+  max: 10, // 최대 요청 수
   message: {
     status: 'error',
-    message: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
+    message: '결제 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
+    retryAfter: '15분'
   },
   standardHeaders: true,
   legacyHeaders: false,
-  store: redisStore,
-  skip: (req) => {
-    // Only apply to GET requests
-    return req.method !== 'GET';
-  },
+  skipSuccessfulRequests: false,
 });
 
 /**
- * Strict limiter for file uploads
- * 10 uploads per hour
+ * 관리자 API에 대한 Rate Limiter
+ * - 15분당 200개 요청 (관리자는 더 많은 작업 수행)
+ */
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15분
+  max: 200, // 최대 요청 수
+  message: {
+    status: 'error',
+    message: '너무 많은 요청을 보냈습니다. 잠시 후 다시 시도해주세요.',
+    retryAfter: '15분'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+});
+
+/**
+ * 파일 업로드 엔드포인트에 대한 Rate Limiter
+ * - 1시간당 20개 요청
  */
 const uploadLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // Limit each IP to 10 uploads per hour
+  windowMs: 60 * 60 * 1000, // 1시간
+  max: 20, // 최대 요청 수
   message: {
     status: 'error',
-    message: '파일 업로드 횟수를 초과했습니다. 1시간 후 다시 시도해주세요.',
+    message: '파일 업로드 요청이 너무 많습니다. 1시간 후 다시 시도해주세요.',
+    retryAfter: '1시간'
   },
   standardHeaders: true,
   legacyHeaders: false,
-  store: redisStore,
+  skipSuccessfulRequests: false,
 });
 
-/**
- * Create custom rate limiter with specific options
- * @param {Object} options - Rate limiter options
- */
-function createRateLimiter(options = {}) {
-  return rateLimit({
-    ...options,
-    store: redisStore || options.store,
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
-}
+// Aliases for backward compatibility
+const defaultLimiter = apiLimiter;
+const mutationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50, // 쓰기 작업은 더 제한적
+  message: {
+    status: 'error',
+    message: '너무 많은 요청을 보냈습니다. 잠시 후 다시 시도해주세요.',
+    retryAfter: '15분'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const readLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200, // 읽기 작업은 더 관대하게
+  message: {
+    status: 'error',
+    message: '너무 많은 요청을 보냈습니다. 잠시 후 다시 시도해주세요.',
+    retryAfter: '15분'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 module.exports = {
-  defaultLimiter,
+  // Primary exports
+  apiLimiter,
   authLimiter,
-  mutationLimiter,
-  readLimiter,
+  passwordResetLimiter,
+  paymentLimiter,
+  adminLimiter,
   uploadLimiter,
-  createRateLimiter,
-  redisClient, // Export for cleanup
+  // Aliases for server.js
+  defaultLimiter,
+  mutationLimiter,
+  readLimiter
 };

@@ -2,6 +2,8 @@ import { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { initializeApi } from './lib/api';
 import { useAuthStore } from './store/authStore';
+import ErrorBoundary from './components/ErrorBoundary';
+import OfflineDetector from './components/OfflineDetector';
 
 // Layout (eager load as it's always needed)
 import Layout from './components/Layout';
@@ -21,10 +23,33 @@ const QuizResultPage = lazy(() => import('./pages/QuizResultPage'));
 const VocabularyPage = lazy(() => import('./pages/VocabularyPage'));
 const FlashcardsPage = lazy(() => import('./pages/FlashcardsPage'));
 
+// Legal and support pages
+const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
+const FAQPage = lazy(() => import('./pages/FAQPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+
+// Payment pages
+const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'));
+const PaymentCancelPage = lazy(() => import('./pages/PaymentCancelPage'));
+
+// Auth pages
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+
+// Error pages
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const ServerErrorPage = lazy(() => import('./pages/ServerErrorPage'));
+
 // Admin pages
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
 const BookManagementPage = lazy(() => import('./pages/admin/BookManagementPage'));
+const ChapterManagementPage = lazy(() => import('./pages/admin/ChapterManagementPage'));
+const AudioManagementPage = lazy(() => import('./pages/admin/AudioManagementPage'));
+const QuizManagementPage = lazy(() => import('./pages/admin/QuizManagementPage'));
+const UserManagementPage = lazy(() => import('./pages/admin/UserManagementPage'));
+const AnalyticsPage = lazy(() => import('./pages/admin/AnalyticsPage'));
 
 /**
  * Loading fallback component
@@ -64,8 +89,10 @@ function App() {
   }, []);
 
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <Routes>
+    <ErrorBoundary>
+      <OfflineDetector />
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
       <Route path="/" element={<Layout />}>
         {/* 공개 라우트 */}
         <Route index element={<HomePage />} />
@@ -75,6 +102,20 @@ function App() {
         {/* 책 목록 및 상세는 공개 (프리미엄 모델) */}
         <Route path="books" element={<BooksPage />} />
         <Route path="books/:id" element={<BookDetailPage />} />
+
+        {/* 법적 문서 및 고객 지원 - 공개 */}
+        <Route path="terms" element={<TermsOfServicePage />} />
+        <Route path="privacy" element={<PrivacyPolicyPage />} />
+        <Route path="faq" element={<FAQPage />} />
+        <Route path="contact" element={<ContactPage />} />
+
+        {/* 결제 관련 페이지 - 공개 */}
+        <Route path="subscription/success" element={<PaymentSuccessPage />} />
+        <Route path="subscription/cancel" element={<PaymentCancelPage />} />
+
+        {/* 비밀번호 재설정 - 공개 */}
+        <Route path="forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="reset-password" element={<ResetPasswordPage />} />
 
         {/* 보호된 라우트 - 인증 필요 */}
         <Route
@@ -162,10 +203,21 @@ function App() {
       >
         <Route index element={<AdminDashboardPage />} />
         <Route path="books" element={<BookManagementPage />} />
-        {/* 추가 관리자 페이지들은 나중에 구현 */}
+        <Route path="chapters" element={<ChapterManagementPage />} />
+        <Route path="audio" element={<AudioManagementPage />} />
+        <Route path="quizzes" element={<QuizManagementPage />} />
+        <Route path="users" element={<UserManagementPage />} />
+        <Route path="analytics" element={<AnalyticsPage />} />
       </Route>
+
+      {/* 에러 페이지 */}
+      <Route path="/error" element={<ServerErrorPage />} />
+
+      {/* 404 페이지 - 모든 매칭되지 않는 경로 */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
-    </Suspense>
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 

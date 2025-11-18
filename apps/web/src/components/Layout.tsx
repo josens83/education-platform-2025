@@ -97,10 +97,75 @@ export default function Layout() {
 
       {/* 푸터 */}
       <footer className="bg-gray-50 border-t">
-        <div className="container-custom py-8">
-          <div className="text-center text-gray-600 text-sm">
-            <p>&copy; 2024 English Education Platform. All rights reserved.</p>
-            <p className="mt-2">구독형 영어 교육 콘텐츠 플랫폼</p>
+        <div className="container-custom py-12">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            {/* 회사 정보 */}
+            <div>
+              <h3 className="font-bold text-gray-900 mb-4">English Platform</h3>
+              <p className="text-sm text-gray-600">
+                구독형 영어 교육 콘텐츠 플랫폼
+              </p>
+            </div>
+
+            {/* 서비스 */}
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-4">서비스</h3>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <Link to="/books" className="text-gray-600 hover:text-primary-600 transition">
+                    책 목록
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/subscription" className="text-gray-600 hover:text-primary-600 transition">
+                    구독 플랜
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/dashboard" className="text-gray-600 hover:text-primary-600 transition">
+                    대시보드
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* 고객 지원 */}
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-4">고객 지원</h3>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <Link to="/faq" className="text-gray-600 hover:text-primary-600 transition">
+                    자주 묻는 질문
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/contact" className="text-gray-600 hover:text-primary-600 transition">
+                    문의하기
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* 법적 문서 */}
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-4">법적 문서</h3>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <Link to="/terms" className="text-gray-600 hover:text-primary-600 transition">
+                    이용약관
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/privacy" className="text-gray-600 hover:text-primary-600 transition">
+                    개인정보처리방침
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t pt-8 text-center text-gray-600 text-sm">
+            <p>&copy; 2025 English Education Platform. All rights reserved.</p>
           </div>
         </div>
       </footer>

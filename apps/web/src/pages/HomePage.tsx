@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import SEO from '../components/SEO';
 
 /**
  * 홈페이지
@@ -10,6 +11,13 @@ export default function HomePage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   return (
+    <>
+      <SEO
+        title="영어 원서 읽기 플랫폼"
+        description="구독형 영어 원서 읽기 플랫폼. 수준별 영어책과 오디오북, 퀴즈로 영어 실력을 향상시키세요. Storytel 스타일의 이북 리더와 오디오 플레이어 제공."
+        keywords="영어학습, 영어원서, 오디오북, 영어공부, 영어교육, 온라인영어, 영어책, 원서읽기, 이북, ebook"
+        url="/"
+      />
     <div className="bg-gradient-to-br from-primary-50 to-white">
       {/* 히어로 섹션 */}
       <section className="container-custom py-20">
@@ -172,5 +180,6 @@ export default function HomePage() {
         </div>
       </section>
     </div>
+    </>
   );
 }
