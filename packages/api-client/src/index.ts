@@ -808,6 +808,188 @@ export class EducationApiClient {
     const response = await this._client.get('/api/admin/stats');
     return response.data.data;
   }
+
+  // ==================== 고급 분석 API (관리자 전용) ====================
+
+  /**
+   * 대시보드 통계 조회 (관리자 전용)
+   */
+  async getDashboardStats(): Promise<any> {
+    const response = await this._client.get('/api/analytics/dashboard/stats');
+    return response.data.data;
+  }
+
+  /**
+   * 실시간 통계 조회 (관리자 전용)
+   */
+  async getRealtimeStats(): Promise<any> {
+    const response = await this._client.get('/api/analytics/dashboard/realtime');
+    return response.data.data;
+  }
+
+  /**
+   * 사용자 분석 조회 (관리자 전용)
+   */
+  async getUserAnalytics(params?: { start_date?: string; end_date?: string }): Promise<any> {
+    const response = await this._client.get('/api/analytics/dashboard/user-analytics', { params });
+    return response.data.data;
+  }
+
+  /**
+   * 쿠폰 분석 조회 (관리자 전용)
+   */
+  async getCouponAnalytics(): Promise<any> {
+    const response = await this._client.get('/api/analytics/dashboard/coupon-analytics');
+    return response.data.data;
+  }
+
+  /**
+   * 성장 통계 조회 (관리자 전용)
+   */
+  async getGrowthStats(params?: { days?: number }): Promise<any> {
+    const response = await this._client.get('/api/analytics/dashboard/growth', { params });
+    return response.data.data;
+  }
+
+  // ==================== 리뷰 API ====================
+
+  /**
+   * 책의 리뷰 목록 조회
+   */
+  async getBookReviews(
+    bookId: number,
+    params?: {
+      sort?: 'recent' | 'helpful' | 'rating_high' | 'rating_low';
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<{
+    reviews: any[];
+    total: number;
+    limit: number;
+    offset: number;
+  }> {
+    const response = await this._client.get<Types.ApiResponse<{
+      reviews: any[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>>(`/api/books/${bookId}/reviews`, { params });
+    return response.data.data!;
+  }
+
+  /**
+   * 책의 평점 통계 조회
+   */
+  async getBookRatingStats(bookId: number): Promise<{
+    book_id: number;
+    review_count: number;
+    average_rating: number;
+    rating_distribution: {
+      5: number;
+      4: number;
+      3: number;
+      2: number;
+      1: number;
+    };
+    verified_review_count: number;
+  }> {
+    const response = await this._client.get<Types.ApiResponse<{
+      book_id: number;
+      review_count: number;
+      average_rating: number;
+      rating_distribution: {
+        5: number;
+        4: number;
+        3: number;
+        2: number;
+        1: number;
+      };
+      verified_review_count: number;
+    }>>(`/api/books/${bookId}/rating-stats`);
+    return response.data.data!;
+  }
+
+  /**
+   * 리뷰 작성
+   */
+  async createReview(
+    bookId: number,
+    data: {
+      rating: number;
+      title?: string;
+      content?: string;
+    }
+  ): Promise<any> {
+    const response = await this._client.post<Types.ApiResponse<any>>(
+      `/api/books/${bookId}/reviews`,
+      data
+    );
+    return response.data.data!;
+  }
+
+  /**
+   * 리뷰 수정
+   */
+  async updateReview(
+    reviewId: number,
+    data: {
+      rating?: number;
+      title?: string;
+      content?: string;
+    }
+  ): Promise<any> {
+    const response = await this._client.put<Types.ApiResponse<any>>(
+      `/api/reviews/${reviewId}`,
+      data
+    );
+    return response.data.data!;
+  }
+
+  /**
+   * 리뷰 삭제
+   */
+  async deleteReview(reviewId: number): Promise<void> {
+    await this._client.delete(`/api/reviews/${reviewId}`);
+  }
+
+  /**
+   * 리뷰 도움됨 표시
+   */
+  async markReviewHelpful(reviewId: number): Promise<void> {
+    await this._client.post(`/api/reviews/${reviewId}/helpful`);
+  }
+
+  /**
+   * 리뷰 도움됨 취소
+   */
+  async unmarkReviewHelpful(reviewId: number): Promise<void> {
+    await this._client.delete(`/api/reviews/${reviewId}/helpful`);
+  }
+
+  /**
+   * 리뷰 신고
+   */
+  async reportReview(
+    reviewId: number,
+    data: {
+      reason: 'spam' | 'inappropriate' | 'offensive' | 'misleading';
+      details?: string;
+    }
+  ): Promise<void> {
+    await this._client.post(`/api/reviews/${reviewId}/report`, data);
+  }
+
+  /**
+   * 신고된 리뷰 목록 조회 (관리자 전용)
+   */
+  async getReportedReviews(params?: { status?: string }): Promise<any[]> {
+    const response = await this._client.get<Types.ApiResponse<any[]>>(
+      '/api/admin/reported-reviews',
+      { params }
+    );
+    return response.data.data || [];
+  }
 }
 
 /**
