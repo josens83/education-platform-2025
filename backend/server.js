@@ -138,7 +138,8 @@ app.get('/api', (req, res) => {
       admin: '/api/admin/* (관리자)',
       ai: '/api/ai/* (AI 추천 및 챗봇)',
       push: '/api/push/* (푸시 알림)',
-      search: '/api/search/* (전역 검색)'
+      search: '/api/search/* (전역 검색)',
+      twoFactor: '/api/2fa/* (2단계 인증)'
     },
     features: {
       design_system: 'Linear/Stripe Premium Style',
@@ -180,6 +181,7 @@ const pushRoutes = require('./routes/push');
 const sessionsRoutes = require('./routes/sessions');
 const notificationsRoutes = require('./routes/notifications');
 const searchRoutes = require('./routes/search');
+const twoFactorRoutes = require('./routes/twoFactor');
 
 // Use Routes with specific rate limiters and caching
 
@@ -247,6 +249,9 @@ app.use('/api/notifications', readLimiter, cacheMiddleware(CACHE_DURATIONS.SHORT
 
 // Search - read-heavy with short cache (search results change frequently)
 app.use('/api/search', readLimiter, cacheMiddleware(CACHE_DURATIONS.SHORT), searchRoutes);
+
+// Two-Factor Authentication - strict rate limiting (security-sensitive)
+app.use('/api/2fa', authLimiter, twoFactorRoutes);
 
 // ============================================
 // ERROR HANDLING
