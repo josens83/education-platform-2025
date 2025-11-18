@@ -80,45 +80,43 @@ app.use((req, res, next) => {
 // ROUTES
 // ============================================
 
-// Health Check
-app.get('/api/health', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT NOW()');
-    res.json({
-      status: 'ok',
-      message: '서버가 정상 작동 중입니다',
-      timestamp: result.rows[0].now,
-      database: 'connected'
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: 'error',
-      message: '서버 오류',
-      error: error.message
-    });
-  }
-});
+// Health Check Routes (Premium with detailed monitoring)
+const healthRoutes = require('./routes/health');
+app.use('/api/health', healthRoutes);
 
 // API 정보
 app.get('/api', (req, res) => {
   res.json({
     name: 'Education Platform API',
-    version: '1.0.0',
-    description: '구독형 영어 교육 콘텐츠 플랫폼 API',
+    version: '2.0.0',
+    description: '구독형 영어 교육 콘텐츠 플랫폼 API - Premium Design System',
     endpoints: {
-      auth: '/api/auth/*',
-      users: '/api/users/*',
-      books: '/api/books/*',
-      chapters: '/api/chapters/*',
-      progress: '/api/progress/*',
-      quizzes: '/api/quizzes/*',
-      subscriptions: '/api/subscriptions/*',
-      payments: '/api/payments/*',
-      coupons: '/api/coupons/*',
-      audio: '/api/audio/*',
-      bookmarks: '/api/bookmarks/*',
-      notes: '/api/notes/*',
-      vocabulary: '/api/vocabulary/*'
+      health: '/api/health/* (헬스체크)',
+      auth: '/api/auth/* (인증)',
+      users: '/api/users/* (사용자)',
+      books: '/api/books/* (책)',
+      chapters: '/api/chapters/* (챕터)',
+      progress: '/api/progress/* (학습 진도)',
+      quizzes: '/api/quizzes/* (퀴즈)',
+      subscriptions: '/api/subscriptions/* (구독)',
+      payments: '/api/payments/* (결제)',
+      coupons: '/api/coupons/* (쿠폰)',
+      reviews: '/api/reviews/* (리뷰)',
+      analytics: '/api/analytics/* (분석)',
+      audio: '/api/audio/* (오디오)',
+      bookmarks: '/api/bookmarks/* (북마크)',
+      notes: '/api/notes/* (노트)',
+      vocabulary: '/api/vocabulary/* (단어장)',
+      stats: '/api/stats/* (통계)',
+      admin: '/api/admin/* (관리자)'
+    },
+    features: {
+      design_system: 'Linear/Stripe Premium Style',
+      dark_mode: true,
+      animations: 'Framer Motion',
+      accessibility: 'WCAG 2.1 AA',
+      performance: 'Optimized with caching & rate limiting',
+      monitoring: 'Health checks & analytics'
     }
   });
 });
