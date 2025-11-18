@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const { query } = require('../database');
-const { sendWelcomeEmail, sendPasswordResetEmail } = require('../lib/email');
+const { sendWelcomeEmail, sendPasswordResetEmail, sendEmailVerificationEmail } = require('../lib/email');
 const { passwordResetLimiter } = require('../middleware/rateLimiter');
 
 // ============================================
@@ -47,12 +47,17 @@ router.post('/register',
       // 비밀번호 해시
       const passwordHash = await bcrypt.hash(password, 10);
 
+      // 이메일 인증 토큰 생성
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const verificationTokenHash = crypto.createHash('sha256').update(verificationToken).digest('hex');
+      const verificationExpires = new Date(Date.now() + 24 * 3600000); // 24시간
+
       // 사용자 생성
       const result = await query(
-        `INSERT INTO users (email, password_hash, username, role)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO users (email, password_hash, username, role, email_verification_token, email_verification_expires, email_verified)
+         VALUES ($1, $2, $3, $4, $5, $6, false)
          RETURNING id, email, username, role, created_at`,
-        [email, passwordHash, username, 'student']
+        [email, passwordHash, username, 'student', verificationTokenHash, verificationExpires]
       );
 
       const newUser = result.rows[0];
@@ -64,9 +69,9 @@ router.post('/register',
         [newUser.id, username]
       );
 
-      // 환영 이메일 발송 (비동기, 실패해도 회원가입은 성공)
-      sendWelcomeEmail(email, username).catch(err => {
-        console.error('환영 이메일 발송 실패:', err);
+      // 이메일 인증 메일 발송 (비동기, 실패해도 회원가입은 성공)
+      sendEmailVerificationEmail(email, username, verificationToken).catch(err => {
+        console.error('이메일 인증 메일 발송 실패:', err);
       });
 
       // JWT 토큰 생성
@@ -356,6 +361,147 @@ router.post('/reset-password',
       res.status(500).json({
         status: 'error',
         message: '비밀번호 재설정 처리 중 오류가 발생했습니다'
+      });
+    }
+  }
+);
+
+// ============================================
+// 이메일 인증
+// ============================================
+router.get('/verify-email', async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({
+        status: 'error',
+        message: '인증 토큰이 필요합니다'
+      });
+    }
+
+    // 토큰 해시
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    // 토큰으로 사용자 조회 (만료되지 않은 토큰만)
+    const result = await query(
+      `SELECT id, email, username, email_verified
+       FROM users
+       WHERE email_verification_token = $1
+       AND email_verification_expires > NOW()`,
+      [tokenHash]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: '유효하지 않거나 만료된 인증 토큰입니다'
+      });
+    }
+
+    const user = result.rows[0];
+
+    // 이미 인증된 경우
+    if (user.email_verified) {
+      return res.json({
+        status: 'success',
+        message: '이미 인증된 이메일입니다'
+      });
+    }
+
+    // 이메일 인증 완료 및 토큰 삭제
+    await query(
+      `UPDATE users
+       SET email_verified = true,
+           email_verification_token = NULL,
+           email_verification_expires = NULL
+       WHERE id = $1`,
+      [user.id]
+    );
+
+    // 환영 이메일 발송 (비동기)
+    sendWelcomeEmail(user.email, user.username).catch(err => {
+      console.error('환영 이메일 발송 실패:', err);
+    });
+
+    res.json({
+      status: 'success',
+      message: '이메일 인증이 완료되었습니다'
+    });
+  } catch (error) {
+    console.error('이메일 인증 오류:', error);
+    res.status(500).json({
+      status: 'error',
+      message: '이메일 인증 처리 중 오류가 발생했습니다'
+    });
+  }
+});
+
+// ============================================
+// 이메일 인증 메일 재발송
+// ============================================
+router.post('/resend-verification',
+  passwordResetLimiter, // Rate limiting to prevent abuse
+  async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({
+          status: 'error',
+          message: '이메일 주소가 필요합니다'
+        });
+      }
+
+      // 사용자 조회
+      const result = await query(
+        'SELECT id, email, username, email_verified FROM users WHERE email = $1',
+        [email]
+      );
+
+      if (result.rows.length === 0) {
+        // 보안상 이유로 성공 응답 반환
+        return res.json({
+          status: 'success',
+          message: '인증 이메일이 발송되었습니다'
+        });
+      }
+
+      const user = result.rows[0];
+
+      // 이미 인증된 경우
+      if (user.email_verified) {
+        return res.json({
+          status: 'success',
+          message: '이미 인증된 이메일입니다'
+        });
+      }
+
+      // 새 인증 토큰 생성
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const verificationTokenHash = crypto.createHash('sha256').update(verificationToken).digest('hex');
+      const verificationExpires = new Date(Date.now() + 24 * 3600000);
+
+      // 토큰 업데이트
+      await query(
+        `UPDATE users
+         SET email_verification_token = $1, email_verification_expires = $2
+         WHERE id = $3`,
+        [verificationTokenHash, verificationExpires, user.id]
+      );
+
+      // 인증 이메일 발송
+      await sendEmailVerificationEmail(user.email, user.username, verificationToken);
+
+      res.json({
+        status: 'success',
+        message: '인증 이메일이 재발송되었습니다'
+      });
+    } catch (error) {
+      console.error('인증 이메일 재발송 오류:', error);
+      res.status(500).json({
+        status: 'error',
+        message: '인증 이메일 발송에 실패했습니다'
       });
     }
   }
