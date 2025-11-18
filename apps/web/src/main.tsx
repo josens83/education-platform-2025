@@ -1,3 +1,7 @@
+// Initialize Sentry FIRST (before any other imports)
+import { initSentry } from './lib/sentry';
+initSentry();
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';

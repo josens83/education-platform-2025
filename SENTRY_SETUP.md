@@ -554,4 +554,180 @@ A:
 
 ---
 
-**마지막 업데이트**: 2025-01-17
+---
+
+## ✅ 현재 구현 상태 (2025-11-18)
+
+### 이미 구현된 내용
+
+#### Backend
+- ✅ `@sentry/node` 및 `@sentry/profiling-node` 설치됨
+- ✅ `backend/config/sentry.js` - 완전한 Sentry 설정 파일
+- ✅ `backend/server.js` - Sentry 미들웨어 통합완료  - Request/Tracing/Error handlers 모두 적용됨
+- ✅ 민감한 데이터 필터링 (Authorization, Cookie headers)
+- ✅ 성능 프로파일링 통합
+- ✅ 에러 핑거프린팅 및 그룹화
+
+#### Frontend
+- ✅ `@sentry/react` 설치됨
+- ✅ `apps/web/src/lib/sentry.ts` - 완전한 Sentry 설정 파일
+- ✅ `apps/web/src/main.tsx` - 초기화 코드 통합 (최우선 실행)
+- ✅ `apps/web/src/components/ErrorBoundary.tsx` - Sentry 통합
+- ✅ React Router 통합 (성능 추적)
+- ✅ Session Replay 통합 (에러 재현)
+- ✅ 민감한 데이터 마스킹
+
+#### 환경 변수
+- ✅ `.env.example` 업데이트됨
+  - Backend: `SENTRY_DSN`, `SENTRY_ENVIRONMENT`
+  - Frontend: `VITE_SENTRY_DSN`, `VITE_SENTRY_DEBUG`, `VITE_ENV`, `VITE_APP_VERSION`
+
+### 사용 방법
+
+#### 1. Sentry 프로젝트 생성
+1. https://sentry.io 에서 계정 생성
+2. 2개의 프로젝트 생성:
+   - `education-platform-backend` (Node.js/Express 선택)
+   - `education-platform-frontend` (React 선택)
+3. 각각의 DSN 복사
+
+#### 2. 환경 변수 설정
+
+**Backend (.env):**
+```bash
+SENTRY_DSN=https://your_backend_dsn@o123456.ingest.sentry.io/7890123
+SENTRY_ENVIRONMENT=production  # 또는 development
+```
+
+**Frontend (apps/web/.env):**
+```bash
+VITE_SENTRY_DSN=https://your_frontend_dsn@o123456.ingest.sentry.io/7890124
+VITE_SENTRY_DEBUG=false
+VITE_ENV=production
+VITE_APP_VERSION=2.0.0
+```
+
+#### 3. 서버 재시작
+```bash
+# Backend
+cd backend && npm run dev
+
+# Frontend
+cd apps/web && npm run dev
+```
+
+#### 4. 에러 테스트
+**Frontend에서 테스트:**
+```typescript
+import { captureSentryException } from './lib/sentry';
+
+// 테스트 에러 발생
+try {
+  throw new Error('Test error from frontend');
+} catch (error) {
+  captureSentryException(error as Error, { test: true });
+}
+```
+
+**Backend에서 테스트:**
+```javascript
+const { captureException } = require('./config/sentry');
+
+// 테스트 에러 발생
+try {
+  throw new Error('Test error from backend');
+} catch (error) {
+  captureException(error, { test: true });
+}
+```
+
+### 자동으로 추적되는 것들
+
+#### Backend
+- ✅ 모든 HTTP 요청 (성능 추적)
+- ✅ Express 라우트 에러
+- ✅ 500+ 상태 코드 에러
+- ✅ Unhandled exceptions
+- ✅ Database 쿼리 성능 (Profiling 통합시)
+
+#### Frontend
+- ✅ React 컴포넌트 에러 (ErrorBoundary)
+- ✅ 페이지 네비게이션 (React Router)
+- ✅ API 요청 성능
+- ✅ Unhandled Promise rejections
+- ✅ 사용자 세션 재생 (에러 발생시)
+
+### 수동으로 에러 보고하기
+
+**Frontend:**
+```typescript
+import {
+  captureSentryException,
+  captureSentryMessage,
+  addSentryBreadcrumb,
+  setSentryUser
+} from './lib/sentry';
+
+// 에러 보고
+captureSentryException(error, {
+  chapterId: 123,
+  action: 'load_chapter'
+});
+
+// 메시지 보고
+captureSentryMessage('User completed onboarding', 'info');
+
+// 브레드크럼 추가
+addSentryBreadcrumb({
+  message: 'User clicked subscribe button',
+  category: 'user-action',
+  data: { planId: 2 }
+});
+
+// 사용자 정보 설정 (로그인 후)
+setSentryUser({
+  id: user.id,
+  email: user.email,
+  username: user.username
+});
+```
+
+**Backend:**
+```javascript
+const {
+  captureException,
+  captureMessage,
+  setUser,
+  addBreadcrumb
+} = require('./config/sentry');
+
+// 에러 보고
+captureException(error, {
+  userId: req.user?.id,
+  path: req.path
+});
+
+// 메시지 보고
+captureMessage('Payment webhook received', 'info', {
+  event: event.type
+});
+
+// 사용자 설정 (미들웨어에서)
+setUser({
+  id: req.user.id,
+  email: req.user.email,
+  username: req.user.username
+});
+```
+
+### Sentry 대시보드 확인
+
+1. https://sentry.io 로그인
+2. **Issues** 탭: 발생한 에러 목록 확인
+3. **Performance** 탭: API 응답 시간, 페이지 로드 시간 확인
+4. **Releases** 탭: 버전별 에러 추적
+5. **Alerts** 설정: Email/Slack으로 즉시 알림 받기
+
+---
+
+**마지막 업데이트**: 2025-11-18 (Sentry 통합 완료)

@@ -10,6 +10,14 @@ const { alertSystemError } = require('./lib/adminAlerts');
 const { initializeSocket } = require('./lib/socket');
 const passport = require('./config/passport');
 
+// Sentry Configuration (must be imported BEFORE app creation)
+const {
+  initSentry,
+  requestHandler,
+  tracingHandler,
+  errorHandler: sentryErrorHandler,
+} = require('./config/sentry');
+
 // Import enhanced middleware
 const {
   defaultLimiter,
@@ -31,9 +39,18 @@ const PORT = process.env.PORT || 3001;
 // Socket.IO 초기화
 const io = initializeSocket(server);
 
+// Initialize Sentry (must be first)
+initSentry(app);
+
 // ============================================
 // MIDDLEWARE
 // ============================================
+
+// Sentry request handler (must be FIRST middleware)
+app.use(requestHandler());
+
+// Sentry tracing handler (must be AFTER request handler)
+app.use(tracingHandler());
 
 // Security headers (Helmet)
 app.use(helmet({
@@ -120,7 +137,8 @@ app.get('/api', (req, res) => {
       stats: '/api/stats/* (통계)',
       admin: '/api/admin/* (관리자)',
       ai: '/api/ai/* (AI 추천 및 챗봇)',
-      push: '/api/push/* (푸시 알림)'
+      push: '/api/push/* (푸시 알림)',
+      search: '/api/search/* (전역 검색)'
     },
     features: {
       design_system: 'Linear/Stripe Premium Style',
@@ -161,6 +179,7 @@ const aiRoutes = require('./routes/ai');
 const pushRoutes = require('./routes/push');
 const sessionsRoutes = require('./routes/sessions');
 const notificationsRoutes = require('./routes/notifications');
+const searchRoutes = require('./routes/search');
 
 // Use Routes with specific rate limiters and caching
 
@@ -226,9 +245,15 @@ app.use('/api/sessions', mutationLimiter, sessionsRoutes);
 // Notifications - read-heavy with short cache
 app.use('/api/notifications', readLimiter, cacheMiddleware(CACHE_DURATIONS.SHORT), notificationsRoutes);
 
+// Search - read-heavy with short cache (search results change frequently)
+app.use('/api/search', readLimiter, cacheMiddleware(CACHE_DURATIONS.SHORT), searchRoutes);
+
 // ============================================
 // ERROR HANDLING
 // ============================================
+
+// Sentry error handler (must be BEFORE other error handlers)
+app.use(sentryErrorHandler());
 
 // 404 Handler
 app.use((req, res) => {
