@@ -2,22 +2,87 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Pretendard 폰트 (한글) */
+/* Modern Web Fonts */
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+/* Design Tokens - Light Mode (Default) */
 :root {
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  /* Background colors */
+  --color-bg: 255, 255, 255;
+  --color-bg-secondary: 249, 250, 251;
+
+  /* Text colors */
+  --color-text-primary: 17, 24, 39;
+  --color-text-secondary: 75, 85, 99;
+  --color-text-tertiary: 156, 163, 175;
+
+  /* Surface colors */
+  --color-surface: 255, 255, 255;
+  --color-surface-hover: 243, 244, 246;
+
+  /* Border colors */
+  --color-border: 229, 231, 235;
+  --color-border-light: 243, 244, 246;
+
+  /* Font configuration */
+  font-family: 'Inter', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(17, 24, 39, 0.87);
-  background-color: #ffffff;
+  color-scheme: light;
+  color: rgb(17, 24, 39);
+  background-color: rgb(255, 255, 255);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Design Tokens - Dark Mode */
+.dark {
+  /* Background colors - Linear/Stripe inspired dark palette */
+  --color-bg: 10, 10, 10;
+  --color-bg-secondary: 18, 18, 18;
+
+  /* Text colors */
+  --color-text-primary: 250, 250, 250;
+  --color-text-secondary: 163, 163, 163;
+  --color-text-tertiary: 115, 115, 115;
+
+  /* Surface colors */
+  --color-surface: 24, 24, 24;
+  --color-surface-hover: 38, 38, 38;
+
+  /* Border colors - subtle in dark mode */
+  --color-border: 39, 39, 42;
+  --color-border-light: 28, 28, 30;
+
+  color-scheme: dark;
+  color: rgb(250, 250, 250);
+  background-color: rgb(10, 10, 10);
+}
+
+/* System preference dark mode fallback */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --color-bg: 10, 10, 10;
+    --color-bg-secondary: 18, 18, 18;
+    --color-text-primary: 250, 250, 250;
+    --color-text-secondary: 163, 163, 163;
+    --color-text-tertiary: 115, 115, 115;
+    --color-surface: 24, 24, 24;
+    --color-surface-hover: 38, 38, 38;
+    --color-border: 39, 39, 42;
+    --color-border-light: 28, 28, 30;
+
+    color-scheme: dark;
+    color: rgb(250, 250, 250);
+    background-color: rgb(10, 10, 10);
+  }
 }
 
 * {
@@ -37,26 +102,119 @@ body {
   min-height: 100vh;
 }
 
-/* 스크롤바 스타일 */
+/* 스크롤바 스타일 - Light Mode */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: rgb(var(--color-bg-secondary));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
+  background: rgb(var(--color-border));
   border-radius: 4px;
+  transition: background 0.2s;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: rgb(var(--color-text-tertiary));
 }
 
-/* 커스텀 유틸리티 클래스 */
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: rgb(var(--color-bg-secondary));
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-surface-hover));
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--color-border));
+}
+
+/* Premium Component Styles */
+@layer components {
+  /* Glass Morphism Card - Linear/Stripe style */
+  .card-glass {
+    @apply bg-white/10 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl shadow-glass;
+  }
+
+  .card-glass-lg {
+    @apply bg-white/10 dark:bg-white/5 backdrop-blur-2xl border border-white/20 dark:border-white/10 rounded-3xl shadow-glass-lg;
+  }
+
+  /* Premium Button Styles */
+  .btn {
+    @apply px-6 py-3 rounded-xl font-medium transition-all duration-200 ease-out;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary-600 text-white hover:bg-primary-700;
+    @apply hover:shadow-lg hover:-translate-y-0.5;
+    @apply focus:ring-primary-500;
+  }
+
+  .btn-secondary {
+    @apply btn bg-surface text-text-primary border border-border;
+    @apply hover:bg-surface-hover hover:shadow-smooth;
+    @apply focus:ring-primary-500;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-text-primary;
+    @apply hover:bg-surface-hover;
+    @apply focus:ring-primary-500;
+  }
+
+  /* Premium Input Styles */
+  .input {
+    @apply w-full px-4 py-3 rounded-xl border border-border bg-surface;
+    @apply text-text-primary placeholder:text-text-tertiary;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  }
+
+  /* Gradient Background Effects - Linear style */
+  .gradient-sphere {
+    @apply absolute rounded-full blur-3xl opacity-20;
+    @apply animate-float;
+  }
+
+  .gradient-mesh-bg {
+    @apply fixed inset-0 -z-10 overflow-hidden;
+  }
+
+  /* Premium Card with Hover Effect */
+  .card-premium {
+    @apply bg-surface border border-border rounded-2xl p-6;
+    @apply transition-all duration-300 ease-out;
+    @apply hover:shadow-smooth-lg hover:-translate-y-1 hover:border-primary-500/50;
+  }
+
+  /* Bento Grid Item - Apple/Linear style */
+  .bento-item {
+    @apply relative overflow-hidden rounded-2xl bg-surface border border-border;
+    @apply transition-all duration-300;
+    @apply hover:shadow-smooth-lg hover:border-primary-500/30;
+  }
+
+  /* Thin Border Accent - Modern detail */
+  .border-accent {
+    @apply relative;
+  }
+
+  .border-accent::after {
+    @apply content-[''] absolute inset-0 rounded-[inherit];
+    @apply bg-gradient-to-br from-primary-500/20 via-transparent to-transparent;
+    @apply pointer-events-none;
+  }
+}
+
+/* Advanced Utility Classes */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
@@ -64,6 +222,58 @@ body {
 
   .container-custom {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Smooth transitions */
+  .transition-smooth {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  /* Glass effect utilities */
+  .glass {
+    @apply bg-white/10 backdrop-blur-md;
+  }
+
+  .glass-strong {
+    @apply bg-white/20 backdrop-blur-xl;
+  }
+
+  /* Text gradients */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-primary-400;
+  }
+
+  .text-gradient-purple {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600;
+  }
+
+  /* Glow effects */
+  .glow-primary {
+    box-shadow: 0 0 20px rgba(14, 165, 233, 0.3);
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
+  }
+
+  /* Linear-style dark gradient background */
+  .bg-linear-dark {
+    @apply bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800;
+  }
+
+  /* Responsive grid - Bento style */
+  .grid-bento {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
 
