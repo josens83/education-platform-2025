@@ -22,6 +22,7 @@ const QuizPage = lazy(() => import('./pages/QuizPage'));
 const QuizResultPage = lazy(() => import('./pages/QuizResultPage'));
 const VocabularyPage = lazy(() => import('./pages/VocabularyPage'));
 const FlashcardsPage = lazy(() => import('./pages/FlashcardsPage'));
+const ReviewsPage = lazy(() => import('./pages/ReviewsPage'));
 
 // Legal and support pages
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
@@ -102,6 +103,9 @@ function App() {
         {/* 책 목록 및 상세는 공개 (프리미엄 모델) */}
         <Route path="books" element={<BooksPage />} />
         <Route path="books/:id" element={<BookDetailPage />} />
+
+        {/* 리뷰 페이지 - 공개 (읽기 전용) */}
+        <Route path="reviews" element={<ReviewsPage />} />
 
         {/* 법적 문서 및 고객 지원 - 공개 */}
         <Route path="terms" element={<TermsOfServicePage />} />
