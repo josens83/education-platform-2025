@@ -119,7 +119,8 @@ app.get('/api', (req, res) => {
       vocabulary: '/api/vocabulary/* (단어장)',
       stats: '/api/stats/* (통계)',
       admin: '/api/admin/* (관리자)',
-      ai: '/api/ai/* (AI 추천 및 챗봇)'
+      ai: '/api/ai/* (AI 추천 및 챗봇)',
+      push: '/api/push/* (푸시 알림)'
     },
     features: {
       design_system: 'Linear/Stripe Premium Style',
@@ -130,7 +131,9 @@ app.get('/api', (req, res) => {
       monitoring: 'Health checks & analytics',
       oauth: 'Google, Kakao OAuth 2.0',
       ai: 'GPT-4 기반 AI 추천 및 챗봇',
-      realtime: 'Socket.IO WebSocket'
+      realtime: 'Socket.IO WebSocket',
+      pwa: 'Progressive Web App with offline support',
+      push: 'Web Push Notifications'
     }
   });
 });
@@ -155,6 +158,7 @@ const analyticsRoutes = require('./routes/analytics');
 const reviewRoutes = require('./routes/reviews');
 const oauthRoutes = require('./routes/oauth');
 const aiRoutes = require('./routes/ai');
+const pushRoutes = require('./routes/push');
 
 // Use Routes with specific rate limiters and caching
 
@@ -210,6 +214,9 @@ app.use('/api/auth', authLimiter, oauthRoutes);
 
 // AI - moderate rate limiting (AI calls can be expensive)
 app.use('/api/ai', mutationLimiter, aiRoutes);
+
+// Push Notifications - moderate rate limiting
+app.use('/api/push', mutationLimiter, pushRoutes);
 
 // ============================================
 // ERROR HANDLING
