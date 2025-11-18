@@ -37,7 +37,8 @@
     "express-session": "^1.17.3",
     "socket.io": "^4.6.1",
     "openai": "^4.24.1",
-    "web-push": "^3.6.6"
+    "web-push": "^3.6.6",
+    "ua-parser-js": "^1.0.37"
   },
   "devDependencies": {
     "nodemon": "^3.0.2",

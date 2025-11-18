@@ -159,6 +159,8 @@ const reviewRoutes = require('./routes/reviews');
 const oauthRoutes = require('./routes/oauth');
 const aiRoutes = require('./routes/ai');
 const pushRoutes = require('./routes/push');
+const sessionsRoutes = require('./routes/sessions');
+const notificationsRoutes = require('./routes/notifications');
 
 // Use Routes with specific rate limiters and caching
 
@@ -217,6 +219,12 @@ app.use('/api/ai', mutationLimiter, aiRoutes);
 
 // Push Notifications - moderate rate limiting
 app.use('/api/push', mutationLimiter, pushRoutes);
+
+// Sessions - moderate rate limiting
+app.use('/api/sessions', mutationLimiter, sessionsRoutes);
+
+// Notifications - read-heavy with short cache
+app.use('/api/notifications', readLimiter, cacheMiddleware(CACHE_DURATIONS.SHORT), notificationsRoutes);
 
 // ============================================
 // ERROR HANDLING
