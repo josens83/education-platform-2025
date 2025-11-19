@@ -1,10 +1,19 @@
-const fs = require('fs');
-const path = require('path');
-
 /**
- * Simple logging system for production
- * Logs to both console and file
+ * Winston Logger - Production-Grade Structured Logging
+ *
+ * Features:
+ * - Structured JSON logging
+ * - Daily log rotation
+ * - Multiple transports (console, file, error file)
+ * - Automatic cleanup of old logs
+ * - Performance optimized
+ * - Environment-aware configuration
  */
+
+const winston = require('winston');
+const DailyRotateFile = require('winston-daily-rotate-file');
+const path = require('path');
+const fs = require('fs');
 
 // Create logs directory if it doesn't exist
 const logsDir = path.join(__dirname, '../logs');
@@ -12,155 +21,279 @@ if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
 
-// Log levels
-const LOG_LEVELS = {
-  ERROR: 'ERROR',
-  WARN: 'WARN',
-  INFO: 'INFO',
-  DEBUG: 'DEBUG'
-};
-
-// Colors for console output
-const COLORS = {
-  ERROR: '\x1b[31m', // Red
-  WARN: '\x1b[33m',  // Yellow
-  INFO: '\x1b[36m',  // Cyan
-  DEBUG: '\x1b[90m', // Gray
-  RESET: '\x1b[0m'
-};
+// Environment configuration
+const isDevelopment = process.env.NODE_ENV === 'development';
+const isProduction = process.env.NODE_ENV === 'production';
+const logLevel = process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info');
 
 /**
- * Format log message
+ * Custom format for console output (human-readable)
  */
-function formatMessage(level, message, meta = {}) {
-  const timestamp = new Date().toISOString();
-  const metaStr = Object.keys(meta).length > 0 ? JSON.stringify(meta) : '';
-  return `[${timestamp}] [${level}] ${message} ${metaStr}`.trim();
-}
-
-/**
- * Write log to file
- */
-function writeToFile(level, message, meta) {
-  const logFile = path.join(logsDir, `${level.toLowerCase()}.log`);
-  const allLogsFile = path.join(logsDir, 'all.log');
-  const formattedMessage = formatMessage(level, message, meta) + '\n';
-
-  // Write to level-specific log file
-  fs.appendFileSync(logFile, formattedMessage);
-
-  // Write to all logs file
-  fs.appendFileSync(allLogsFile, formattedMessage);
-}
-
-/**
- * Log to console with colors
- */
-function logToConsole(level, message, meta) {
-  const color = COLORS[level] || COLORS.RESET;
-  const formattedMessage = formatMessage(level, message, meta);
-  console.log(`${color}${formattedMessage}${COLORS.RESET}`);
-}
-
-/**
- * Main log function
- */
-function log(level, message, meta = {}) {
-  // Only log in production or if explicitly enabled
-  const shouldLog = process.env.NODE_ENV === 'production' || process.env.ENABLE_FILE_LOGGING === 'true';
-
-  // Always log to console
-  logToConsole(level, message, meta);
-
-  // Log to file in production
-  if (shouldLog) {
-    try {
-      writeToFile(level, message, meta);
-    } catch (error) {
-      console.error('Failed to write to log file:', error.message);
+const consoleFormat = winston.format.combine(
+  winston.format.colorize(),
+  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  winston.format.printf(({ timestamp, level, message, ...meta }) => {
+    let metaStr = '';
+    if (Object.keys(meta).length > 0) {
+      // Remove empty objects and null values
+      const cleanMeta = Object.fromEntries(
+        Object.entries(meta).filter(([_, v]) => v != null && v !== '')
+      );
+      if (Object.keys(cleanMeta).length > 0) {
+        metaStr = `\n${JSON.stringify(cleanMeta, null, 2)}`;
+      }
     }
-  }
+    return `${timestamp} [${level}]: ${message}${metaStr}`;
+  })
+);
+
+/**
+ * Format for file output (JSON structured logging)
+ */
+const fileFormat = winston.format.combine(
+  winston.format.timestamp(),
+  winston.format.errors({ stack: true }),
+  winston.format.json()
+);
+
+/**
+ * Transports configuration
+ */
+const transports = [];
+
+// Console transport (always enabled)
+transports.push(
+  new winston.transports.Console({
+    format: consoleFormat,
+    level: logLevel,
+  })
+);
+
+// File transports (enabled in production or if explicitly enabled)
+if (isProduction || process.env.ENABLE_FILE_LOGGING === 'true') {
+  // All logs (daily rotation)
+  transports.push(
+    new DailyRotateFile({
+      filename: path.join(logsDir, 'application-%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      zippedArchive: true,
+      maxSize: '20m', // Rotate when file reaches 20MB
+      maxFiles: '30d', // Keep logs for 30 days
+      format: fileFormat,
+      level: logLevel,
+    })
+  );
+
+  // Error logs only (daily rotation)
+  transports.push(
+    new DailyRotateFile({
+      filename: path.join(logsDir, 'error-%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      zippedArchive: true,
+      maxSize: '20m',
+      maxFiles: '90d', // Keep error logs for 90 days
+      format: fileFormat,
+      level: 'error',
+    })
+  );
+
+  // Combined all logs (for debugging, short retention)
+  transports.push(
+    new DailyRotateFile({
+      filename: path.join(logsDir, 'combined-%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      zippedArchive: true,
+      maxSize: '50m',
+      maxFiles: '7d', // Keep combined logs for 7 days only
+      format: fileFormat,
+      level: 'debug',
+    })
+  );
 }
 
 /**
- * Logger object with convenience methods
+ * Create Winston logger instance
  */
-const logger = {
-  error: (message, meta = {}) => log(LOG_LEVELS.ERROR, message, meta),
-  warn: (message, meta = {}) => log(LOG_LEVELS.WARN, message, meta),
-  info: (message, meta = {}) => log(LOG_LEVELS.INFO, message, meta),
-  debug: (message, meta = {}) => log(LOG_LEVELS.DEBUG, message, meta),
-
-  /**
-   * Log HTTP request
-   */
-  request: (req, res, duration) => {
-    const meta = {
-      method: req.method,
-      path: req.path,
-      status: res.statusCode,
-      duration: `${duration}ms`,
-      ip: req.ip,
-      userAgent: req.get('user-agent')
-    };
-
-    const level = res.statusCode >= 400 ? LOG_LEVELS.WARN : LOG_LEVELS.INFO;
-    log(level, `HTTP ${req.method} ${req.path}`, meta);
-  },
-
-  /**
-   * Log database query
-   */
-  query: (query, params, duration) => {
-    const meta = {
-      query,
-      params,
-      duration: `${duration}ms`
-    };
-    log(LOG_LEVELS.DEBUG, 'Database Query', meta);
-  },
-
-  /**
-   * Log authentication events
-   */
-  auth: (event, userId, success, meta = {}) => {
-    const level = success ? LOG_LEVELS.INFO : LOG_LEVELS.WARN;
-    log(level, `Auth: ${event}`, { userId, success, ...meta });
-  },
-
-  /**
-   * Log payment events
-   */
-  payment: (event, userId, amount, success, meta = {}) => {
-    const level = success ? LOG_LEVELS.INFO : LOG_LEVELS.ERROR;
-    log(level, `Payment: ${event}`, { userId, amount, success, ...meta });
-  },
-
-  /**
-   * Log system events
-   */
-  system: (event, meta = {}) => {
-    log(LOG_LEVELS.INFO, `System: ${event}`, meta);
-  }
-};
+const logger = winston.createLogger({
+  level: logLevel,
+  format: fileFormat,
+  transports,
+  exitOnError: false, // Don't exit on handled exceptions
+  silent: process.env.NODE_ENV === 'test', // Silence logs in test environment
+});
 
 /**
- * Log rotation (delete old logs)
- * Call this periodically to prevent log files from growing too large
+ * Enhanced logging methods with context
  */
-logger.rotate = () => {
-  const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
-  const now = Date.now();
 
-  fs.readdirSync(logsDir).forEach(file => {
-    const filePath = path.join(logsDir, file);
-    const stats = fs.statSync(filePath);
+/**
+ * Log HTTP request
+ */
+logger.request = (req, res, duration) => {
+  const level = res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info';
 
-    if (now - stats.mtime.getTime() > maxAge) {
-      fs.unlinkSync(filePath);
-      logger.info(`Deleted old log file: ${file}`);
-    }
+  logger.log(level, `HTTP ${req.method} ${req.path}`, {
+    method: req.method,
+    path: req.path,
+    query: req.query,
+    status: res.statusCode,
+    duration: `${duration}ms`,
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+    userId: req.user?.id,
+    category: 'http',
   });
 };
+
+/**
+ * Log database query
+ */
+logger.query = (query, params, duration) => {
+  logger.debug('Database Query', {
+    query: query.substring(0, 200), // Truncate long queries
+    params,
+    duration: `${duration}ms`,
+    category: 'database',
+  });
+};
+
+/**
+ * Log authentication events
+ */
+logger.auth = (event, userId, success, meta = {}) => {
+  const level = success ? 'info' : 'warn';
+  logger.log(level, `Auth: ${event}`, {
+    event,
+    userId,
+    success,
+    category: 'auth',
+    ...meta,
+  });
+};
+
+/**
+ * Log payment events
+ */
+logger.payment = (event, userId, amount, success, meta = {}) => {
+  const level = success ? 'info' : 'error';
+  logger.log(level, `Payment: ${event}`, {
+    event,
+    userId,
+    amount,
+    currency: meta.currency || 'USD',
+    success,
+    category: 'payment',
+    ...meta,
+  });
+};
+
+/**
+ * Log system events
+ */
+logger.system = (event, meta = {}) => {
+  logger.info(`System: ${event}`, {
+    event,
+    category: 'system',
+    ...meta,
+  });
+};
+
+/**
+ * Log security events
+ */
+logger.security = (event, severity = 'medium', meta = {}) => {
+  const level = severity === 'high' || severity === 'critical' ? 'error' : 'warn';
+  logger.log(level, `Security: ${event}`, {
+    event,
+    severity,
+    category: 'security',
+    ...meta,
+  });
+};
+
+/**
+ * Log performance metrics
+ */
+logger.performance = (operation, duration, meta = {}) => {
+  const level = duration > 1000 ? 'warn' : 'debug';
+  logger.log(level, `Performance: ${operation}`, {
+    operation,
+    duration: `${duration}ms`,
+    category: 'performance',
+    ...meta,
+  });
+};
+
+/**
+ * Log email events
+ */
+logger.email = (event, recipient, success, meta = {}) => {
+  const level = success ? 'info' : 'error';
+  logger.log(level, `Email: ${event}`, {
+    event,
+    recipient,
+    success,
+    category: 'email',
+    ...meta,
+  });
+};
+
+/**
+ * Log AI/ML events
+ */
+logger.ai = (event, model, success, meta = {}) => {
+  const level = success ? 'info' : 'error';
+  logger.log(level, `AI: ${event}`, {
+    event,
+    model,
+    success,
+    category: 'ai',
+    ...meta,
+  });
+};
+
+/**
+ * Log cache events
+ */
+logger.cache = (event, key, hit, meta = {}) => {
+  logger.debug(`Cache: ${event}`, {
+    event,
+    key,
+    hit,
+    category: 'cache',
+    ...meta,
+  });
+};
+
+/**
+ * Stream for Morgan HTTP logger middleware
+ */
+logger.stream = {
+  write: (message) => {
+    logger.info(message.trim(), { category: 'http' });
+  },
+};
+
+/**
+ * Graceful shutdown
+ */
+logger.close = () => {
+  return new Promise((resolve) => {
+    logger.on('finish', resolve);
+    logger.end();
+  });
+};
+
+/**
+ * Log startup message
+ */
+if (!process.env.NODE_ENV === 'test') {
+  logger.info('Logger initialized', {
+    level: logLevel,
+    environment: process.env.NODE_ENV,
+    fileLoggingEnabled: isProduction || process.env.ENABLE_FILE_LOGGING === 'true',
+    logsDirectory: logsDir,
+  });
+}
 
 module.exports = logger;

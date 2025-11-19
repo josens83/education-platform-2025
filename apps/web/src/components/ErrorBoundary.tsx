@@ -42,8 +42,15 @@ class ErrorBoundary extends Component<Props, State> {
       errorInfo
     });
 
-    // TODO: Send error to logging service (e.g., Sentry)
-    // logErrorToService(error, errorInfo);
+    // Send error to Sentry
+    if (typeof window !== 'undefined') {
+      import('../lib/sentry').then(({ captureSentryException }) => {
+        captureSentryException(error, {
+          errorInfo,
+          componentStack: errorInfo.componentStack,
+        });
+      });
+    }
   }
 
   handleReset = () => {
