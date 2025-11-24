@@ -12,6 +12,10 @@
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix",
     "db:migrate": "node scripts/migrate.js",
+    "db:migrate:up": "node-pg-migrate up --config-file migrations-config.json --database-url-var DATABASE_URL",
+    "db:migrate:down": "node-pg-migrate down --config-file migrations-config.json --database-url-var DATABASE_URL",
+    "db:migrate:create": "node-pg-migrate create --config-file migrations-config.json",
+    "db:migrate:status": "node-pg-migrate status --config-file migrations-config.json --database-url-var DATABASE_URL",
     "db:seed": "node scripts/seed-demo-data.js",
     "check:env": "node ../scripts/check-env.js"
   },
@@ -59,6 +63,7 @@
   "devDependencies": {
     "eslint": "^8.55.0",
     "jest": "^29.7.0",
+    "node-pg-migrate": "^8.0.3",
     "nodemon": "^3.0.2",
     "supertest": "^6.3.3"
   },
