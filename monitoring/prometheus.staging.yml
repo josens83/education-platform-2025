@@ -1,0 +1,30 @@
+# Prometheus Configuration for Staging Environment
+
+global:
+  scrape_interval: 30s  # Less frequent for staging
+  evaluation_interval: 30s
+  scrape_timeout: 10s
+
+  external_labels:
+    monitor: 'education-platform'
+    environment: 'staging'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'backend-api-staging'
+    metrics_path: '/api/health/metrics'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['backend:5000']
+        labels:
+          service: 'backend'
+          app: 'education-platform'
+          environment: 'staging'

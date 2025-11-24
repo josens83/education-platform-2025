@@ -1,0 +1,180 @@
+# Prometheus Alert Rules for Education Platform API
+# https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+
+groups:
+  - name: api_alerts
+    interval: 30s
+    rules:
+      # Service Down
+      - alert: ServiceDown
+        expr: up{job="backend-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Backend API is down"
+          description: "The backend API service has been down for more than 1 minute."
+
+      # High Error Rate
+      - alert: HighErrorRate
+        expr: rate(http_errors_total{job="backend-api"}[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanize }} errors per second."
+
+      # Very High Error Rate
+      - alert: VeryHighErrorRate
+        expr: rate(http_errors_total{job="backend-api"}[5m]) > 5
+        for: 2m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Very high error rate detected"
+          description: "Error rate is {{ $value | humanize }} errors per second."
+
+      # Slow Response Time
+      - alert: SlowResponseTime
+        expr: http_request_duration_ms_avg{job="backend-api"} > 500
+        for: 10m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "Slow API response time"
+          description: "Average response time is {{ $value | humanize }}ms."
+
+      # Very Slow Response Time
+      - alert: VerySlowResponseTime
+        expr: http_request_duration_ms_avg{job="backend-api"} > 2000
+        for: 5m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Very slow API response time"
+          description: "Average response time is {{ $value | humanize }}ms."
+
+  - name: resource_alerts
+    interval: 1m
+    rules:
+      # High Memory Usage
+      - alert: HighMemoryUsage
+        expr: (process_memory_heap_used_bytes{job="backend-api"} / process_memory_heap_total_bytes{job="backend-api"}) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is at {{ $value | humanize }}%."
+
+      # Critical Memory Usage
+      - alert: CriticalMemoryUsage
+        expr: (process_memory_heap_used_bytes{job="backend-api"} / process_memory_heap_total_bytes{job="backend-api"}) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Critical memory usage detected"
+          description: "Memory usage is at {{ $value | humanize }}%."
+
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: system_cpu_usage_percent{job="backend-api"} > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is at {{ $value | humanize }}%."
+
+      # Critical CPU Usage
+      - alert: CriticalCPUUsage
+        expr: system_cpu_usage_percent{job="backend-api"} > 95
+        for: 5m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Critical CPU usage detected"
+          description: "CPU usage is at {{ $value | humanize }}%."
+
+  - name: database_alerts
+    interval: 1m
+    rules:
+      # Database Connection Pool Full
+      - alert: DatabasePoolFull
+        expr: db_pool_connections_idle{job="backend-api"} == 0 and db_pool_connections_total{job="backend-api"} > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Database connection pool is full"
+          description: "No idle database connections available. Total: {{ $value }}."
+
+      # High Database Pool Usage
+      - alert: HighDatabasePoolUsage
+        expr: (db_pool_connections_total{job="backend-api"} - db_pool_connections_idle{job="backend-api"}) / db_pool_connections_total{job="backend-api"} * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High database connection pool usage"
+          description: "Database pool usage is at {{ $value | humanize }}%."
+
+      # Database Connections Waiting
+      - alert: DatabaseConnectionsWaiting
+        expr: db_pool_connections_waiting{job="backend-api"} > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Database connections waiting"
+          description: "{{ $value }} connections are waiting for a database connection."
+
+  - name: system_alerts
+    interval: 1m
+    rules:
+      # High System Memory Usage
+      - alert: HighSystemMemoryUsage
+        expr: (system_memory_total_bytes - system_memory_free_bytes) / system_memory_total_bytes * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High system memory usage"
+          description: "System memory usage is at {{ $value | humanize }}%."
+
+      # High Load Average
+      - alert: HighLoadAverage
+        expr: system_load_average_5m > system_cpu_cores * 2
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High system load average"
+          description: "5-minute load average is {{ $value | humanize }} ({{ system_cpu_cores }} cores)."
+
+      # Service Restarted
+      - alert: ServiceRestarted
+        expr: service_uptime_seconds{job="backend-api"} < 300
+        for: 1m
+        labels:
+          severity: info
+          component: backend
+        annotations:
+          summary: "Service recently restarted"
+          description: "Service has been running for only {{ $value | humanize }} seconds."
