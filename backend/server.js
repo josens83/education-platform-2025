@@ -133,12 +133,28 @@ app.get('/api/csrf-token', generateToken, (req, res) => {
   });
 });
 
+// Swagger API 문서화
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Education Platform API Documentation',
+}));
+
+// Swagger JSON endpoint
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
 // API 정보
 app.get('/api', (req, res) => {
   res.json({
     name: 'Education Platform API',
     version: '2.0.0',
     description: '구독형 영어 교육 콘텐츠 플랫폼 API - Premium Design System',
+    documentation: '/api-docs (Swagger UI)',
     endpoints: {
       health: '/api/health/* (헬스체크)',
       auth: '/api/auth/* (인증, OAuth)',

@@ -34,8 +34,11 @@ module.exports = {
   testTimeout: 10000,
 
   // 글로벌 설정
-  globalSetup: undefined,
-  globalTeardown: undefined,
+  globalSetup: './__tests__/setup.js',
+  globalTeardown: './__tests__/teardown.js',
+
+  // 테스트 전 환경 변수 로드
+  setupFiles: ['<rootDir>/__tests__/setupEnv.js'],
 
   // 자동 모킹 비활성화
   automock: false,
