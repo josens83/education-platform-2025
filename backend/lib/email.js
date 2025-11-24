@@ -1,4 +1,10 @@
 const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
+
+// SendGrid 초기화
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
 
 // Nodemailer transporter 생성
 let transporter = null;
@@ -16,6 +22,36 @@ function getTransporter() {
     });
   }
   return transporter;
+}
+
+/**
+ * 이메일 전송 (SendGrid 또는 Nodemailer 자동 선택)
+ */
+async function sendEmail(mailOptions) {
+  if (process.env.SENDGRID_API_KEY) {
+    // SendGrid 사용
+    try {
+      await sgMail.send({
+        from: mailOptions.from || process.env.EMAIL_FROM,
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        html: mailOptions.html,
+        text: mailOptions.text,
+      });
+    } catch (error) {
+      console.error('SendGrid 이메일 전송 실패:', error);
+      throw error;
+    }
+  } else {
+    // Nodemailer 사용
+    const transporter = getTransporter();
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (error) {
+      console.error('Nodemailer 이메일 전송 실패:', error);
+      throw error;
+    }
+  }
 }
 
 // ============================================

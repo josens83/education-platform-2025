@@ -6,13 +6,15 @@
 
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
+const { createAdapter } = require('@socket.io/redis-adapter');
+const { createClient } = require('redis');
 
 let io;
 
 /**
  * Socket.IO 초기화
  */
-function initializeSocket(httpServer) {
+async function initializeSocket(httpServer) {
   io = new Server(httpServer, {
     cors: {
       origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
@@ -20,6 +22,22 @@ function initializeSocket(httpServer) {
       credentials: true,
     },
   });
+
+  // Redis Adapter 설정 (있는 경우)
+  if (process.env.REDIS_URL) {
+    try {
+      const pubClient = createClient({ url: process.env.REDIS_URL });
+      const subClient = pubClient.duplicate();
+
+      await Promise.all([pubClient.connect(), subClient.connect()]);
+
+      io.adapter(createAdapter(pubClient, subClient));
+      console.log('✅ Socket.IO Redis adapter configured for horizontal scaling');
+    } catch (error) {
+      console.warn('⚠️  Redis adapter failed, using in-memory adapter:', error.message);
+      // Redis 연결 실패 시 기본 메모리 어댑터 사용
+    }
+  }
 
   // 인증 미들웨어
   io.use((socket, next) => {
