@@ -28,7 +28,10 @@ const {
 } = require('./middleware/rateLimiter');
 
 const {
+  initializeRedis,
   cacheMiddleware,
+  httpCacheMiddleware,
+  cdnCacheMiddleware,
   CACHE_DURATIONS,
 } = require('./middleware/cache');
 
@@ -76,6 +79,12 @@ app.use(compression({
     return compression.filter(req, res);
   },
 }));
+
+// HTTP Cache Headers (must be before routes)
+app.use(httpCacheMiddleware);
+
+// CDN Cache Headers (for CDN optimization)
+app.use(cdnCacheMiddleware);
 
 // CORS 설정
 app.use(cors({
@@ -360,6 +369,12 @@ const startServer = async () => {
     await pool.query('SELECT NOW()');
     logger.system('데이터베이스 연결 성공');
 
+    // Redis 캐시 초기화 (선택사항)
+    const redisInitialized = await initializeRedis();
+    if (redisInitialized) {
+      logger.system('Redis 캐시 연결 성공');
+    }
+
     // 개발 모드에서는 자동으로 스키마 초기화 (선택사항)
     // if (process.env.NODE_ENV === 'development') {
     //   await initializeDatabase();
@@ -372,7 +387,8 @@ const startServer = async () => {
         environment: process.env.NODE_ENV || 'development',
         apiUrl: `http://localhost:${PORT}/api`,
         healthCheck: `http://localhost:${PORT}/api/health`,
-        socketIO: 'enabled'
+        socketIO: 'enabled',
+        redis: redisInitialized ? 'enabled' : 'disabled (memory cache fallback)'
       });
 
       // Console output for visibility
@@ -382,6 +398,7 @@ const startServer = async () => {
       console.log(`📍 Health Check: http://localhost:${PORT}/api/health`);
       console.log(`🔌 Socket.IO: 실시간 통신 활성화`);
       console.log(`🤖 AI 기능: ${process.env.OPENAI_API_KEY ? '활성화' : '비활성화'}`);
+      console.log(`💾 캐싱: ${redisInitialized ? 'Redis 활성화' : '메모리 캐시 사용'}`);
       console.log(`🌍 환경: ${process.env.NODE_ENV || 'development'}\n`);
     });
   } catch (error) {

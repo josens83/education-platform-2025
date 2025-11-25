@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../lib/db');
 const os = require('os');
+const { getCacheStats, invalidateCache, clearCache } = require('../middleware/cache');
 
 /**
  * Health Check & Database Status Routes
@@ -457,6 +458,89 @@ db_pool_connections_waiting ${dbPoolWaiting}
   } catch (error) {
     console.error('Metrics endpoint failed:', error);
     res.status(500).send('# Error generating metrics\n');
+  }
+});
+
+/**
+ * @route GET /api/health/cache
+ * @desc Cache statistics
+ * @access Public (should be protected in production)
+ */
+router.get('/cache', async (req, res) => {
+  try {
+    const stats = await getCacheStats();
+    res.json({
+      status: 'success',
+      timestamp: new Date().toISOString(),
+      cache: stats
+    });
+  } catch (error) {
+    console.error('Cache stats failed:', error);
+    res.status(500).json({
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * @route POST /api/health/cache/invalidate
+ * @desc Invalidate cache by pattern
+ * @access Admin only (should be protected in production)
+ */
+router.post('/cache/invalidate', async (req, res) => {
+  try {
+    const { pattern } = req.body;
+
+    if (!pattern) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Pattern is required'
+      });
+    }
+
+    const deletedCount = await invalidateCache(pattern);
+
+    res.json({
+      status: 'success',
+      message: `Invalidated ${deletedCount} cache entries`,
+      pattern,
+      deletedCount,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Cache invalidation failed:', error);
+    res.status(500).json({
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * @route POST /api/health/cache/clear
+ * @desc Clear all cache
+ * @access Admin only (should be protected in production)
+ */
+router.post('/cache/clear', async (req, res) => {
+  try {
+    const cleared = await clearCache();
+
+    res.json({
+      status: 'success',
+      message: 'Cache cleared successfully',
+      storesCleared: cleared,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Cache clear failed:', error);
+    res.status(500).json({
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
