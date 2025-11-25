@@ -1,0 +1,296 @@
+name: PR Automation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  pr-size-check:
+    name: Check PR Size
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR stats
+        id: pr-stats
+        run: |
+          # Get the base and head commits
+          BASE_SHA=${{ github.event.pull_request.base.sha }}
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
+
+          # Calculate additions and deletions
+          STATS=$(git diff --shortstat $BASE_SHA...$HEAD_SHA)
+          ADDITIONS=$(echo "$STATS" | grep -oP '\d+(?= insertion)' || echo "0")
+          DELETIONS=$(echo "$STATS" | grep -oP '\d+(?= deletion)' || echo "0")
+          FILES_CHANGED=$(echo "$STATS" | grep -oP '\d+(?= file)' || echo "0")
+
+          TOTAL_CHANGES=$((ADDITIONS + DELETIONS))
+
+          echo "additions=$ADDITIONS" >> $GITHUB_OUTPUT
+          echo "deletions=$DELETIONS" >> $GITHUB_OUTPUT
+          echo "files_changed=$FILES_CHANGED" >> $GITHUB_OUTPUT
+          echo "total_changes=$TOTAL_CHANGES" >> $GITHUB_OUTPUT
+
+      - name: Evaluate PR size
+        id: size-eval
+        run: |
+          TOTAL=${{ steps.pr-stats.outputs.total_changes }}
+
+          if [ $TOTAL -le 100 ]; then
+            SIZE="small"
+            SIZE_EMOJI="✅"
+            SIZE_COLOR="28a745"
+            COMPLIANT="true"
+          elif [ $TOTAL -le 300 ]; then
+            SIZE="medium"
+            SIZE_EMOJI="⚠️"
+            SIZE_COLOR="ffc107"
+            COMPLIANT="false"
+          else
+            SIZE="large"
+            SIZE_EMOJI="❌"
+            SIZE_COLOR="dc3545"
+            COMPLIANT="false"
+          fi
+
+          echo "size=$SIZE" >> $GITHUB_OUTPUT
+          echo "size_emoji=$SIZE_EMOJI" >> $GITHUB_OUTPUT
+          echo "size_color=$SIZE_COLOR" >> $GITHUB_OUTPUT
+          echo "compliant=$COMPLIANT" >> $GITHUB_OUTPUT
+
+      - name: Comment PR size
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const size = '${{ steps.size-eval.outputs.size }}';
+            const emoji = '${{ steps.size-eval.outputs.size_emoji }}';
+            const total = '${{ steps.pr-stats.outputs.total_changes }}';
+            const additions = '${{ steps.pr-stats.outputs.additions }}';
+            const deletions = '${{ steps.pr-stats.outputs.deletions }}';
+            const files = '${{ steps.pr-stats.outputs.files_changed }}';
+            const compliant = '${{ steps.size-eval.outputs.compliant }}' === 'true';
+
+            const body = `## ${emoji} PR Size: **${size.toUpperCase()}**
+
+            ### Statistics:
+            - **Total changes**: ${total} lines
+            - **Additions**: +${additions}
+            - **Deletions**: -${deletions}
+            - **Files changed**: ${files}
+
+            ### Elite Developer Methodology:
+            ${compliant
+              ? '✅ This PR meets the **Elite** standard (<100 lines)'
+              : '⚠️ Consider breaking this PR into smaller chunks (<100 lines each) for easier review and faster merge'
+            }
+
+            **Size Guidelines:**
+            - ✅ Small (≤100 lines): Elite - Fast review & merge
+            - ⚠️ Medium (101-300 lines): Consider splitting
+            - ❌ Large (>300 lines): Please split into multiple PRs`;
+
+            // Find existing comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.data.find(
+              comment => comment.user.type === 'Bot' && comment.body.includes('PR Size:')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body,
+              });
+            }
+
+      - name: Add size label
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const size = '${{ steps.size-eval.outputs.size }}';
+            const labels = ['size: small', 'size: medium', 'size: large'];
+
+            // Remove old size labels
+            const currentLabels = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            for (const label of currentLabels.data) {
+              if (labels.includes(label.name)) {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  name: label.name,
+                });
+              }
+            }
+
+            // Add new size label
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: [`size: ${size}`],
+            });
+
+  auto-label:
+    name: Auto Label PR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect PR type and scope
+        id: detect
+        run: |
+          BASE_SHA=${{ github.event.pull_request.base.sha }}
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
+
+          # Get changed files
+          CHANGED_FILES=$(git diff --name-only $BASE_SHA...$HEAD_SHA)
+
+          # Initialize labels array
+          LABELS=""
+
+          # Detect scope based on files
+          if echo "$CHANGED_FILES" | grep -q "^backend/"; then
+            LABELS="$LABELS,scope: backend"
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q "^apps/web/"; then
+            LABELS="$LABELS,scope: frontend"
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q "^\.github/workflows/"; then
+            LABELS="$LABELS,scope: ci/cd"
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q "\.test\.\|\.spec\."; then
+            LABELS="$LABELS,scope: tests"
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q "\.md$\|^docs/"; then
+            LABELS="$LABELS,scope: documentation"
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q "package\.json\|package-lock\.json"; then
+            LABELS="$LABELS,scope: dependencies"
+          fi
+
+          # Detect type from branch name or PR title
+          BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
+          PR_TITLE="${{ github.event.pull_request.title }}"
+
+          if [[ "$BRANCH_NAME" =~ ^feat/ ]] || [[ "$PR_TITLE" =~ ^feat: ]]; then
+            LABELS="$LABELS,type: feature"
+          elif [[ "$BRANCH_NAME" =~ ^fix/ ]] || [[ "$PR_TITLE" =~ ^fix: ]]; then
+            LABELS="$LABELS,type: bugfix"
+          elif [[ "$BRANCH_NAME" =~ ^docs/ ]] || [[ "$PR_TITLE" =~ ^docs: ]]; then
+            LABELS="$LABELS,type: documentation"
+          elif [[ "$BRANCH_NAME" =~ ^test/ ]] || [[ "$PR_TITLE" =~ ^test: ]]; then
+            LABELS="$LABELS,type: test"
+          elif [[ "$BRANCH_NAME" =~ ^refactor/ ]] || [[ "$PR_TITLE" =~ ^refactor: ]]; then
+            LABELS="$LABELS,type: refactor"
+          elif [[ "$BRANCH_NAME" =~ ^chore/ ]] || [[ "$PR_TITLE" =~ ^chore: ]]; then
+            LABELS="$LABELS,type: chore"
+          fi
+
+          # Remove leading comma
+          LABELS="${LABELS#,}"
+
+          echo "labels=$LABELS" >> $GITHUB_OUTPUT
+
+      - name: Apply labels
+        if: steps.detect.outputs.labels != ''
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const labelsStr = '${{ steps.detect.outputs.labels }}';
+            if (!labelsStr) return;
+
+            const labels = labelsStr.split(',').filter(l => l.trim());
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: labels,
+            });
+
+  check-pr-title:
+    name: Check PR Title Format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate PR title
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = context.payload.pull_request.title;
+            const conventionalCommitPattern = /^(feat|fix|docs|style|refactor|perf|test|chore|build|ci)(\(.+\))?: .+/;
+
+            if (!conventionalCommitPattern.test(title)) {
+              const message = `## ⚠️ PR Title Format
+
+              Your PR title doesn't follow the Conventional Commits format.
+
+              **Expected format:** \`type(scope): description\`
+
+              **Valid types:**
+              - \`feat\`: New feature
+              - \`fix\`: Bug fix
+              - \`docs\`: Documentation changes
+              - \`style\`: Code style changes (formatting, etc.)
+              - \`refactor\`: Code refactoring
+              - \`perf\`: Performance improvements
+              - \`test\`: Adding or updating tests
+              - \`chore\`: Maintenance tasks
+              - \`build\`: Build system changes
+              - \`ci\`: CI/CD changes
+
+              **Examples:**
+              - \`feat(auth): add two-factor authentication\`
+              - \`fix(api): resolve null pointer in user endpoint\`
+              - \`docs: update README with setup instructions\``;
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: message,
+              });
+
+              core.setFailed('PR title does not follow Conventional Commits format');
+            }
