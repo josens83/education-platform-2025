@@ -1,0 +1,182 @@
+# Alertmanager Configuration
+# Elite Developer Methodology - Alert Routing and Notifications
+
+global:
+  resolve_timeout: 5m
+  # Slack configuration (optional)
+  slack_api_url: '${SLACK_WEBHOOK_URL}'
+
+  # SMTP configuration for email alerts (optional)
+  smtp_from: '${ALERT_EMAIL_FROM:-alerts@education-platform.com}'
+  smtp_smarthost: '${SMTP_HOST:-smtp.gmail.com:587}'
+  smtp_auth_username: '${SMTP_USERNAME}'
+  smtp_auth_password: '${SMTP_PASSWORD}'
+  smtp_require_tls: true
+
+# Templates for notifications
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route tree for alerts
+route:
+  # Default receiver
+  receiver: 'default'
+
+  # Group alerts to reduce notification spam
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+
+  # Sub-routes for different alert severities
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 0s
+      group_interval: 5m
+      repeat_interval: 4h
+      continue: true
+
+    # Warning alerts - less frequent notifications
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+
+    # Business alerts - notify business team
+    - match:
+        category: business
+      receiver: 'business-alerts'
+      group_wait: 5m
+      repeat_interval: 24h
+
+    # Database alerts - notify database team
+    - match:
+        category: database
+      receiver: 'database-alerts'
+      repeat_interval: 6h
+
+    # Security alerts - notify security team
+    - match:
+        category: security
+      receiver: 'security-alerts'
+      group_wait: 0s
+      repeat_interval: 1h
+      continue: true
+
+# Inhibition rules - prevent duplicate notifications
+inhibit_rules:
+  # Inhibit warning if critical alert is firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+
+  # Inhibit all alerts if service is down
+  - source_match:
+      alertname: 'APIEndpointDown'
+    target_match_re:
+      alertname: '.*'
+    equal: ['instance']
+
+# Receivers - notification endpoints
+receivers:
+  # Default receiver
+  - name: 'default'
+    slack_configs:
+      - channel: '#alerts'
+        title: '{{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+
+    email_configs:
+      - to: '${ALERT_EMAIL_TO:-ops@education-platform.com}'
+        subject: '[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}'
+        html: |
+          <!DOCTYPE html>
+          <html>
+          <body>
+            <h2>Alert: {{ .GroupLabels.alertname }}</h2>
+            <p><strong>Status:</strong> {{ .Status }}</p>
+            {{ range .Alerts }}
+            <hr>
+            <p><strong>Summary:</strong> {{ .Annotations.summary }}</p>
+            <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+            <p><strong>Severity:</strong> {{ .Labels.severity }}</p>
+            <p><strong>Starts At:</strong> {{ .StartsAt }}</p>
+            {{ if .EndsAt }}<p><strong>Ends At:</strong> {{ .EndsAt }}</p>{{ end }}
+            {{ end }}
+          </body>
+          </html>
+
+  # Critical alerts - multiple channels
+  - name: 'critical-alerts'
+    slack_configs:
+      - channel: '#critical-alerts'
+        title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        text: |
+          *Status:* {{ .Status }}
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Started:* {{ .StartsAt }}
+          {{ end }}
+        send_resolved: true
+        color: 'danger'
+
+    email_configs:
+      - to: '${CRITICAL_ALERT_EMAIL:-critical@education-platform.com}'
+        subject: '🚨 [CRITICAL] {{ .GroupLabels.alertname }}'
+
+    # PagerDuty integration (optional)
+    # pagerduty_configs:
+    #   - service_key: '${PAGERDUTY_SERVICE_KEY}'
+    #     description: '{{ .GroupLabels.alertname }}'
+
+  # Warning alerts
+  - name: 'warning-alerts'
+    slack_configs:
+      - channel: '#warnings'
+        title: '⚠️ WARNING: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+        color: 'warning'
+
+  # Business alerts
+  - name: 'business-alerts'
+    slack_configs:
+      - channel: '#business-metrics'
+        title: '📊 Business Alert: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+
+    email_configs:
+      - to: '${BUSINESS_ALERT_EMAIL:-business@education-platform.com}'
+        subject: '[Business Alert] {{ .GroupLabels.alertname }}'
+
+  # Database alerts
+  - name: 'database-alerts'
+    slack_configs:
+      - channel: '#database-alerts'
+        title: '💾 Database Alert: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+
+  # Security alerts
+  - name: 'security-alerts'
+    slack_configs:
+      - channel: '#security-alerts'
+        title: '🔒 Security Alert: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+        color: 'danger'
+
+    email_configs:
+      - to: '${SECURITY_ALERT_EMAIL:-security@education-platform.com}'
+        subject: '🔒 [SECURITY] {{ .GroupLabels.alertname }}'

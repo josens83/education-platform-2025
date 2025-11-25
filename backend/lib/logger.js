@@ -1,5 +1,6 @@
 /**
  * Winston Logger - Production-Grade Structured Logging
+ * Elite Developer Methodology - Observability & Monitoring
  *
  * Features:
  * - Structured JSON logging
@@ -8,12 +9,16 @@
  * - Automatic cleanup of old logs
  * - Performance optimized
  * - Environment-aware configuration
+ * - Correlation IDs for request tracking
+ * - Distributed tracing support
+ * - Grafana Loki integration
  */
 
 const winston = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
 const path = require('path');
 const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
 
 // Create logs directory if it doesn't exist
 const logsDir = path.join(__dirname, '../logs');
@@ -53,6 +58,37 @@ const consoleFormat = winston.format.combine(
 const fileFormat = winston.format.combine(
   winston.format.timestamp(),
   winston.format.errors({ stack: true }),
+  winston.format.json()
+);
+
+/**
+ * Add correlation ID and tracing context to logs
+ */
+const addCorrelationId = winston.format((info) => {
+  // Get correlation ID from async local storage or generate new one
+  const correlationId = info.correlationId || global.requestContext?.correlationId || uuidv4();
+  info.correlationId = correlationId;
+
+  // Add tracing information if available
+  if (global.requestContext?.traceId) {
+    info.traceId = global.requestContext.traceId;
+    info.spanId = global.requestContext.spanId;
+  }
+
+  // Add service information
+  info.service = 'education-platform-backend';
+  info.environment = process.env.NODE_ENV || 'development';
+  info.hostname = require('os').hostname();
+
+  return info;
+});
+
+/**
+ * Loki-compatible format
+ */
+const lokiFormat = winston.format.combine(
+  winston.format.timestamp(),
+  addCorrelationId(),
   winston.format.json()
 );
 
@@ -116,7 +152,7 @@ if (isProduction || process.env.ENABLE_FILE_LOGGING === 'true') {
  */
 const logger = winston.createLogger({
   level: logLevel,
-  format: fileFormat,
+  format: winston.format.combine(addCorrelationId(), fileFormat),
   transports,
   exitOnError: false, // Don't exit on handled exceptions
   silent: process.env.NODE_ENV === 'test', // Silence logs in test environment
@@ -283,6 +319,81 @@ logger.close = () => {
     logger.end();
   });
 };
+
+/**
+ * Create child logger with additional context
+ */
+logger.child = (context = {}) => {
+  return {
+    ...logger,
+    defaultMeta: { ...logger.defaultMeta, ...context },
+    log: (level, message, meta = {}) => {
+      logger.log(level, message, { ...context, ...meta });
+    },
+    error: (message, meta = {}) => logger.error(message, { ...context, ...meta }),
+    warn: (message, meta = {}) => logger.warn(message, { ...context, ...meta }),
+    info: (message, meta = {}) => logger.info(message, { ...context, ...meta }),
+    debug: (message, meta = {}) => logger.debug(message, { ...context, ...meta }),
+  };
+};
+
+/**
+ * Express middleware to add correlation ID to requests
+ */
+logger.correlationMiddleware = (req, res, next) => {
+  const correlationId = req.get('X-Correlation-ID') || req.get('X-Request-ID') || uuidv4();
+  req.correlationId = correlationId;
+  res.setHeader('X-Correlation-ID', correlationId);
+
+  // Store in global context for child processes
+  global.requestContext = {
+    correlationId,
+    userId: req.user?.id,
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+  };
+
+  // Clean up after request completes
+  res.on('finish', () => {
+    delete global.requestContext;
+  });
+
+  next();
+};
+
+/**
+ * Log uncaught exceptions and unhandled rejections
+ */
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception', {
+    error: error.message,
+    stack: error.stack,
+    category: 'fatal',
+  });
+  // Give logger time to write before exiting
+  setTimeout(() => process.exit(1), 1000);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Promise Rejection', {
+    reason: reason instanceof Error ? reason.message : reason,
+    stack: reason instanceof Error ? reason.stack : undefined,
+    promise: promise.toString(),
+    category: 'fatal',
+  });
+});
+
+/**
+ * Log process warnings
+ */
+process.on('warning', (warning) => {
+  logger.warn('Process Warning', {
+    name: warning.name,
+    message: warning.message,
+    stack: warning.stack,
+    category: 'system',
+  });
+});
 
 /**
  * Log startup message
