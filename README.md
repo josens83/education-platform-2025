@@ -64,10 +64,14 @@
 ### 프로덕션 준비 🚀
 - ✅ **Sentry 에러 추적** - 실시간 모니터링
 - ✅ **Winston 로깅** - 구조화된 로그, 일일 로테이션
-- ✅ **Docker 컨테이너화** - 쉬운 배포
-- ✅ **헬스 체크 엔드포인트** - 모니터링
+- ✅ **Prometheus + Grafana** - 메트릭 수집 및 시각화
+- ✅ **향상된 헬스 체크** - CPU, 메모리, DB, Redis 상태 모니터링
+- ✅ **알림 시스템** - 15+ 사전 구성된 Prometheus 알림
+- ✅ **Docker 컨테이너화** - 프로덕션 및 스테이징 환경
+- ✅ **자동 배포 스크립트** - CI/CD 파이프라인
 - ✅ **데이터베이스 백업** - 자동화
 - ✅ **SEO 최적화** - 검색엔진 최적화
+- ✅ **포괄적인 문서화** - API 예제, 배포 가이드, 기여 가이드
 
 ## 🏗️ 기술 스택
 
@@ -98,6 +102,13 @@
 - **SendGrid** - 이메일 서비스 (선택)
 - **Docker** + **Docker Compose** - 컨테이너화
 - **Nginx** - 리버스 프록시
+
+### 모니터링 & 관찰성
+- **Prometheus** - 메트릭 수집 및 저장
+- **Grafana** - 메트릭 시각화 및 대시보드
+- **Node Exporter** - 시스템 메트릭
+- **Winston** - 구조화된 로깅
+- **Sentry** - 에러 추적 및 성능 모니터링
 
 ### 개발 도구
 - **Vitest** + **Jest** - 테스트 프레임워크
@@ -361,6 +372,13 @@ http://localhost:3001/api-docs
 http://localhost:3001/api-docs.json
 ```
 
+### 📖 API 사용 예제
+완전한 API 사용 가이드 및 코드 예제는 [docs/API_EXAMPLES.md](./docs/API_EXAMPLES.md)를 참조하세요.
+- cURL, JavaScript, TypeScript 예제
+- 인증, 구독, 결제, 학습 관련 모든 엔드포인트
+- 에러 처리 및 재시도 로직
+- WebSocket 이벤트 예제
+
 ### 주요 엔드포인트
 
 #### 인증
@@ -417,7 +435,50 @@ http://localhost:3001/api-docs.json
 4. **Google Cloud Platform**
 5. **Azure**
 
-자세한 배포 가이드는 [DEPLOYMENT.md](./DEPLOYMENT.md)를 참조하세요.
+자세한 배포 가이드는 [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)를 참조하세요.
+
+## 📊 모니터링 & 관찰성
+
+### 헬스 체크 엔드포인트
+
+```bash
+# 기본 헬스 체크 (DB, Redis, CPU, 메모리 포함)
+curl http://localhost:5000/api/health
+
+# 상세 시스템 상태 (외부 서비스, 데이터베이스 통계 포함)
+curl http://localhost:5000/api/health/detailed
+
+# Prometheus 메트릭
+curl http://localhost:5000/api/health/metrics
+```
+
+### Prometheus + Grafana 스택
+
+```bash
+# 모니터링 스택 시작
+docker-compose -f docker-compose.monitoring.yml up -d
+
+# 접속
+# Grafana: http://localhost:3000 (admin/admin)
+# Prometheus: http://localhost:9090
+```
+
+**사전 구성된 메트릭:**
+- 서비스 업타임 및 프로세스 상태
+- HTTP 요청 속도 및 응답 시간
+- 에러 발생률
+- CPU 및 메모리 사용량
+- 데이터베이스 커넥션 풀 상태
+- 시스템 로드 평균
+
+**알림 규칙 (15+):**
+- ServiceDown, HighErrorRate, VeryHighErrorRate
+- SlowResponseTime, VerySlowResponseTime
+- HighMemoryUsage, CriticalMemoryUsage
+- HighCPUUsage, CriticalCPUUsage
+- DatabasePoolFull, HighDatabasePoolUsage
+
+자세한 모니터링 설정은 [monitoring/README.md](./monitoring/README.md)를 참조하세요.
 
 ## 🔐 보안
 
@@ -447,11 +508,18 @@ http://localhost:3001/api-docs.json
 
 ## 🤝 기여하기
 
+이 프로젝트에 기여하고 싶으신가요? 환영합니다! 🎉
+
+기여 방법, 코딩 표준, 커밋 가이드라인, PR 프로세스 등 자세한 내용은 [CONTRIBUTING.md](./CONTRIBUTING.md)를 참조하세요.
+
+**빠른 시작:**
 1. Fork the Project
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+3. Commit your Changes (`git commit -m 'feat: Add some AmazingFeature'`)
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
+모든 기여자는 [Code of Conduct](./CONTRIBUTING.md#code-of-conduct)를 준수해야 합니다.
 
 ## 📝 라이선스
 

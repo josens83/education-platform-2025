@@ -17,7 +17,15 @@
     "db:migrate:create": "node-pg-migrate create --config-file migrations-config.json",
     "db:migrate:status": "node-pg-migrate status --config-file migrations-config.json --database-url-var DATABASE_URL",
     "db:seed": "node scripts/seed-demo-data.js",
-    "check:env": "node ../scripts/check-env.js"
+    "check:env": "node ../scripts/check-env.js",
+    "deploy:staging": "cd .. && ./scripts/deploy-staging.sh",
+    "deploy:production": "cd .. && docker-compose -f docker-compose.yml up -d --build",
+    "monitoring:start": "cd .. && docker-compose -f docker-compose.monitoring.yml up -d",
+    "monitoring:stop": "cd .. && docker-compose -f docker-compose.monitoring.yml down",
+    "monitoring:logs": "cd .. && docker-compose -f docker-compose.monitoring.yml logs -f",
+    "health:check": "curl -s http://localhost:5000/api/health | json_pp || curl -s http://localhost:5000/api/health",
+    "health:detailed": "curl -s http://localhost:5000/api/health/detailed | json_pp || curl -s http://localhost:5000/api/health/detailed",
+    "metrics": "curl -s http://localhost:5000/api/health/metrics"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.937.0",

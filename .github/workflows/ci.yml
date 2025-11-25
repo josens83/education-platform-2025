@@ -66,6 +66,7 @@ jobs:
           files: ./backend/coverage/lcov.info
           flags: backend
           name: backend-coverage
+        continue-on-error: true
 
   # Frontend Testing
   frontend-test:
@@ -97,6 +98,7 @@ jobs:
           files: ./apps/web/coverage/lcov.info
           flags: frontend
           name: frontend-coverage
+        continue-on-error: true
 
   # Backend Linting
   backend-lint:
