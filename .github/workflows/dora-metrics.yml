@@ -1,0 +1,154 @@
+name: DORA Metrics Tracking
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    types: [opened, closed, reopened]
+    branches: [ main, develop ]
+  deployment_status:
+  workflow_run:
+    workflows: ["CI/CD Pipeline"]
+    types: [completed]
+
+jobs:
+  track-deployment-frequency:
+    name: Track Deployment Frequency
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Record Deployment
+        run: |
+          echo "## 📊 DORA Metric: Deployment Frequency" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Author**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+
+  track-lead-time:
+    name: Track Lead Time for Changes
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate Lead Time
+        run: |
+          PR_CREATED=$(date -d "${{ github.event.pull_request.created_at }}" +%s)
+          PR_MERGED=$(date -d "${{ github.event.pull_request.merged_at }}" +%s)
+          LEAD_TIME=$((PR_MERGED - PR_CREATED))
+          LEAD_TIME_HOURS=$((LEAD_TIME / 3600))
+          LEAD_TIME_MINUTES=$(((LEAD_TIME % 3600) / 60))
+
+          echo "## ⏱️ DORA Metric: Lead Time for Changes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **PR**: #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Created**: ${{ github.event.pull_request.created_at }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Merged**: ${{ github.event.pull_request.merged_at }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Lead Time**: ${LEAD_TIME_HOURS}h ${LEAD_TIME_MINUTES}m" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ $LEAD_TIME_HOURS -lt 4 ]; then
+            echo "✅ **Elite** (< 4 hours)" >> $GITHUB_STEP_SUMMARY
+          elif [ $LEAD_TIME_HOURS -lt 24 ]; then
+            echo "🟢 **High** (< 1 day)" >> $GITHUB_STEP_SUMMARY
+          elif [ $LEAD_TIME_HOURS -lt 168 ]; then
+            echo "🟡 **Medium** (< 1 week)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🔴 **Low** (> 1 week)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  track-change-failure-rate:
+    name: Track Change Failure Rate
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion != ''
+
+    steps:
+      - name: Record Result
+        run: |
+          echo "## 📉 DORA Metric: Change Failure Rate" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow**: ${{ github.event.workflow_run.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Result**: ${{ github.event.workflow_run.conclusion }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ github.event.workflow_run.conclusion }}" == "success" ]; then
+            echo "✅ Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  calculate-metrics:
+    name: Calculate DORA Metrics
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Calculate All Metrics
+        run: |
+          # Create metrics calculation script
+          cat > calculate_dora.sh << 'EOF'
+          #!/bin/bash
+
+          echo "## 📊 DORA Metrics Summary (Last 30 Days)"
+          echo ""
+
+          # Deployment Frequency
+          DEPLOY_COUNT=$(git log --since="30 days ago" --grep="deploy\|release" --oneline | wc -l)
+          echo "### 🚀 Deployment Frequency"
+          echo "- **Total Deployments**: $DEPLOY_COUNT"
+          echo "- **Average per Day**: $(echo "scale=2; $DEPLOY_COUNT / 30" | bc)"
+          echo ""
+
+          # Lead Time (approximation using commit to merge time)
+          echo "### ⏱️ Lead Time for Changes"
+          RECENT_PRS=$(gh pr list --state merged --limit 10 --json number,createdAt,mergedAt | jq -r '.[] | "\(.createdAt) \(.mergedAt)"')
+          echo "- Based on last 10 merged PRs"
+          echo ""
+
+          # Change Failure Rate (based on CI failures)
+          TOTAL_RUNS=$(gh run list --limit 100 --json conclusion | jq '. | length')
+          FAILED_RUNS=$(gh run list --limit 100 --json conclusion | jq '[.[] | select(.conclusion=="failure")] | length')
+          FAILURE_RATE=$(echo "scale=2; ($FAILED_RUNS / $TOTAL_RUNS) * 100" | bc)
+
+          echo "### 📉 Change Failure Rate"
+          echo "- **Total Runs**: $TOTAL_RUNS"
+          echo "- **Failed Runs**: $FAILED_RUNS"
+          echo "- **Failure Rate**: ${FAILURE_RATE}%"
+          echo ""
+
+          if (( $(echo "$FAILURE_RATE < 15" | bc -l) )); then
+            echo "✅ **Elite** (< 15%)"
+          elif (( $(echo "$FAILURE_RATE < 30" | bc -l) )); then
+            echo "🟡 **Medium** (< 30%)"
+          else
+            echo "🔴 **Low** (> 30%)"
+          fi
+          echo ""
+
+          # MTTR (Mean Time to Recovery)
+          echo "### 🔧 Mean Time to Recovery (MTTR)"
+          echo "- Tracking deployment rollbacks and incident resolutions"
+          echo "- Requires incident tracking system integration"
+          EOF
+
+          chmod +x calculate_dora.sh
+          ./calculate_dora.sh >> $GITHUB_STEP_SUMMARY
+        env:
+          GH_TOKEN: ${{ github.token }}
