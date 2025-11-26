@@ -42,6 +42,8 @@ const {
   csrfErrorHandler,
 } = require('./middleware/csrf');
 
+const { featureFlagsMiddleware } = require('./lib/featureFlags');
+
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
@@ -229,6 +231,10 @@ const sessionsRoutes = require('./routes/sessions');
 const notificationsRoutes = require('./routes/notifications');
 const searchRoutes = require('./routes/search');
 const twoFactorRoutes = require('./routes/twoFactor');
+const featureFlagsRoutes = require('./routes/featureFlags');
+
+// Feature Flags Middleware (add feature flags to all requests)
+app.use(featureFlagsMiddleware);
 
 // Use Routes with specific rate limiters and caching
 
@@ -299,6 +305,9 @@ app.use('/api/search', readLimiter, cacheMiddleware(CACHE_DURATIONS.SHORT), sear
 
 // Two-Factor Authentication - strict rate limiting (security-sensitive)
 app.use('/api/2fa', authLimiter, twoFactorRoutes);
+
+// Feature Flags - admin management
+app.use('/api/feature-flags', readLimiter, featureFlagsRoutes);
 
 // ============================================
 // ERROR HANDLING
