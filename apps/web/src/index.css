@@ -2,39 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Modern Web Fonts */
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+/**
+ * Global Styles for Education Platform 2025
+ * Design Philosophy: Focus, Warmth, Trust, Efficiency
+ */
+
+/* ============================================
+   FONTS
+   ============================================ */
+/* Pretendard Variable - Korean/Sans */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css');
+
+/* Source Serif 4 - Reading/Serif */
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,400&display=swap');
+
+/* JetBrains Mono - Code */
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* Design Tokens - Light Mode (Default) */
+/* ============================================
+   DESIGN TOKENS - LIGHT MODE (Default)
+   ============================================ */
 :root {
-  /* Background colors */
-  --color-bg: 255, 255, 255;
-  --color-bg-secondary: 249, 250, 251;
+  /* Background colors - not pure white */
+  --color-bg: 250, 250, 249; /* #FAFAF9 */
+  --color-bg-secondary: 245, 245, 244; /* #F5F5F4 */
+  --color-bg-paper: 255, 255, 255; /* #FFFFFF */
 
-  /* Text colors */
-  --color-text-primary: 17, 24, 39;
-  --color-text-secondary: 75, 85, 99;
-  --color-text-tertiary: 156, 163, 175;
+  /* Text colors - not pure black */
+  --color-text-primary: 24, 24, 27; /* #18181B */
+  --color-text-secondary: 82, 82, 91; /* #52525B */
+  --color-text-tertiary: 161, 161, 170; /* #A1A1AA */
+
+  /* Primary - Warm Indigo */
+  --color-primary: 99, 102, 241; /* #6366F1 */
+  --color-primary-hover: 79, 70, 229; /* #4F46E5 */
+
+  /* Secondary - Amber */
+  --color-secondary: 251, 191, 36; /* #FBBF24 */
+
+  /* Accent - Teal */
+  --color-accent: 45, 212, 191; /* #2DD4BF */
 
   /* Surface colors */
   --color-surface: 255, 255, 255;
-  --color-surface-hover: 243, 244, 246;
+  --color-surface-hover: 245, 245, 244;
 
   /* Border colors */
-  --color-border: 229, 231, 235;
-  --color-border-light: 243, 244, 246;
+  --color-border: 231, 229, 228; /* gray-200 */
+  --color-border-light: 245, 245, 244; /* gray-100 */
 
   /* Font configuration */
-  font-family: 'Inter', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, 'Roboto', sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light;
-  color: rgb(17, 24, 39);
-  background-color: rgb(255, 255, 255);
+  color: rgb(24, 24, 27);
+  background-color: rgb(250, 250, 249);
 
+  /* Font rendering optimization */
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -42,49 +68,70 @@
   -webkit-text-size-adjust: 100%;
 }
 
-/* Design Tokens - Dark Mode */
+/* ============================================
+   DESIGN TOKENS - DARK MODE
+   ============================================ */
 .dark {
-  /* Background colors - Linear/Stripe inspired dark palette */
-  --color-bg: 10, 10, 10;
-  --color-bg-secondary: 18, 18, 18;
+  /* Background colors - sophisticated dark */
+  --color-bg: 15, 15, 15; /* #0F0F0F */
+  --color-bg-secondary: 26, 26, 26; /* #1A1A1A */
+  --color-bg-paper: 26, 26, 26; /* #1A1A1A */
 
   /* Text colors */
-  --color-text-primary: 250, 250, 250;
-  --color-text-secondary: 163, 163, 163;
-  --color-text-tertiary: 115, 115, 115;
+  --color-text-primary: 250, 250, 250; /* #FAFAFA */
+  --color-text-secondary: 161, 161, 170; /* #A1A1AA */
+  --color-text-tertiary: 115, 115, 122; /* #73737A */
+
+  /* Primary - Warm Indigo (slightly brighter for dark mode) */
+  --color-primary: 129, 140, 248; /* #818CF8 */
+  --color-primary-hover: 99, 102, 241; /* #6366F1 */
+
+  /* Secondary - Amber */
+  --color-secondary: 252, 211, 77; /* #FCD34D */
+
+  /* Accent - Teal */
+  --color-accent: 94, 234, 212; /* #5EEAD4 */
 
   /* Surface colors */
-  --color-surface: 24, 24, 24;
-  --color-surface-hover: 38, 38, 38;
+  --color-surface: 38, 38, 38; /* #262626 */
+  --color-surface-hover: 64, 64, 64; /* #404040 */
 
   /* Border colors - subtle in dark mode */
-  --color-border: 39, 39, 42;
-  --color-border-light: 28, 28, 30;
+  --color-border: 68, 64, 60; /* gray-700 */
+  --color-border-light: 41, 37, 36; /* gray-800 */
 
   color-scheme: dark;
   color: rgb(250, 250, 250);
-  background-color: rgb(10, 10, 10);
+  background-color: rgb(15, 15, 15);
 }
 
 /* System preference dark mode fallback */
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --color-bg: 10, 10, 10;
-    --color-bg-secondary: 18, 18, 18;
+    --color-bg: 15, 15, 15;
+    --color-bg-secondary: 26, 26, 26;
+    --color-bg-paper: 26, 26, 26;
     --color-text-primary: 250, 250, 250;
-    --color-text-secondary: 163, 163, 163;
-    --color-text-tertiary: 115, 115, 115;
-    --color-surface: 24, 24, 24;
-    --color-surface-hover: 38, 38, 38;
-    --color-border: 39, 39, 42;
-    --color-border-light: 28, 28, 30;
+    --color-text-secondary: 161, 161, 170;
+    --color-text-tertiary: 115, 115, 122;
+    --color-primary: 129, 140, 248;
+    --color-primary-hover: 99, 102, 241;
+    --color-secondary: 252, 211, 77;
+    --color-accent: 94, 234, 212;
+    --color-surface: 38, 38, 38;
+    --color-surface-hover: 64, 64, 64;
+    --color-border: 68, 64, 60;
+    --color-border-light: 41, 37, 36;
 
     color-scheme: dark;
     color: rgb(250, 250, 250);
-    background-color: rgb(10, 10, 10);
+    background-color: rgb(15, 15, 15);
   }
 }
 
+/* ============================================
+   BASE STYLES
+   ============================================ */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -102,7 +149,9 @@ body {
   min-height: 100vh;
 }
 
-/* 스크롤바 스타일 - Light Mode */
+/* ============================================
+   SCROLLBAR STYLES
+   ============================================ */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -122,7 +171,6 @@ body {
   background: rgb(var(--color-text-tertiary));
 }
 
-/* Dark mode scrollbar */
 .dark ::-webkit-scrollbar-track {
   background: rgb(var(--color-bg-secondary));
 }
@@ -135,135 +183,116 @@ body {
   background: rgb(var(--color-border));
 }
 
-/* Premium Component Styles */
+/* ============================================
+   COMPONENT LAYER
+   ============================================ */
 @layer components {
-  /* Glass Morphism Card - Linear/Stripe style */
-  .card-glass {
-    @apply bg-white/10 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl shadow-glass;
-  }
-
-  .card-glass-lg {
-    @apply bg-white/10 dark:bg-white/5 backdrop-blur-2xl border border-white/20 dark:border-white/10 rounded-3xl shadow-glass-lg;
-  }
-
-  /* Premium Button Styles */
+  /* Button Styles - Following design system */
   .btn {
-    @apply px-6 py-3 rounded-xl font-medium transition-all duration-200 ease-out;
+    @apply px-6 py-3 rounded-lg font-medium transition-all duration-normal ease-default;
     @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
   }
 
   .btn-primary {
-    @apply btn bg-primary-600 text-white hover:bg-primary-700;
-    @apply hover:shadow-lg hover:-translate-y-0.5;
+    @apply btn bg-primary-500 text-white hover:bg-primary-600;
+    @apply hover:shadow-hover-md hover:-translate-y-0.5;
     @apply focus:ring-primary-500;
+    @apply transition-all duration-normal;
   }
 
   .btn-secondary {
-    @apply btn bg-surface text-text-primary border border-border;
-    @apply hover:bg-surface-hover hover:shadow-smooth;
-    @apply focus:ring-primary-500;
+    @apply btn bg-secondary-400 text-gray-900 hover:bg-secondary-500;
+    @apply hover:shadow-hover-md hover:-translate-y-0.5;
+    @apply focus:ring-secondary-400;
   }
 
   .btn-ghost {
     @apply btn bg-transparent text-text-primary;
-    @apply hover:bg-surface-hover;
+    @apply hover:bg-gray-100 dark:hover:bg-gray-800;
     @apply focus:ring-primary-500;
   }
 
-  /* Premium Input Styles */
+  .btn-outline {
+    @apply btn bg-transparent text-text-primary border border-gray-300;
+    @apply hover:bg-gray-50 dark:hover:bg-gray-800;
+    @apply focus:ring-primary-500;
+  }
+
+  /* Input Styles */
   .input {
-    @apply w-full px-4 py-3 rounded-xl border border-border bg-surface;
+    @apply w-full px-4 py-3 rounded-lg border border-gray-300 bg-background-paper;
     @apply text-text-primary placeholder:text-text-tertiary;
-    @apply transition-all duration-200;
+    @apply transition-all duration-normal;
     @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
   }
 
-  /* Gradient Background Effects - Linear style */
-  .gradient-sphere {
-    @apply absolute rounded-full blur-3xl opacity-20;
-    @apply animate-float;
+  /* Card Styles */
+  .card {
+    @apply bg-background-paper border border-gray-200 rounded-xl p-6;
+    @apply transition-all duration-slow ease-default;
   }
 
-  .gradient-mesh-bg {
-    @apply fixed inset-0 -z-10 overflow-hidden;
+  .card-hover {
+    @apply card;
+    @apply hover:shadow-hover-lg hover:-translate-y-1 hover:border-primary-500/30;
   }
 
-  /* Premium Card with Hover Effect */
-  .card-premium {
-    @apply bg-surface border border-border rounded-2xl p-6;
-    @apply transition-all duration-300 ease-out;
-    @apply hover:shadow-smooth-lg hover:-translate-y-1 hover:border-primary-500/50;
+  .card-interactive {
+    @apply card cursor-pointer;
+    @apply hover:shadow-hover-lg hover:scale-[1.02];
+    @apply active:scale-100;
   }
 
-  /* Bento Grid Item - Apple/Linear style */
-  .bento-item {
-    @apply relative overflow-hidden rounded-2xl bg-surface border border-border;
-    @apply transition-all duration-300;
-    @apply hover:shadow-smooth-lg hover:border-primary-500/30;
+  /* Reading Container - Optimized for book reading */
+  .reading-container {
+    @apply max-w-reading mx-auto px-6;
+    @apply font-serif text-lg leading-loose tracking-reading;
   }
 
-  /* Thin Border Accent - Modern detail */
-  .border-accent {
-    @apply relative;
+  /* Section Spacing */
+  .section {
+    @apply py-section-normal;
   }
 
-  .border-accent::after {
-    @apply content-[''] absolute inset-0 rounded-[inherit];
-    @apply bg-gradient-to-br from-primary-500/20 via-transparent to-transparent;
-    @apply pointer-events-none;
+  .section-tight {
+    @apply py-section-tight;
+  }
+
+  .section-loose {
+    @apply py-section-loose;
+  }
+
+  .section-spacious {
+    @apply py-section-spacious;
+  }
+
+  /* Glass Morphism (Minimal use for special effects) */
+  .card-glass {
+    @apply bg-white/10 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl;
+  }
+
+  /* Gradient Text */
+  .text-gradient-primary {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-primary-400;
+  }
+
+  .text-gradient-warm {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-secondary-500 to-accent-500;
   }
 }
 
-/* Advanced Utility Classes */
+/* ============================================
+   UTILITY LAYER
+   ============================================ */
 @layer utilities {
+  /* Text Balance (for headings) */
   .text-balance {
     text-wrap: balance;
   }
 
+  /* Container */
   .container-custom {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
-  }
-
-  /* Smooth transitions */
-  .transition-smooth {
-    @apply transition-all duration-300 ease-out;
-  }
-
-  /* Glass effect utilities */
-  .glass {
-    @apply bg-white/10 backdrop-blur-md;
-  }
-
-  .glass-strong {
-    @apply bg-white/20 backdrop-blur-xl;
-  }
-
-  /* Text gradients */
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-primary-400;
-  }
-
-  .text-gradient-purple {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600;
-  }
-
-  /* Glow effects */
-  .glow-primary {
-    box-shadow: 0 0 20px rgba(14, 165, 233, 0.3);
-  }
-
-  .glow-accent {
-    box-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
-  }
-
-  /* Linear-style dark gradient background */
-  .bg-linear-dark {
-    @apply bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800;
-  }
-
-  /* Responsive grid - Bento style */
-  .grid-bento {
-    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6;
   }
 
   /* Hide scrollbar but keep functionality */
@@ -275,38 +304,18 @@ body {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
-}
 
-/* 애니메이션 */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
+  /* Focus visible utility */
+  .focus-visible-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
   }
 }
 
-@keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
+/* ============================================
+   READING FEATURES
+   ============================================ */
 
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-.animate-slide-up {
-  animation: slideUp 0.5s ease-out;
-}
-
-/* 북마크 하이라이트 스타일 */
+/* Bookmark Highlight Styles */
 mark.bookmark-highlight {
   padding: 2px 0;
   border-radius: 2px;
@@ -337,7 +346,7 @@ mark.bookmark-pink {
   color: #831843;
 }
 
-/* 플래시카드 3D 플립 효과 */
+/* Flashcard 3D Flip Effect */
 .perspective-1000 {
   perspective: 1000px;
 }
@@ -353,4 +362,131 @@ mark.bookmark-pink {
 
 .rotate-y-180 {
   transform: rotateY(180deg);
+}
+
+/* ============================================
+   TYPOGRAPHY ENHANCEMENTS
+   ============================================ */
+
+/* Serif for reading content */
+.prose-reading {
+  @apply font-serif text-lg leading-loose tracking-reading;
+  @apply max-w-65ch mx-auto;
+}
+
+/* Sans for UI */
+.prose-ui {
+  @apply font-sans text-base leading-normal;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+/* ============================================
+   ACHIEVEMENT BADGES
+   ============================================ */
+
+.badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+}
+
+.badge-primary {
+  @apply badge bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200;
+}
+
+.badge-secondary {
+  @apply badge bg-secondary-100 text-secondary-800 dark:bg-secondary-900 dark:text-secondary-200;
+}
+
+.badge-accent {
+  @apply badge bg-accent-100 text-accent-800 dark:bg-accent-900 dark:text-accent-200;
+}
+
+.badge-success {
+  @apply badge bg-success-light text-success-dark;
+}
+
+/* ============================================
+   PROGRESS INDICATORS
+   ============================================ */
+
+.progress-bar {
+  @apply w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden;
+}
+
+.progress-fill {
+  @apply h-full bg-gradient-to-r from-primary-500 to-accent-400 rounded-full;
+  @apply transition-all duration-slower ease-smooth;
+}
+
+/* ============================================
+   MICRO-INTERACTIONS
+   ============================================ */
+
+/* Interactive elements should feel responsive */
+.interactive {
+  @apply transition-all duration-fast ease-default;
+  @apply hover:scale-[1.02] active:scale-[0.98];
+}
+
+.interactive-lift {
+  @apply transition-all duration-normal ease-default;
+  @apply hover:-translate-y-1 hover:shadow-hover-md;
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+/* Skip to main content link */
+.skip-to-main {
+  @apply sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4;
+  @apply bg-primary-500 text-white px-4 py-2 rounded-lg;
+  @apply focus:ring-2 focus:ring-primary-600 focus:ring-offset-2;
+  @apply z-tooltip;
+}
+
+/* Focus visible for keyboard navigation */
+*:focus-visible {
+  @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
