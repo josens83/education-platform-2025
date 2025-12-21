@@ -1,9 +1,17 @@
 const { Pool } = require('pg');
 
-// PostgreSQL 연결 풀 생성
+// PostgreSQL 연결 풀 생성 (서버리스/클라우드 환경 최적화)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  // Connection Pool 최적화 설정
+  max: parseInt(process.env.DB_POOL_MAX || '20', 10),           // 최대 연결 수
+  min: parseInt(process.env.DB_POOL_MIN || '2', 10),            // 최소 연결 수
+  idleTimeoutMillis: 30000,                                      // 유휴 연결 타임아웃 (30초)
+  connectionTimeoutMillis: 5000,                                 // 연결 타임아웃 (5초)
+  // 서버리스 환경 최적화
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,                           // Keep-alive 시작 지연 (10초)
 });
 
 // 연결 테스트
