@@ -98,7 +98,7 @@ class ErrorBoundary extends Component<Props, State> {
             </div>
 
             {/* Error Details (Development only) */}
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <div className="mb-6 p-4 bg-gray-100 rounded-lg overflow-auto max-h-60">
                 <h3 className="font-semibold text-gray-900 mb-2">오류 상세:</h3>
                 <pre className="text-sm text-red-600 whitespace-pre-wrap">

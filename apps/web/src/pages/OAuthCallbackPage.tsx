@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
+import { api } from '../lib/api';
 import toast from 'react-hot-toast';
 
 /**
@@ -27,19 +28,24 @@ export default function OAuthCallbackPage() {
     }
 
     if (token) {
-      // 토큰 저장 및 로그인 처리
+      // 토큰 저장
       localStorage.setItem('token', token);
       if (refreshToken) {
         localStorage.setItem('refreshToken', refreshToken);
       }
 
-      // Zustand store 업데이트
-      login(token);
-
-      toast.success(`${provider || 'OAuth'} 로그인 성공!`);
-
-      // 대시보드로 이동
-      navigate('/dashboard');
+      // API에 토큰 설정 후 사용자 정보 가져오기
+      api.setToken(token);
+      api.getMyProfile().then((user) => {
+        // Zustand store 업데이트
+        login(user, token);
+        toast.success(`${provider || 'OAuth'} 로그인 성공!`);
+        // 대시보드로 이동
+        navigate('/dashboard');
+      }).catch(() => {
+        toast.error('사용자 정보를 가져오는데 실패했습니다.');
+        navigate('/login');
+      });
     } else {
       toast.error('로그인 토큰을 받지 못했습니다.');
       navigate('/login');

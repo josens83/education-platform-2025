@@ -10,7 +10,7 @@ type Config = {
 };
 
 export function register(config?: Config) {
-  if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
+  if (import.meta.env.PROD && 'serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       const swUrl = `${import.meta.env.BASE_URL}sw.js`;
 
@@ -124,7 +124,7 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
 
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
     });
 
     console.log('[SW] Push subscription:', subscription);

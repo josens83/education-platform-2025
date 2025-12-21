@@ -20,26 +20,15 @@ export default function BooksPage() {
           keywords="영어원서, 영어책 목록, 초급 영어책, 중급 영어책, 고급 영어책, 영어 오디오북"
           url="/books"
         />
-      <div className="container-custom py-8">
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">책 목록을 불러오는 중...</p>
+        <div className="container-custom py-8">
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">책 목록을 불러오는 중...</p>
+            </div>
           </div>
-      </>
-    );
-  }
-
-  return (
-    <>
-      <SEO
-        title="영어 원서 목록"
-        description="다양한 수준의 영어 원서를 읽어보세요. 초급부터 고급까지 엄선된 영어책과 오디오북을 제공합니다."
-        keywords="영어원서, 영어책 목록, 초급 영어책, 중급 영어책, 고급 영어책, 영어 오디오북"
-        url="/books"
-      />
         </div>
-      </div>
+      </>
     );
   }
 
