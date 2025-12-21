@@ -34,3 +34,5 @@ backend/logs/
 *.tmp
 *.backup
 *.old
+# TypeScript incremental build cache
+*.tsbuildinfo
