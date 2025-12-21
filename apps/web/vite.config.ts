@@ -1,9 +1,11 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
-import { visualizer } from 'rollup-plugin-visualizer';
-import viteCompression from 'vite-plugin-compression';
-import viteImagemin from 'vite-plugin-imagemin';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
+import { visualizer } from 'rollup-plugin-visualizer'
+import viteCompression from 'vite-plugin-compression'
+// Optional: Image optimization (requires native dependencies)
+// Install: npm install vite-plugin-imagemin -D
+// import viteImagemin from 'vite-plugin-imagemin';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -32,35 +34,19 @@ export default defineConfig({
       algorithm: 'brotliCompress',
       ext: '.br',
     }),
-    // Image optimization
-    viteImagemin({
-      gifsicle: {
-        optimizationLevel: 7,
-        interlaced: false,
-      },
-      optipng: {
-        optimizationLevel: 7,
-      },
-      mozjpeg: {
-        quality: 80,
-      },
-      pngquant: {
-        quality: [0.8, 0.9],
-        speed: 4,
-      },
-      svgo: {
-        plugins: [
-          {
-            name: 'removeViewBox',
-            active: false,
-          },
-          {
-            name: 'removeEmptyAttrs',
-            active: true,
-          },
-        ],
-      },
-    }),
+    // Image optimization (optional - uncomment if vite-plugin-imagemin is installed)
+    // viteImagemin({
+    //   gifsicle: { optimizationLevel: 7, interlaced: false },
+    //   optipng: { optimizationLevel: 7 },
+    //   mozjpeg: { quality: 80 },
+    //   pngquant: { quality: [0.8, 0.9], speed: 4 },
+    //   svgo: {
+    //     plugins: [
+    //       { name: 'removeViewBox', active: false },
+    //       { name: 'removeEmptyAttrs', active: true },
+    //     ],
+    //   },
+    // }),
   ],
   resolve: {
     alias: {
@@ -104,45 +90,49 @@ export default defineConfig({
           // Core vendors (loaded on every page)
           if (id.includes('/node_modules/')) {
             if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-              return 'react-core';
+              return 'react-core'
             }
             // State management
             if (id.includes('zustand') || id.includes('react-query')) {
-              return 'state-management';
+              return 'state-management'
             }
             // UI libraries
-            if (id.includes('framer-motion') || id.includes('react-icons') || id.includes('react-hot-toast')) {
-              return 'ui-libs';
+            if (
+              id.includes('framer-motion') ||
+              id.includes('react-icons') ||
+              id.includes('react-hot-toast')
+            ) {
+              return 'ui-libs'
             }
             // Utilities
             if (id.includes('axios') || id.includes('lodash') || id.includes('clsx')) {
-              return 'utils';
+              return 'utils'
             }
             // Sentry (only if needed)
             if (id.includes('@sentry')) {
-              return 'sentry';
+              return 'sentry'
             }
             // Other vendors
-            return 'vendor';
+            return 'vendor'
           }
           // Split by route/page for code-splitting
           if (id.includes('/src/pages/')) {
-            const pageName = id.split('/pages/')[1].split('/')[0];
-            return `page-${pageName}`;
+            const pageName = id.split('/pages/')[1].split('/')[0]
+            return `page-${pageName}`
           }
         },
         // Asset file naming patterns with cache busting
         assetFileNames: (assetInfo) => {
-          const info = assetInfo.name.split('.');
-          const ext = info[info.length - 1];
+          const info = assetInfo.name.split('.')
+          const ext = info[info.length - 1]
           if (/png|jpe?g|svg|gif|tiff|bmp|ico|webp/i.test(ext)) {
-            return `assets/images/[name]-[hash][extname]`;
+            return `assets/images/[name]-[hash][extname]`
           } else if (/woff|woff2|eot|ttf|otf/.test(ext)) {
-            return `assets/fonts/[name]-[hash][extname]`;
+            return `assets/fonts/[name]-[hash][extname]`
           } else if (/css/.test(ext)) {
-            return `assets/css/[name]-[hash][extname]`;
+            return `assets/css/[name]-[hash][extname]`
           }
-          return `assets/[ext]/[name]-[hash][extname]`;
+          return `assets/[ext]/[name]-[hash][extname]`
         },
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
@@ -171,13 +161,7 @@ export default defineConfig({
   },
   // Performance hints
   optimizeDeps: {
-    include: [
-      'react',
-      'react-dom',
-      'react-router-dom',
-      'zustand',
-      'axios',
-    ],
+    include: ['react', 'react-dom', 'react-router-dom', 'zustand', 'axios'],
     exclude: ['@sentry/react'], // Don't pre-bundle large deps
   },
-});
+})

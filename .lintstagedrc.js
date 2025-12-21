@@ -2,16 +2,19 @@ module.exports = {
   // Frontend TypeScript/TSX files
   'apps/web/**/*.{ts,tsx}': [
     // Full TypeScript project check (ignores file arguments)
-    () => 'cd apps/web && npm run typecheck',
-    // ESLint with fix
-    'eslint --fix --max-warnings=0',
+    () => 'npm run typecheck --prefix apps/web',
+    // Note: ESLint disabled until TypeScript parser is configured in .eslintrc.json
+    // () => 'npm run lint --prefix apps/web -- --fix',
+    // Prettier formatting
+    'prettier --write',
   ],
   // Backend JavaScript files
   'backend/**/*.js': [
-    'eslint --fix',
+    () => 'npm run lint --prefix backend -- --fix',
+    'prettier --write',
   ],
-  // JSON, Markdown, CSS files
-  '*.{json,md,css}': [
+  // JSON, CSS files
+  '*.{json,css}': [
     'prettier --write --ignore-unknown',
   ],
 }
