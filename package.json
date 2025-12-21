@@ -4,6 +4,7 @@
   "description": "[![CI/CD](https://github.com/josens83/education-platform-2025/workflows/CI/CD%20Pipeline/badge.svg)](https://github.com/josens83/education-platform-2025/actions) [![Test Coverage](https://img.shields.io/badge/coverage-60%2B%25-brightgreen)](./backend/coverage) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Node.js Version](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen)](https://nodejs.org)",
   "main": "index.js",
   "scripts": {
+    "prepare": "husky",
     "install:all": "npm install && cd backend && npm install && cd ../apps/web && npm install",
     "dev": "concurrently \"cd backend && npm run dev\" \"cd apps/web && npm run dev\"",
     "test": "cd backend && npm test && cd ../apps/web && npm test",
@@ -31,6 +32,8 @@
   "license": "ISC",
   "devDependencies": {
     "@playwright/test": "^1.56.1",
-    "@types/node": "^24.10.1"
+    "@types/node": "^24.10.1",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0"
   }
 }

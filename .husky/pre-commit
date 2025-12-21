@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+echo "🔍 커밋 전 검증 시작..."
+npx lint-staged
