@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+
+echo "🚀 푸시 전 최종 검증..."
+
+# Frontend TypeScript check
+echo "📝 Frontend TypeScript 검사 중..."
+cd apps/web && npm run typecheck || exit 1
+
+# Frontend build test
+echo "🏗️ Frontend 빌드 테스트 중..."
+npm run build || exit 1
+
+echo "✅ 모든 검증 통과! 푸시를 진행합니다."
