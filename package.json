@@ -9,6 +9,8 @@
     "dev": "concurrently \"cd backend && npm run dev\" \"cd apps/web && npm run dev\"",
     "test": "cd backend && npm test && cd ../apps/web && npm test",
     "lint": "cd backend && npm run lint && cd ../apps/web && npm run lint",
+    "format": "prettier --write \"apps/web/src/**/*.{ts,tsx}\" \"backend/**/*.js\" --ignore-unknown",
+    "format:check": "prettier --check \"apps/web/src/**/*.{ts,tsx}\" \"backend/**/*.js\" --ignore-unknown",
     "build": "cd apps/web && npm run build",
     "deploy:staging": "./scripts/deploy-staging.sh",
     "deploy:production": "docker-compose -f docker-compose.yml up -d --build",
@@ -34,6 +36,8 @@
     "@playwright/test": "^1.56.1",
     "@types/node": "^24.10.1",
     "husky": "^9.0.0",
-    "lint-staged": "^15.0.0"
+    "lint-staged": "^15.0.0",
+    "prettier": "^3.4.0",
+    "prettier-plugin-tailwindcss": "^0.6.0"
   }
 }

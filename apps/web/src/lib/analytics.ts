@@ -6,103 +6,129 @@
 // Google Analytics 타입 정의
 declare global {
   interface Window {
-    gtag?: (...args: any[]) => void;
-    dataLayer?: any[];
+    gtag?: (...args: any[]) => void
+    dataLayer?: any[]
   }
 }
 
 // Google Analytics Measurement ID (환경 변수에서 로드)
-const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || '';
+const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || ''
+
+// Microsoft Clarity ID (환경 변수에서 로드)
+const CLARITY_ID = import.meta.env.VITE_CLARITY_ID || ''
+
+/**
+ * Microsoft Clarity 초기화
+ */
+export function initializeClarity(): void {
+  if (!CLARITY_ID) {
+    console.warn('Microsoft Clarity ID가 설정되지 않았습니다')
+    return
+  }
+
+  // Clarity 스크립트 동적 로드
+  const script = document.createElement('script')
+  script.innerHTML = `
+    (function(c,l,a,r,i,t,y){
+      c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+      t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+      y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "${CLARITY_ID}");
+  `
+  document.head.appendChild(script)
+
+  console.log('Microsoft Clarity initialized:', CLARITY_ID)
+}
 
 /**
  * Google Analytics 초기화
  */
 export function initializeAnalytics(): void {
+  // Initialize Microsoft Clarity
+  if (CLARITY_ID) {
+    initializeClarity()
+  }
+
   if (!GA_MEASUREMENT_ID) {
-    console.warn('Google Analytics Measurement ID가 설정되지 않았습니다');
-    return;
+    console.warn('Google Analytics Measurement ID가 설정되지 않았습니다')
+    return
   }
 
   // Google Analytics 스크립트 동적 로드
-  const script1 = document.createElement('script');
-  script1.async = true;
-  script1.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
-  document.head.appendChild(script1);
+  const script1 = document.createElement('script')
+  script1.async = true
+  script1.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`
+  document.head.appendChild(script1)
 
   // DataLayer 초기화
-  window.dataLayer = window.dataLayer || [];
+  window.dataLayer = window.dataLayer || []
 
   // gtag 함수 정의
-  window.gtag = function() {
-    window.dataLayer?.push(arguments);
-  };
+  window.gtag = function () {
+    window.dataLayer?.push(arguments)
+  }
 
   // GA 초기화
-  window.gtag('js', new Date());
+  window.gtag('js', new Date())
   window.gtag('config', GA_MEASUREMENT_ID, {
     page_path: window.location.pathname,
     send_page_view: false, // 수동으로 페이지 뷰 전송
-  });
+  })
 
-  console.log('Google Analytics initialized:', GA_MEASUREMENT_ID);
+  console.log('Google Analytics initialized:', GA_MEASUREMENT_ID)
 }
 
 /**
  * 페이지 뷰 추적
  */
 export function trackPageView(path: string, title?: string): void {
-  if (!window.gtag || !GA_MEASUREMENT_ID) return;
+  if (!window.gtag || !GA_MEASUREMENT_ID) return
 
   window.gtag('event', 'page_view', {
     page_path: path,
     page_title: title || document.title,
-  });
+  })
 
-  console.log('Page view tracked:', path);
+  console.log('Page view tracked:', path)
 }
 
 /**
  * 이벤트 추적
  */
-export function trackEvent(
-  action: string,
-  category: string,
-  label?: string,
-  value?: number
-): void {
-  if (!window.gtag || !GA_MEASUREMENT_ID) return;
+export function trackEvent(action: string, category: string, label?: string, value?: number): void {
+  if (!window.gtag || !GA_MEASUREMENT_ID) return
 
   window.gtag('event', action, {
     event_category: category,
     event_label: label,
     value: value,
-  });
+  })
 
-  console.log('Event tracked:', { action, category, label, value });
+  console.log('Event tracked:', { action, category, label, value })
 }
 
 /**
  * 사용자 ID 설정
  */
 export function setUserId(userId: number | string): void {
-  if (!window.gtag || !GA_MEASUREMENT_ID) return;
+  if (!window.gtag || !GA_MEASUREMENT_ID) return
 
   window.gtag('config', GA_MEASUREMENT_ID, {
     user_id: userId.toString(),
-  });
+  })
 
-  console.log('User ID set:', userId);
+  console.log('User ID set:', userId)
 }
 
 /**
  * 사용자 속성 설정
  */
 export function setUserProperties(properties: Record<string, any>): void {
-  if (!window.gtag || !GA_MEASUREMENT_ID) return;
+  if (!window.gtag || !GA_MEASUREMENT_ID) return
 
-  window.gtag('set', 'user_properties', properties);
+  window.gtag('set', 'user_properties', properties)
 
-  console.log('User properties set:', properties);
+  console.log('User properties set:', properties)
 }
 
 // ============================================
@@ -113,21 +139,21 @@ export function setUserProperties(properties: Record<string, any>): void {
  * 회원가입 추적
  */
 export function trackSignup(method: string = 'email'): void {
-  trackEvent('sign_up', 'engagement', method);
+  trackEvent('sign_up', 'engagement', method)
 }
 
 /**
  * 로그인 추적
  */
 export function trackLogin(method: string = 'email'): void {
-  trackEvent('login', 'engagement', method);
+  trackEvent('login', 'engagement', method)
 }
 
 /**
  * 구독 시작 추적
  */
 export function trackSubscriptionStart(planName: string, value: number): void {
-  if (!window.gtag || !GA_MEASUREMENT_ID) return;
+  if (!window.gtag || !GA_MEASUREMENT_ID) return
 
   window.gtag('event', 'begin_checkout', {
     currency: 'KRW',
@@ -141,20 +167,16 @@ export function trackSubscriptionStart(planName: string, value: number): void {
         quantity: 1,
       },
     ],
-  });
+  })
 
-  trackEvent('subscription_start', 'subscription', planName, value);
+  trackEvent('subscription_start', 'subscription', planName, value)
 }
 
 /**
  * 구독 완료 추적 (결제 성공)
  */
-export function trackPurchase(
-  planName: string,
-  value: number,
-  transactionId?: string
-): void {
-  if (!window.gtag || !GA_MEASUREMENT_ID) return;
+export function trackPurchase(planName: string, value: number, transactionId?: string): void {
+  if (!window.gtag || !GA_MEASUREMENT_ID) return
 
   window.gtag('event', 'purchase', {
     transaction_id: transactionId || Date.now().toString(),
@@ -169,9 +191,9 @@ export function trackPurchase(
         quantity: 1,
       },
     ],
-  });
+  })
 
-  trackEvent('purchase_complete', 'subscription', planName, value);
+  trackEvent('purchase_complete', 'subscription', planName, value)
 }
 
 /**
@@ -182,16 +204,16 @@ export function trackCouponUsage(
   discountAmount: number,
   planName: string
 ): void {
-  trackEvent('coupon_used', 'marketing', couponCode, discountAmount);
-  trackEvent('discount_applied', 'marketing', `${couponCode}_${planName}`, discountAmount);
+  trackEvent('coupon_used', 'marketing', couponCode, discountAmount)
+  trackEvent('discount_applied', 'marketing', `${couponCode}_${planName}`, discountAmount)
 }
 
 /**
  * 책 읽기 시작 추적
  */
 export function trackBookRead(bookId: number, bookTitle: string): void {
-  trackEvent('book_read_start', 'content', bookTitle);
-  trackEvent('engagement', 'content', `book_${bookId}_${bookTitle}`);
+  trackEvent('book_read_start', 'content', bookTitle)
+  trackEvent('engagement', 'content', `book_${bookId}_${bookTitle}`)
 }
 
 /**
@@ -202,89 +224,85 @@ export function trackChapterComplete(
   chapterTitle: string,
   chapterNumber: number
 ): void {
-  trackEvent('chapter_complete', 'content', `${bookTitle} - ${chapterTitle}`, chapterNumber);
+  trackEvent('chapter_complete', 'content', `${bookTitle} - ${chapterTitle}`, chapterNumber)
 }
 
 /**
  * 퀴즈 완료 추적
  */
-export function trackQuizComplete(
-  quizTitle: string,
-  score: number,
-  isPassed: boolean
-): void {
-  trackEvent('quiz_complete', 'learning', quizTitle, score);
-  trackEvent(isPassed ? 'quiz_passed' : 'quiz_failed', 'learning', quizTitle, score);
+export function trackQuizComplete(quizTitle: string, score: number, isPassed: boolean): void {
+  trackEvent('quiz_complete', 'learning', quizTitle, score)
+  trackEvent(isPassed ? 'quiz_passed' : 'quiz_failed', 'learning', quizTitle, score)
 }
 
 /**
  * 오디오 재생 추적
  */
 export function trackAudioPlay(bookTitle: string, chapterTitle: string): void {
-  trackEvent('audio_play', 'content', `${bookTitle} - ${chapterTitle}`);
+  trackEvent('audio_play', 'content', `${bookTitle} - ${chapterTitle}`)
 }
 
 /**
  * 검색 추적
  */
 export function trackSearch(searchTerm: string, resultCount: number): void {
-  if (!window.gtag || !GA_MEASUREMENT_ID) return;
+  if (!window.gtag || !GA_MEASUREMENT_ID) return
 
   window.gtag('event', 'search', {
     search_term: searchTerm,
-  });
+  })
 
-  trackEvent('search', 'navigation', searchTerm, resultCount);
+  trackEvent('search', 'navigation', searchTerm, resultCount)
 }
 
 /**
  * 단어 추가 추적
  */
 export function trackVocabularyAdd(word: string): void {
-  trackEvent('vocabulary_add', 'learning', word);
+  trackEvent('vocabulary_add', 'learning', word)
 }
 
 /**
  * 북마크 추가 추적
  */
 export function trackBookmarkAdd(bookTitle: string): void {
-  trackEvent('bookmark_add', 'engagement', bookTitle);
+  trackEvent('bookmark_add', 'engagement', bookTitle)
 }
 
 /**
  * 노트 작성 추적
  */
 export function trackNoteCreate(bookTitle: string): void {
-  trackEvent('note_create', 'engagement', bookTitle);
+  trackEvent('note_create', 'engagement', bookTitle)
 }
 
 /**
  * 에러 추적
  */
 export function trackError(errorMessage: string, errorLevel: 'warning' | 'error' | 'fatal'): void {
-  trackEvent('error', 'error_tracking', errorMessage);
-  trackEvent(`error_${errorLevel}`, 'error_tracking', errorMessage);
+  trackEvent('error', 'error_tracking', errorMessage)
+  trackEvent(`error_${errorLevel}`, 'error_tracking', errorMessage)
 }
 
 /**
  * 외부 링크 클릭 추적
  */
 export function trackOutboundLink(url: string, label?: string): void {
-  trackEvent('click', 'outbound_link', label || url);
+  trackEvent('click', 'outbound_link', label || url)
 }
 
 /**
  * 소셜 공유 추적
  */
 export function trackSocialShare(platform: string, contentType: string, contentId: string): void {
-  trackEvent('share', 'social', `${platform}_${contentType}_${contentId}`);
+  trackEvent('share', 'social', `${platform}_${contentType}_${contentId}`)
 }
 
 /**
  * 다운로드 추적
  */
 export function trackDownload(fileName: string, fileType: string): void {
-  trackEvent('download', 'file', `${fileType}_${fileName}`);
+  trackEvent('download', 'file', `${fileType}_${fileName}`)
 }
 
 /**
@@ -296,14 +314,14 @@ export function trackTiming(
   value: number,
   label?: string
 ): void {
-  if (!window.gtag || !GA_MEASUREMENT_ID) return;
+  if (!window.gtag || !GA_MEASUREMENT_ID) return
 
   window.gtag('event', 'timing_complete', {
     name: variable,
     value: value,
     event_category: category,
     event_label: label,
-  });
+  })
 }
 
 // ============================================
@@ -311,18 +329,18 @@ export function trackTiming(
 // ============================================
 
 interface UserBehavior {
-  sessionId: string;
-  userId?: number;
+  sessionId: string
+  userId?: number
   events: Array<{
-    type: string;
-    timestamp: number;
-    data?: any;
-  }>;
-  sessionStart: number;
-  lastActivity: number;
+    type: string
+    timestamp: number
+    data?: any
+  }>
+  sessionStart: number
+  lastActivity: number
 }
 
-let currentSession: UserBehavior | null = null;
+let currentSession: UserBehavior | null = null
 
 /**
  * 세션 시작
@@ -334,44 +352,44 @@ export function startSession(userId?: number): void {
     events: [],
     sessionStart: Date.now(),
     lastActivity: Date.now(),
-  };
+  }
 
   // 세션 시작 이벤트 추적
-  trackEvent('session_start', 'engagement', userId ? 'authenticated' : 'guest');
+  trackEvent('session_start', 'engagement', userId ? 'authenticated' : 'guest')
 }
 
 /**
  * 세션 종료
  */
 export function endSession(): void {
-  if (!currentSession) return;
+  if (!currentSession) return
 
-  const sessionDuration = Date.now() - currentSession.sessionStart;
+  const sessionDuration = Date.now() - currentSession.sessionStart
 
   // 세션 종료 이벤트 추적
-  trackTiming('engagement', 'session_duration', sessionDuration);
-  trackEvent('session_end', 'engagement', '', Math.round(sessionDuration / 1000));
+  trackTiming('engagement', 'session_duration', sessionDuration)
+  trackEvent('session_end', 'engagement', '', Math.round(sessionDuration / 1000))
 
   // 세션 데이터를 로컬 스토리지에 저장 (선택적)
   try {
-    const sessions = JSON.parse(localStorage.getItem('user_sessions') || '[]');
+    const sessions = JSON.parse(localStorage.getItem('user_sessions') || '[]')
     sessions.push({
       ...currentSession,
       sessionEnd: Date.now(),
       duration: sessionDuration,
-    });
+    })
 
     // 최근 10개 세션만 유지
     if (sessions.length > 10) {
-      sessions.shift();
+      sessions.shift()
     }
 
-    localStorage.setItem('user_sessions', JSON.stringify(sessions));
+    localStorage.setItem('user_sessions', JSON.stringify(sessions))
   } catch (error) {
-    console.error('Failed to save session data:', error);
+    console.error('Failed to save session data:', error)
   }
 
-  currentSession = null;
+  currentSession = null
 }
 
 /**
@@ -379,7 +397,7 @@ export function endSession(): void {
  */
 export function logUserEvent(type: string, data?: any): void {
   if (!currentSession) {
-    startSession();
+    startSession()
   }
 
   if (currentSession) {
@@ -387,8 +405,8 @@ export function logUserEvent(type: string, data?: any): void {
       type,
       timestamp: Date.now(),
       data,
-    });
-    currentSession.lastActivity = Date.now();
+    })
+    currentSession.lastActivity = Date.now()
   }
 }
 
@@ -396,24 +414,24 @@ export function logUserEvent(type: string, data?: any): void {
  * 비활성 시간 확인 및 세션 종료
  */
 export function checkInactivity(): void {
-  if (!currentSession) return;
+  if (!currentSession) return
 
-  const INACTIVITY_THRESHOLD = 30 * 60 * 1000; // 30분
-  const inactiveTime = Date.now() - currentSession.lastActivity;
+  const INACTIVITY_THRESHOLD = 30 * 60 * 1000 // 30분
+  const inactiveTime = Date.now() - currentSession.lastActivity
 
   if (inactiveTime > INACTIVITY_THRESHOLD) {
-    endSession();
+    endSession()
   }
 }
 
 // 페이지 언로드 시 세션 종료
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
-    endSession();
-  });
+    endSession()
+  })
 
   // 비활성 체크 (5분마다)
-  setInterval(checkInactivity, 5 * 60 * 1000);
+  setInterval(checkInactivity, 5 * 60 * 1000)
 }
 
 // Export all tracking functions
@@ -444,4 +462,4 @@ export default {
   startSession,
   endSession,
   logUserEvent,
-};
+}

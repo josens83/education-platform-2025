@@ -41,3 +41,4 @@ backend/logs/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+*.tsbuildinfo

@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Cache
+.cache/
+.turbo/
+*.tsbuildinfo
+
+# Coverage
+coverage/
+
+# Environment files
+.env*
+
+# Generated files
+*.min.js
+*.min.css
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Database
+database/*.sql
+
+# Documentation (preserve formatting)
+docs/**/*.md
+*.md
