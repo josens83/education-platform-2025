@@ -2,7 +2,12 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_URL: string
-  // 추가 환경 변수가 있다면 여기에 정의
+  readonly VITE_VAPID_PUBLIC_KEY?: string
+  readonly VITE_SENTRY_DSN?: string
+  readonly BASE_URL: string
+  readonly MODE: string
+  readonly PROD: boolean
+  readonly DEV: boolean
 }
 
 interface ImportMeta {

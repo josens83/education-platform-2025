@@ -9,6 +9,9 @@ interface AuthState {
   isAuthenticated: boolean;
   setAuth: (user: User, token: string) => void;
   clearAuth: () => void;
+  // Aliases for convenience
+  login: (user: User, token: string) => void;
+  logout: () => void;
 }
 
 /**
@@ -38,6 +41,25 @@ export const useAuthStore = create<AuthState>()(
         // API 클라이언트 토큰 제거
         api.logout();
 
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+        });
+      },
+
+      // Aliases for convenience
+      login: (user, token) => {
+        api.setToken(token);
+        set({
+          user,
+          token,
+          isAuthenticated: true,
+        });
+      },
+
+      logout: () => {
+        api.logout();
         set({
           user: null,
           token: null,

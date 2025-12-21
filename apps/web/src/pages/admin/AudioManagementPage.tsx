@@ -147,7 +147,7 @@ export default function AudioManagementPage() {
                       <div className="text-sm text-gray-600">
                         {Math.floor(audioFile.duration_seconds / 60)}분 {audioFile.duration_seconds % 60}초
                         {' · '}
-                        {(audioFile.file_size_bytes / (1024 * 1024)).toFixed(2)} MB
+                        {((audioFile.file_size_bytes || 0) / (1024 * 1024)).toFixed(2)} MB
                         {' · '}
                         <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
                           audioFile.audio_type === 'professional'

@@ -70,7 +70,7 @@ describe('RatingStars', () => {
     rerender(<RatingStars rating={2} showLabel />);
     expect(screen.getByText(/별로예요/)).toBeInTheDocument();
 
-    rerender(<RatingStars rating={1) showLabel />);
+    rerender(<RatingStars rating={1} showLabel />);
     expect(screen.getByText(/아쉬워요/)).toBeInTheDocument();
   });
 });

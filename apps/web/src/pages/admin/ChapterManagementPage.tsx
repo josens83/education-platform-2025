@@ -14,12 +14,12 @@ interface Chapter {
   book_id: number;
   chapter_number: number;
   title: string;
-  slug: string;
-  content: string;
-  content_type: string;
-  estimated_minutes: number;
-  is_published: boolean;
-  display_order: number;
+  slug?: string;
+  content?: string;
+  content_type?: string;
+  estimated_minutes?: number;
+  is_published?: boolean;
+  display_order?: number;
 }
 
 /**

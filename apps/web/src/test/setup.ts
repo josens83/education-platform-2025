@@ -1,4 +1,4 @@
-import { expect, afterEach } from 'vitest';
+import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
@@ -13,5 +13,5 @@ expect.extend({
 });
 
 // Mock environment variables
-process.env.VITE_API_URL = 'http://localhost:3001';
-process.env.VITE_SITE_URL = 'http://localhost:3000';
+vi.stubEnv('VITE_API_URL', 'http://localhost:3001');
+vi.stubEnv('VITE_SITE_URL', 'http://localhost:3000');

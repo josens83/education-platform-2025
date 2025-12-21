@@ -6,15 +6,13 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   FiSearch,
   FiX,
   FiBook,
   FiFileText,
-  FiStickyNote,
-  FiClock,
-  FiTrendingUp,
+  FiEdit3,
   FiLoader,
 } from 'react-icons/fi';
 import axios from 'axios';
@@ -154,7 +152,7 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
       case 'chapter':
         return <FiFileText className="w-5 h-5 text-green-500" />;
       case 'note':
-        return <FiStickyNote className="w-5 h-5 text-yellow-500" />;
+        return <FiEdit3 className="w-5 h-5 text-yellow-500" />;
       default:
         return <FiSearch className="w-5 h-5 text-gray-500" />;
     }

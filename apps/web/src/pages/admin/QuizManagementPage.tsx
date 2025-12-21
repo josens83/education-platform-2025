@@ -18,11 +18,11 @@ interface Quiz {
   id: number;
   chapter_id: number;
   title: string;
-  description: string;
-  quiz_type: string;
-  passing_score: number;
-  time_limit_minutes: number;
-  is_active: boolean;
+  description?: string;
+  quiz_type?: string;
+  passing_score?: number;
+  time_limit_minutes?: number;
+  is_active?: boolean;
 }
 
 interface QuizQuestion {
@@ -30,11 +30,11 @@ interface QuizQuestion {
   quiz_id: number;
   question_text: string;
   question_type: string;
-  options: any;
-  correct_answer: string;
-  explanation: string;
-  points: number;
-  display_order: number;
+  options?: any;
+  correct_answer?: string;
+  explanation?: string;
+  points?: number;
+  display_order?: number;
 }
 
 /**
@@ -227,7 +227,7 @@ export default function QuizManagementPage() {
                       <div className="flex items-center gap-4 text-sm text-gray-600">
                         <span>📝 타입: {quiz.quiz_type}</span>
                         <span>🎯 합격: {quiz.passing_score}점</span>
-                        {quiz.time_limit_minutes > 0 && (
+                        {(quiz.time_limit_minutes || 0) > 0 && (
                           <span>⏱️ 제한: {quiz.time_limit_minutes}분</span>
                         )}
                       </div>
