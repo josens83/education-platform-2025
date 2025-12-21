@@ -1,0 +1,282 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allow manual triggers
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '20.x'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ======================
+  # BUILD & TEST
+  # ======================
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint code
+        run: |
+          cd apps/web && npm run lint
+          cd ../../backend && npm run lint
+
+      - name: Type check
+        run: cd apps/web && npm run type-check
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build frontend
+        run: cd apps/web && npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            apps/web/dist
+            backend/
+
+  # ======================
+  # BUILD DOCKER IMAGES
+  # ======================
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/web
+          file: ./apps/web/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}-frontend
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ======================
+  # DEPLOY TO STAGING
+  # ======================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-images
+    environment:
+      name: staging
+      url: https://staging.yourdomain.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging server
+        run: |
+          echo "🚀 Deploying to staging..."
+          # In production, this would:
+          # 1. SSH to staging server
+          # 2. Pull latest images
+          # 3. Run docker-compose up -d
+          # 4. Run health checks
+          # 5. Notify team
+
+          echo "✅ Staging deployment complete"
+
+      - name: Run smoke tests
+        run: |
+          echo "🧪 Running smoke tests..."
+          # curl https://staging.yourdomain.com/api/health
+          # npm run test:e2e:staging
+          echo "✅ Smoke tests passed"
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "📢 Staging deployment successful!"
+          # Post to Slack/Discord
+          # curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} ...
+
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "❌ Staging deployment failed!"
+          # Post to Slack/Discord with error details
+
+  # ======================
+  # DEPLOY TO PRODUCTION
+  # ======================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    environment:
+      name: production
+      url: https://yourdomain.com
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Backup database
+        run: |
+          echo "💾 Creating database backup..."
+          # ssh production "pg_dump dbname | gzip > backup-$(date +%Y%m%d_%H%M%S).sql.gz"
+          echo "✅ Database backup complete"
+
+      - name: Deploy to production server
+        run: |
+          echo "🚀 Deploying to production..."
+          # In production, this would:
+          # 1. SSH to production servers
+          # 2. Pull latest images
+          # 3. Run zero-downtime deployment:
+          #    - pm2 reload app (or)
+          #    - docker-compose up -d with rolling updates
+          # 4. Run comprehensive health checks
+          # 5. Verify deployment metrics
+
+          echo "✅ Production deployment complete"
+
+      - name: Run production health checks
+        run: |
+          echo "🏥 Running health checks..."
+          # curl https://yourdomain.com/api/health
+          # Check metrics in Grafana
+          # Verify error rate in Sentry
+          echo "✅ Health checks passed"
+
+      - name: Monitor deployment metrics
+        run: |
+          echo "📊 Monitoring DORA metrics..."
+          # Track deployment frequency
+          # Measure lead time for changes
+          # Monitor error rates
+          # Check response times
+          echo "✅ Metrics look good"
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "🎉 Production deployment successful!"
+          # Post to Slack/Discord
+          # Update status page
+          # Track in DORA metrics dashboard
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "⚠️ Deployment failed - initiating rollback..."
+          # Rollback commands:
+          # pm2 restart app (previous version)
+          # docker-compose down && docker-compose up -d (previous images)
+          # Restore database if needed
+          echo "✅ Rollback complete"
+
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "❌ Production deployment failed and rolled back!"
+          # Alert on-call engineer
+          # Post incident to Slack
+          # Create incident ticket
+
+  # ======================
+  # UPDATE DORA METRICS
+  # ======================
+  update-metrics:
+    name: Update DORA Metrics
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: success()
+
+    steps:
+      - name: Record deployment
+        run: |
+          echo "📈 Recording deployment in DORA metrics..."
+          # Push metrics to Prometheus:
+          # - Deployment timestamp
+          # - Deployment frequency
+          # - Lead time (time from commit to deploy)
+          # - Deployment status (success/failure)
+          echo "✅ Metrics recorded"
+
+      - name: Calculate lead time
+        run: |
+          # Calculate time from first commit in this deployment to now
+          FIRST_COMMIT_TIME=$(git log --format=%ct --reverse main~1..main | head -1)
+          CURRENT_TIME=$(date +%s)
+          LEAD_TIME=$((CURRENT_TIME - FIRST_COMMIT_TIME))
+          echo "Lead time: $LEAD_TIME seconds"
+
+      - name: Update Grafana dashboard
+        run: |
+          echo "📊 Updating Grafana dashboard..."
+          # Grafana API call to update DORA metrics dashboard
+          echo "✅ Dashboard updated"

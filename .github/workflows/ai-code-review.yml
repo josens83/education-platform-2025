@@ -1,0 +1,437 @@
+name: AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  ai-review-setup:
+    name: AI Review Preparation
+    runs-on: ubuntu-latest
+    outputs:
+      has_code_changes: ${{ steps.check.outputs.has_code_changes }}
+      changed_files: ${{ steps.check.outputs.changed_files }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for code changes
+        id: check
+        run: |
+          BASE_SHA=${{ github.event.pull_request.base.sha }}
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
+
+          # Get changed files
+          CHANGED_FILES=$(git diff --name-only $BASE_SHA...$HEAD_SHA | grep -E '\.(js|ts|jsx|tsx|py|java|go|rs)$' || echo "")
+
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "has_code_changes=true" >> $GITHUB_OUTPUT
+            echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "has_code_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+  code-complexity-analysis:
+    name: Code Complexity Analysis
+    needs: ai-review-setup
+    if: needs.ai-review-setup.outputs.has_code_changes == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Analyze code complexity
+        id: complexity
+        run: |
+          BASE_SHA=${{ github.event.pull_request.base.sha }}
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
+
+          CHANGED_FILES=$(git diff --name-only $BASE_SHA...$HEAD_SHA | grep -E '\.(js|ts|jsx|tsx)$' || echo "")
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No JavaScript/TypeScript files changed"
+            exit 0
+          fi
+
+          # Install complexity analysis tool
+          npm install -g complexity-report 2>/dev/null || true
+
+          COMPLEXITY_ISSUES=""
+          HIGH_COMPLEXITY_COUNT=0
+
+          for file in $CHANGED_FILES; do
+            if [ -f "$file" ]; then
+              echo "Analyzing: $file"
+
+              # Simple complexity check using grep (counts nested blocks)
+              NESTED_DEPTH=$(grep -o '{' "$file" | wc -l)
+              FUNC_COUNT=$(grep -E '(function|=>|^const.*=.*\(|^function)' "$file" | wc -l)
+
+              if [ $NESTED_DEPTH -gt 50 ] && [ $FUNC_COUNT -gt 0 ]; then
+                AVG_COMPLEXITY=$((NESTED_DEPTH / FUNC_COUNT))
+                if [ $AVG_COMPLEXITY -gt 10 ]; then
+                  COMPLEXITY_ISSUES="${COMPLEXITY_ISSUES}\n- **$file**: High complexity detected (avg: $AVG_COMPLEXITY)"
+                  HIGH_COMPLEXITY_COUNT=$((HIGH_COMPLEXITY_COUNT + 1))
+                fi
+              fi
+            fi
+          done
+
+          echo "high_complexity_count=$HIGH_COMPLEXITY_COUNT" >> $GITHUB_OUTPUT
+          echo "complexity_issues<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$COMPLEXITY_ISSUES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment complexity issues
+        if: steps.complexity.outputs.high_complexity_count > 0
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issues = `${{ steps.complexity.outputs.complexity_issues }}`;
+            const count = '${{ steps.complexity.outputs.high_complexity_count }}';
+
+            const body = `## 🤖 AI Code Review: Complexity Analysis
+
+            **⚠️ High complexity detected in ${count} file(s)**
+
+            ${issues}
+
+            ### Recommendations:
+            - Break down complex functions into smaller, single-responsibility functions
+            - Extract nested logic into separate functions
+            - Consider using early returns to reduce nesting
+            - Target: Cyclomatic complexity ≤ 10 per function
+
+            ### Elite Developer Methodology:
+            - ✅ Functions should be < 50 lines
+            - ✅ Cyclomatic complexity ≤ 10
+            - ✅ Max nesting depth ≤ 4`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body,
+            });
+
+  security-analysis:
+    name: AI Security Analysis
+    needs: ai-review-setup
+    if: needs.ai-review-setup.outputs.has_code_changes == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Security pattern detection
+        id: security
+        run: |
+          BASE_SHA=${{ github.event.pull_request.base.sha }}
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
+
+          CHANGED_FILES=$(git diff --name-only $BASE_SHA...$HEAD_SHA)
+
+          # Common security anti-patterns to detect
+          SECURITY_ISSUES=""
+          ISSUE_COUNT=0
+
+          for file in $CHANGED_FILES; do
+            if [ -f "$file" ]; then
+              # Check for common security issues
+
+              # SQL Injection patterns
+              if grep -E "query.*\+.*req\.(body|params|query)" "$file" > /dev/null 2>&1; then
+                SECURITY_ISSUES="${SECURITY_ISSUES}\n- **$file**: Potential SQL injection (string concatenation in query)"
+                ISSUE_COUNT=$((ISSUE_COUNT + 1))
+              fi
+
+              # XSS patterns
+              if grep -E "innerHTML.*=|dangerouslySetInnerHTML" "$file" > /dev/null 2>&1; then
+                SECURITY_ISSUES="${SECURITY_ISSUES}\n- **$file**: Potential XSS (innerHTML usage)"
+                ISSUE_COUNT=$((ISSUE_COUNT + 1))
+              fi
+
+              # Hardcoded credentials
+              if grep -E "(password|secret|api_key|token).*=.*['\"][^'\"]{8,}" "$file" > /dev/null 2>&1; then
+                SECURITY_ISSUES="${SECURITY_ISSUES}\n- **$file**: Possible hardcoded credentials"
+                ISSUE_COUNT=$((ISSUE_COUNT + 1))
+              fi
+
+              # eval() usage
+              if grep -E "eval\(" "$file" > /dev/null 2>&1; then
+                SECURITY_ISSUES="${SECURITY_ISSUES}\n- **$file**: Dangerous eval() usage"
+                ISSUE_COUNT=$((ISSUE_COUNT + 1))
+              fi
+
+              # Insecure random
+              if grep -E "Math\.random\(\)" "$file" > /dev/null 2>&1; then
+                SECURITY_ISSUES="${SECURITY_ISSUES}\n- **$file**: Math.random() not cryptographically secure"
+                ISSUE_COUNT=$((ISSUE_COUNT + 1))
+              fi
+            fi
+          done
+
+          echo "issue_count=$ISSUE_COUNT" >> $GITHUB_OUTPUT
+          echo "security_issues<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$SECURITY_ISSUES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment security issues
+        if: steps.security.outputs.issue_count > 0
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issues = `${{ steps.security.outputs.security_issues }}`;
+            const count = '${{ steps.security.outputs.issue_count }}';
+
+            const body = `## 🤖 AI Code Review: Security Analysis
+
+            **🔒 ${count} potential security issue(s) detected**
+
+            ${issues}
+
+            ### Security Recommendations:
+            - Use parameterized queries to prevent SQL injection
+            - Sanitize user input before rendering
+            - Never hardcode credentials - use environment variables
+            - Avoid \`eval()\` and similar dangerous functions
+            - Use \`crypto.randomBytes()\` for security-critical randomness
+
+            ### Resources:
+            - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+            - [Security Best Practices](https://cheatsheetseries.owasp.org/)`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body,
+            });
+
+  best-practices-review:
+    name: Best Practices Review
+    needs: ai-review-setup
+    if: needs.ai-review-setup.outputs.has_code_changes == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Analyze best practices
+        id: practices
+        run: |
+          BASE_SHA=${{ github.event.pull_request.base.sha }}
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
+
+          CHANGED_FILES=$(git diff --name-only $BASE_SHA...$HEAD_SHA | grep -E '\.(js|ts|jsx|tsx)$' || echo "")
+
+          SUGGESTIONS=""
+          SUGGESTION_COUNT=0
+
+          for file in $CHANGED_FILES; do
+            if [ -f "$file" ]; then
+              # Check for console.log (should use proper logging)
+              CONSOLE_COUNT=$(grep -c "console\.log" "$file" 2>/dev/null || echo "0")
+              if [ $CONSOLE_COUNT -gt 0 ]; then
+                SUGGESTIONS="${SUGGESTIONS}\n- **$file**: Found ${CONSOLE_COUNT} console.log statements (use proper logging)"
+                SUGGESTION_COUNT=$((SUGGESTION_COUNT + 1))
+              fi
+
+              # Check for TODO/FIXME comments
+              TODO_COUNT=$(grep -ci "TODO\|FIXME" "$file" 2>/dev/null || echo "0")
+              if [ $TODO_COUNT -gt 2 ]; then
+                SUGGESTIONS="${SUGGESTIONS}\n- **$file**: Multiple TODO/FIXME comments (${TODO_COUNT}) - consider creating issues"
+                SUGGESTION_COUNT=$((SUGGESTION_COUNT + 1))
+              fi
+
+              # Check for var usage (should use let/const)
+              VAR_COUNT=$(grep -c "^[[:space:]]*var " "$file" 2>/dev/null || echo "0")
+              if [ $VAR_COUNT -gt 0 ]; then
+                SUGGESTIONS="${SUGGESTIONS}\n- **$file**: Using 'var' instead of 'let'/'const' (${VAR_COUNT} occurrences)"
+                SUGGESTION_COUNT=$((SUGGESTION_COUNT + 1))
+              fi
+
+              # Check for missing error handling
+              TRY_COUNT=$(grep -c "try {" "$file" 2>/dev/null || echo "0")
+              ASYNC_COUNT=$(grep -c "async " "$file" 2>/dev/null || echo "0")
+              if [ $ASYNC_COUNT -gt 0 ] && [ $TRY_COUNT -eq 0 ]; then
+                SUGGESTIONS="${SUGGESTIONS}\n- **$file**: Async functions without try-catch blocks"
+                SUGGESTION_COUNT=$((SUGGESTION_COUNT + 1))
+              fi
+            fi
+          done
+
+          echo "suggestion_count=$SUGGESTION_COUNT" >> $GITHUB_OUTPUT
+          echo "suggestions<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$SUGGESTIONS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment suggestions
+        if: steps.practices.outputs.suggestion_count > 0
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const suggestions = `${{ steps.practices.outputs.suggestions }}`;
+            const count = '${{ steps.practices.outputs.suggestion_count }}';
+
+            const body = `## 🤖 AI Code Review: Best Practices
+
+            **💡 ${count} suggestion(s) for improvement**
+
+            ${suggestions}
+
+            ### Best Practices Checklist:
+            - ✅ Use \`winston\` or similar for logging instead of \`console.log\`
+            - ✅ Convert TODO comments to GitHub issues for tracking
+            - ✅ Use \`const\` and \`let\` instead of \`var\`
+            - ✅ Wrap async operations in try-catch blocks
+            - ✅ Add JSDoc comments for public APIs
+            - ✅ Keep functions pure and testable
+
+            These are suggestions to improve code quality and maintainability.`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body,
+            });
+
+  test-coverage-check:
+    name: Test Coverage Check
+    needs: ai-review-setup
+    if: needs.ai-review-setup.outputs.has_code_changes == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for test files
+        id: tests
+        run: |
+          BASE_SHA=${{ github.event.pull_request.base.sha }}
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
+
+          CODE_FILES=$(git diff --name-only $BASE_SHA...$HEAD_SHA | grep -E '\.(js|ts|jsx|tsx)$' | grep -v -E '\.(test|spec)\.' || echo "")
+          TEST_FILES=$(git diff --name-only $BASE_SHA...$HEAD_SHA | grep -E '\.(test|spec)\.(js|ts|jsx|tsx)$' || echo "")
+
+          CODE_COUNT=$(echo "$CODE_FILES" | grep -v '^$' | wc -l)
+          TEST_COUNT=$(echo "$TEST_FILES" | grep -v '^$' | wc -l)
+
+          echo "code_files=$CODE_COUNT" >> $GITHUB_OUTPUT
+          echo "test_files=$TEST_COUNT" >> $GITHUB_OUTPUT
+
+          if [ $CODE_COUNT -gt 0 ] && [ $TEST_COUNT -eq 0 ]; then
+            echo "missing_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "missing_tests=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment on test coverage
+        if: steps.tests.outputs.missing_tests == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const codeFiles = '${{ steps.tests.outputs.code_files }}';
+            const testFiles = '${{ steps.tests.outputs.test_files }}';
+
+            const body = `## 🤖 AI Code Review: Test Coverage
+
+            **⚠️ Code changes without corresponding tests**
+
+            - **Code files changed**: ${codeFiles}
+            - **Test files changed**: ${testFiles}
+
+            ### Elite Developer Methodology:
+            - ✅ All new code should have tests
+            - ✅ Target: 80%+ test coverage
+            - ✅ Include unit tests for functions
+            - ✅ Include integration tests for APIs
+            - ✅ Consider E2E tests for critical flows
+
+            ### Suggestions:
+            1. Add unit tests for new functions
+            2. Add integration tests for API endpoints
+            3. Update existing tests if behavior changed
+            4. Consider edge cases and error scenarios
+
+            If this PR is specifically removing code or is documentation-only, you can ignore this message.`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body,
+            });
+
+  ai-review-summary:
+    name: AI Review Summary
+    needs: [code-complexity-analysis, security-analysis, best-practices-review, test-coverage-check]
+    if: always() && needs.ai-review-setup.outputs.has_code_changes == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate review summary
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = `## 🤖 AI Code Review Summary
+
+            The automated AI code review has completed. Please review the individual comments above for detailed feedback.
+
+            ### Review Categories:
+            - ✅ **Complexity Analysis**: Checks for overly complex code
+            - 🔒 **Security Analysis**: Identifies potential security vulnerabilities
+            - 💡 **Best Practices**: Suggests code quality improvements
+            - 🧪 **Test Coverage**: Ensures adequate test coverage
+
+            ### Next Steps:
+            1. Review and address any critical security issues
+            2. Consider refactoring high-complexity code
+            3. Add tests for new functionality
+            4. Follow best practices suggestions
+
+            **Note**: This is an automated review. Human review is still recommended!
+
+            ---
+            *Powered by Elite Developer Methodology*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body,
+            });
