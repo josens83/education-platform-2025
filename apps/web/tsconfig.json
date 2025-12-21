@@ -1,8 +1,10 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
-    "target": "ES2020",
+    /* Target Environment */
+    "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
 
@@ -14,12 +16,23 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting */
+    /* Module Compatibility */
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    /* Strict Type-Checking (Cloud Deployment Critical) */
     "strict": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": false,
+    "noUncheckedIndexedAccess": false,  // TODO: Enable after fixing array access patterns
+
+    /* File Casing - CRITICAL for Cloud Deployment */
+    "forceConsistentCasingInFileNames": true,
+
+    /* Build Optimization */
+    "incremental": true,
 
     /* Path aliases */
     "baseUrl": ".",
