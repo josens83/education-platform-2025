@@ -1,0 +1,156 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  e2e-tests:
+    name: Playwright E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./apps/web
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        working-directory: ./apps/web
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Build application
+        working-directory: ./apps/web
+        run: npm run build
+        env:
+          VITE_API_URL: http://localhost:5000
+
+      - name: Run E2E tests
+        working-directory: ./apps/web
+        run: npm run test:e2e -- --project=${{ matrix.browser }}
+        env:
+          CI: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-results-${{ matrix.browser }}
+          path: apps/web/playwright-report/
+          retention-days: 7
+
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-artifacts-${{ matrix.browser }}
+          path: |
+            apps/web/test-results/
+            apps/web/playwright-report/
+          retention-days: 7
+
+  e2e-visual-regression:
+    name: Visual Regression Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./apps/web
+        run: npm ci
+
+      - name: Install Playwright
+        working-directory: ./apps/web
+        run: npx playwright install --with-deps chromium
+
+      - name: Build application
+        working-directory: ./apps/web
+        run: npm run build
+        env:
+          VITE_API_URL: http://localhost:5000
+
+      - name: Run visual regression tests
+        working-directory: ./apps/web
+        run: npm run test:e2e -- --grep="@visual" --project=chromium
+        env:
+          CI: true
+        continue-on-error: true
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: visual-regression-screenshots
+          path: apps/web/test-results/
+          retention-days: 7
+
+  e2e-summary:
+    name: E2E Test Summary
+    needs: [e2e-tests]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: playwright-results
+
+      - name: Create test summary
+        run: |
+          echo "## 🎭 E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Browser Matrix Results:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -d "playwright-results" ]; then
+            for browser in chromium firefox webkit; do
+              if [ -d "playwright-results/playwright-results-$browser" ]; then
+                echo "✅ **$browser**: Tests completed" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "❌ **$browser**: Tests failed or incomplete" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Coverage:" >> $GITHUB_STEP_SUMMARY
+          echo "- Authentication flows" >> $GITHUB_STEP_SUMMARY
+          echo "- Content browsing and search" >> $GITHUB_STEP_SUMMARY
+          echo "- User interactions" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 Full test reports available in artifacts" >> $GITHUB_STEP_SUMMARY

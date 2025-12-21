@@ -1,0 +1,11 @@
+{
+  "defaultDatabase": "education_platform",
+  "migrationsTable": "pgmigrations",
+  "dir": "database/migrations",
+  "schema": "public",
+  "checkOrder": true,
+  "ignorePattern": ".*\\.example$",
+  "verbose": true,
+  "createSchema": true,
+  "createMigrationsSchema": false
+}

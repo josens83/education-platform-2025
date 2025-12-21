@@ -16,7 +16,7 @@ export default function ThemeToggle() {
   ];
 
   return (
-    <div className="relative inline-flex items-center gap-1 p-1 bg-surface-hover rounded-xl border border-border">
+    <div className="relative inline-flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
       {themes.map(({ value, icon: Icon, label }) => {
         const isActive = theme === value;
 
@@ -26,7 +26,7 @@ export default function ThemeToggle() {
             onClick={() => setTheme(value)}
             className={`
               relative px-3 py-2 rounded-lg text-sm font-medium
-              transition-colors duration-200
+              transition-all duration-normal ease-default
               ${isActive
                 ? 'text-text-primary'
                 : 'text-text-tertiary hover:text-text-secondary'
@@ -38,7 +38,7 @@ export default function ThemeToggle() {
             {isActive && (
               <motion.div
                 layoutId="theme-indicator"
-                className="absolute inset-0 bg-surface border border-border rounded-lg shadow-sm"
+                className="absolute inset-0 bg-background-paper border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm"
                 transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
               />
             )}
@@ -63,7 +63,7 @@ export function ThemeToggleSimple() {
   return (
     <motion.button
       onClick={toggleTheme}
-      className="p-2.5 rounded-xl bg-surface border border-border hover:bg-surface-hover transition-all duration-200"
+      className="p-2.5 rounded-xl bg-background-paper border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-normal"
       whileTap={{ scale: 0.95 }}
       aria-label="Toggle theme"
     >

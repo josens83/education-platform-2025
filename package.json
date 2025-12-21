@@ -1,0 +1,36 @@
+{
+  "name": "education-platform-2025",
+  "version": "1.0.0",
+  "description": "[![CI/CD](https://github.com/josens83/education-platform-2025/workflows/CI/CD%20Pipeline/badge.svg)](https://github.com/josens83/education-platform-2025/actions) [![Test Coverage](https://img.shields.io/badge/coverage-60%2B%25-brightgreen)](./backend/coverage) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Node.js Version](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen)](https://nodejs.org)",
+  "main": "index.js",
+  "scripts": {
+    "install:all": "npm install && cd backend && npm install && cd ../apps/web && npm install",
+    "dev": "concurrently \"cd backend && npm run dev\" \"cd apps/web && npm run dev\"",
+    "test": "cd backend && npm test && cd ../apps/web && npm test",
+    "lint": "cd backend && npm run lint && cd ../apps/web && npm run lint",
+    "build": "cd apps/web && npm run build",
+    "deploy:staging": "./scripts/deploy-staging.sh",
+    "deploy:production": "docker-compose -f docker-compose.yml up -d --build",
+    "monitoring:start": "docker-compose -f docker-compose.monitoring.yml up -d",
+    "monitoring:stop": "docker-compose -f docker-compose.monitoring.yml down",
+    "monitoring:logs": "docker-compose -f docker-compose.monitoring.yml logs -f",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:rebuild": "docker-compose down && docker-compose up -d --build",
+    "health:check": "curl -s http://localhost:5000/api/health | json_pp || curl -s http://localhost:5000/api/health",
+    "health:detailed": "curl -s http://localhost:5000/api/health/detailed | json_pp || curl -s http://localhost:5000/api/health/detailed",
+    "metrics": "curl -s http://localhost:5000/api/health/metrics"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:53972/git/josens83/education-platform-2025"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^24.10.1"
+  }
+}

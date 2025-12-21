@@ -30,6 +30,16 @@ module.exports = {
   // 커버리지 디렉토리
   coverageDirectory: 'coverage',
 
+  // 커버리지 임계값 (Elite Developer Methodology)
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    }
+  },
+
   // 테스트 타임아웃 (10초)
   testTimeout: 10000,
 
